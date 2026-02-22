@@ -1178,7 +1178,7 @@ LOCAL TOPOLOGY MAP
                     3. Inventory Logic: ALL picking up and dropping of items is handled by the client via "TAKE" and "DROP" commands. Do NOT tell the user they picked something up.
                     4. Item Usage (Narrative): If the user interacts with an item, provide the specific, flavorful outcome in the narrative.
                     5. Marginalia (World Edits): If the user explicitly uses an item (like a marker, knife, or spray paint) to permanently write on, draw on, or alter the environment, output a "world_edit" object to permanently etch this into the room.
-                    6. Self Avatar Creation: ONLY ALLOWED IN THE 'spare_room'. Ask for a name if none is given, otherwise output "trigger_character_creation".
+                    6. Self Avatar Creation: ONLY ALLOWED IN THE 'spare_room'. Ask for a name and basic concept if missing, otherwise output the 'trigger_character_creation' object.
                     
                     Respond STRICTLY in JSON:
                     {
@@ -1191,7 +1191,7 @@ LOCAL TOPOLOGY MAP
                       "new_facing": "New facing if changed, otherwise null",
                       "world_edit": null or {"type": "add_marginalia", "target_room": "the_room_key", "text": "The text of the permanent modification (e.g., 'Scrawled on the north door is: Schrodinger\\'s Closet')"},
                       "trigger_view_characters": false,
-                      "trigger_character_creation": null
+                      "trigger_character_creation": null or { "name": "Character Name", "archetype": "Character Role", "visual_prompt": "Appearance description", "stats": {"STR": 10, "DEX": 10, "INT": 10} }
                     }`;
                     
                     const res = await callGemini(`User Input: ${val}`, sysPrompt);
@@ -1236,7 +1236,7 @@ LOCAL TOPOLOGY MAP
                         addLog(`[SYSTEM UPDATE]: Render permanently altered.`, "var(--gm-purple)");
                     }
                     
-                    if (res.trigger_character_creation) {
+                    if (res.trigger_character_creation && res.trigger_character_creation.name) {
                         const charData = res.trigger_character_creation;
                         addLog(`[SYSTEM]: Extracting genetic imprint for your primary vessel [${charData.name}]...`, "var(--gm-purple)");
                         
@@ -1246,7 +1246,7 @@ LOCAL TOPOLOGY MAP
                             const imgRes = await fetch(API_IMAGE, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ instances: [{ prompt: `Highly detailed character portrait, Magic the Gathering card art style, cyberpunk aesthetic: ${charData.visual_prompt}` }] })
+                                body: JSON.stringify({ instances: [{ prompt: `Highly detailed character portrait, Magic the Gathering card art style, cyberpunk aesthetic: ${charData.visual_prompt || charData.name}` }] })
                             });
                             const imgData = await imgRes.json();
                             if (imgData.predictions?.[0]) {
