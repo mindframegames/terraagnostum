@@ -233,7 +233,7 @@
                 </div>
 
                 <div class="input-area">
-                    <span id="prompt-prefix" class="mr-2 opacity-80">GUEST@ROOT:~$&nbsp;</span>
+                    <span id="prompt-prefix" class="mr-2 opacity-80 text-gray-500">GUEST@VOID:~$</span>
                     <input type="text" id="cmd-input" autofocus spellcheck="false" autocomplete="off">
                 </div>
             </div>
@@ -392,6 +392,20 @@
             existingData: {}
         };
 
+        function updateCommandPrompt() {
+            const prefixEl = document.getElementById('prompt-prefix');
+            const roomShort = apartmentMap[localPlayer.currentRoom]?.shortName || localPlayer.currentRoom.toUpperCase();
+            
+            if (user && !user.isAnonymous) {
+                // Registered User: Blue text, shows email prefix or UID, plus current room
+                const identity = user.email ? user.email.split('@')[0] : user.uid.substring(0, 5);
+                prefixEl.innerHTML = `<span class="text-blue-400 font-bold">ARCHITECT[${identity}]@${roomShort}:~$</span>&nbsp;`;
+            } else {
+                // Anonymous Guest: Gray text, VOID state or current room
+                prefixEl.innerHTML = `<span class="text-gray-500">GUEST@${roomShort}:~$</span>&nbsp;`;
+            }
+        }
+
         if (isSyncEnabled) {
             if (isSignInWithEmailLink(auth, window.location.href)) {
                 let email = window.localStorage.getItem('emailForSignIn');
@@ -413,7 +427,8 @@
                 if (user && !hasInitialized) {
                     hasInitialized = true;
                     const userType = user.isAnonymous ? "GUEST" : "ARCHITECT";
-                    document.getElementById('prompt-prefix').innerHTML = `${userType}@ROOT:~$&nbsp;`;
+                    
+                    updateCommandPrompt(); // Initial prompt setup
 
                     addLog(`${userType} LINKED: ${user.uid.substring(0,8)}`, "var(--crayola-blue)");
                     
@@ -477,6 +492,7 @@
                     if (localPlayer.currentRoom === 'main_room') {
                         localPlayer.currentRoom = 'lore1';
                     }
+                    updateCommandPrompt(); // Ensure prompt matches loaded room
                 }
             } catch (e) {
                 console.error("Failed to load player state:", e);
@@ -746,6 +762,7 @@ LOCAL TOPOLOGY MAP
                 localPlayer.currentRoom = nextRoomKey;
                 const nextRoom = apartmentMap[nextRoomKey];
                 
+                updateCommandPrompt(); // Update the prefix text
                 updateStatusUI();
                 savePlayerState();
                 updateRoomItemsUI();
@@ -800,7 +817,7 @@ LOCAL TOPOLOGY MAP
                     addLog(`[SYSTEM]: Successfully materialized [${wizardState.pendingData.name}] into ${room.name}.`, "var(--term-green)");
                     
                     // Reset Wizard
-                    document.getElementById('prompt-prefix').innerHTML = `${user?.isAnonymous ? "GUEST" : "ARCHITECT"}@ROOT:~$&nbsp;`;
+                    updateCommandPrompt();
                     wizardState = { active: false, type: null, step: 0, pendingData: {}, existingData: {} };
                 }
             } else if (wizardState.type === 'room') {
@@ -840,7 +857,7 @@ LOCAL TOPOLOGY MAP
                     projectVisual(apartmentMap[rKey].visualPrompt);
                     updateStatusUI();
 
-                    document.getElementById('prompt-prefix').innerHTML = `${user?.isAnonymous ? "GUEST" : "ARCHITECT"}@ROOT:~$&nbsp;`;
+                    updateCommandPrompt();
                     wizardState = { active: false, type: null, step: 0, pendingData: {}, existingData: {} };
                 }
             } else if (wizardState.type === 'expand') {
@@ -884,7 +901,7 @@ LOCAL TOPOLOGY MAP
 
                     addLog(`[SYSTEM]: Sector materialization complete. Path to the ${dir.toUpperCase()} is now open.`, "var(--term-green)");
                     
-                    document.getElementById('prompt-prefix').innerHTML = `${user?.isAnonymous ? "GUEST" : "ARCHITECT"}@ROOT:~$&nbsp;`;
+                    updateCommandPrompt();
                     wizardState = { active: false, type: null, step: 0, pendingData: {}, existingData: {} };
                 }
             }
@@ -1178,7 +1195,7 @@ LOCAL TOPOLOGY MAP
                     3. Inventory Logic: ALL picking up and dropping of items is handled by the client via "TAKE" and "DROP" commands. Do NOT tell the user they picked something up.
                     4. Item Usage (Narrative): If the user interacts with an item, provide the specific, flavorful outcome in the narrative.
                     5. Marginalia (World Edits): If the user explicitly uses an item (like a marker, knife, or spray paint) to permanently write on, draw on, or alter the environment, output a "world_edit" object to permanently etch this into the room.
-                    6. Self Avatar Creation: ONLY ALLOWED IN THE 'spare_room'. Ask for a name and basic concept if missing, otherwise output the 'trigger_character_creation' object.
+                    6. Self Avatar Creation: ONLY ALLOWED IN THE 'spare_room'. If the user says they want to create an avatar but HAS NOT given a name yet, ask them for a name in the narrative and leave 'trigger_character_creation' as null. DO NOT output the object until they provide a name.
                     
                     Respond STRICTLY in JSON:
                     {
@@ -1191,7 +1208,7 @@ LOCAL TOPOLOGY MAP
                       "new_facing": "New facing if changed, otherwise null",
                       "world_edit": null or {"type": "add_marginalia", "target_room": "the_room_key", "text": "The text of the permanent modification (e.g., 'Scrawled on the north door is: Schrodinger\\'s Closet')"},
                       "trigger_view_characters": false,
-                      "trigger_character_creation": null or { "name": "Character Name", "archetype": "Character Role", "visual_prompt": "Appearance description", "stats": {"STR": 10, "DEX": 10, "INT": 10} }
+                      "trigger_character_creation": null or { "name": "Character Name", "archetype": "Character Role", "visual_prompt": "Appearance description", "stats": {"STR": 10, "DEX": 10, "INT": 10} } // IMPORTANT: Output null if you are still asking for their name. Only output this object when they have explicitly given a name.
                     }`;
                     
                     const res = await callGemini(`User Input: ${val}`, sysPrompt);
@@ -1236,41 +1253,52 @@ LOCAL TOPOLOGY MAP
                         addLog(`[SYSTEM UPDATE]: Render permanently altered.`, "var(--gm-purple)");
                     }
                     
-                    if (res.trigger_character_creation && res.trigger_character_creation.name) {
-                        const charData = res.trigger_character_creation;
-                        addLog(`[SYSTEM]: Extracting genetic imprint for your primary vessel [${charData.name}]...`, "var(--gm-purple)");
-                        
-                        let cardImageSrc = "";
-                        let compressedImageSrc = "";
-                        try {
-                            const imgRes = await fetch(API_IMAGE, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ instances: [{ prompt: `Highly detailed character portrait, Magic the Gathering card art style, cyberpunk aesthetic: ${charData.visual_prompt || charData.name}` }] })
-                            });
-                            const imgData = await imgRes.json();
-                            if (imgData.predictions?.[0]) {
-                                cardImageSrc = `data:image/png;base64,${imgData.predictions[0].bytesBase64Encoded}`;
-                                compressedImageSrc = await compressImage(cardImageSrc);
-                            }
-                        } catch (e) {
-                            console.error("Card Image Error", e);
-                        }
-                        
-                        const fullCharData = { ...charData, image: compressedImageSrc || cardImageSrc, timestamp: Date.now() };
-                        renderCharacterCard(fullCharData, compressedImageSrc || cardImageSrc);
-                        localCharacters.push(fullCharData);
-                        activeAvatar = fullCharData; 
-                        updateAvatarUI(); 
-                        
-                        if (user) {
+                    // Safety check for character creation objects to prevent undefined/missing data crashes
+                    if (res.trigger_character_creation && typeof res.trigger_character_creation === 'object') {
+                        if (!res.trigger_character_creation.name || res.trigger_character_creation.name === "undefined" || res.trigger_character_creation.name === "Unknown") {
+                            addLog(`[SYSTEM ERROR]: Genetic imprint failed. Semantic weight insufficient (Missing Name).`, "var(--term-red)");
+                        } else {
+                            const charData = res.trigger_character_creation;
+                            
+                            // Safe fallbacks to prevent crashes
+                            charData.stats = charData.stats || { STR: 10, DEX: 10, INT: 10 };
+                            charData.archetype = charData.archetype || "Wanderer";
+                            charData.visual_prompt = charData.visual_prompt || charData.name;
+                            
+                            addLog(`[SYSTEM]: Extracting genetic imprint for your primary vessel [${charData.name}]...`, "var(--gm-purple)");
+                            
+                            let cardImageSrc = "";
+                            let compressedImageSrc = "";
                             try {
-                                const charCol = collection(db, 'artifacts', appId, 'users', user.uid, 'characters');
-                                await addDoc(charCol, fullCharData);
-                                addLog(`[SYSTEM]: Avatar Card [${charData.name}] permanently registered to your profile.`, "var(--term-green)");
+                                const imgRes = await fetch(API_IMAGE, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ instances: [{ prompt: `Highly detailed character portrait, Magic the Gathering card art style, cyberpunk aesthetic: ${charData.visual_prompt}` }] })
+                                });
+                                const imgData = await imgRes.json();
+                                if (imgData.predictions?.[0]) {
+                                    cardImageSrc = `data:image/png;base64,${imgData.predictions[0].bytesBase64Encoded}`;
+                                    compressedImageSrc = await compressImage(cardImageSrc);
+                                }
                             } catch (e) {
-                                console.error("Firestore Save Error:", e);
-                                addLog(`[SYSTEM ERROR]: Could not save Avatar to the archive. The image may still be too large.`, "var(--term-red)");
+                                console.error("Card Image Error", e);
+                            }
+                            
+                            const fullCharData = { ...charData, image: compressedImageSrc || cardImageSrc, timestamp: Date.now() };
+                            renderCharacterCard(fullCharData, compressedImageSrc || cardImageSrc);
+                            localCharacters.push(fullCharData);
+                            activeAvatar = fullCharData; 
+                            updateAvatarUI(); 
+                            
+                            if (user) {
+                                try {
+                                    const charCol = collection(db, 'artifacts', appId, 'users', user.uid, 'characters');
+                                    await addDoc(charCol, fullCharData);
+                                    addLog(`[SYSTEM]: Avatar Card [${charData.name}] permanently registered to your profile.`, "var(--term-green)");
+                                } catch (e) {
+                                    console.error("Firestore Save Error:", e);
+                                    addLog(`[SYSTEM ERROR]: Could not save Avatar to the archive. The image may still be too large.`, "var(--term-red)");
+                                }
                             }
                         }
                     }
