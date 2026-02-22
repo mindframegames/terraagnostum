@@ -405,11 +405,13 @@
                     await loadPlayerState(); 
                     loadUserCharacters();
                     
-                    printRoomDescription();
-                    updateStatusUI();
-                    updateInventoryUI();
-                    updateRoomItemsUI();
-                    projectVisual(apartmentMap[localPlayer.currentRoom]?.visualPrompt || apartmentMap["lore1"].visualPrompt);
+                    setTimeout(() => {
+                        printRoomDescription();
+                        updateStatusUI();
+                        updateInventoryUI();
+                        updateRoomItemsUI();
+                        projectVisual(apartmentMap[localPlayer.currentRoom]?.visualPrompt || apartmentMap["lore1"].visualPrompt);
+                    }, 800);
                 }
             });
 
