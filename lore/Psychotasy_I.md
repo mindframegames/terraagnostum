@@ -8,7 +8,7 @@
 ---
 </div>
 
-<img width="1778" height="889" alt="image" src="https://github.com/user-attachments/assets/935d4a2c-e30d-4488-9993-1930394467b5" />
+<img width="1024" height="559" alt="image (16)" src="https://github.com/user-attachments/assets/4089e940-80ec-48d5-8dd8-8c7e2de30006" />
 
 Ch. 1. The Solipsystem
 ======================
