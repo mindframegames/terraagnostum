@@ -28,6 +28,9 @@ Live Topology HUD: A real-time, interactive graph maps the local sector as playe
 
 Generative Visual Projections: The terminal doesn't just describe reality; it projects it. Every sector transition triggers an AI-generated lo-fi glitch art visual reflecting the room's narrative and the aesthetic of the current Stratum.
 
+![Uploading Gemini_Generated_Image_4hnl8t4hnl8t4hnl.png…]()
+The Torlight at Corovon
+
 [ SYSTEM CAPABILITIES ]
 
 AI-Mediated Reality (TANDEM aka Tandy): A dynamic, LLM-powered Game Master persona that evaluates user intent, generates real-time narrative responses, and enforces the physical and metaphysical laws of the render.
