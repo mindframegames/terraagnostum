@@ -204,11 +204,12 @@
 
     <!-- MAP MODAL OVERLAY -->
     <div id="map-modal" class="hidden fixed inset-0 bg-black/85 z-[15] backdrop-blur-sm flex items-center justify-center" onclick="this.classList.add('hidden')">
-        <div class="border border-green-500 bg-[#050505] p-8 shadow-[0_0_20px_rgba(0,255,65,0.15)] text-green-500 font-mono" onclick="event.stopPropagation()">
-            <div class="text-amber-500 mb-6 border-b border-green-900 pb-2 text-xs uppercase tracking-widest text-center">
-                >> System.Schematic.Viewer // Tap outside to close <<
+        <div class="border border-green-500 bg-[#050505] p-8 shadow-[0_0_20px_rgba(0,255,65,0.15)] text-green-500 font-mono flex flex-col items-center" onclick="event.stopPropagation()">
+            <div class="text-amber-500 mb-4 border-b border-green-900 pb-2 text-xs uppercase tracking-widest text-center w-full">
+                >> SYSTEM.TOPOLOGY.MAP // TAP OUTSIDE TO CLOSE <<
             </div>
-            <pre id="map-content" class="text-sm leading-relaxed tracking-widest text-center"></pre>
+            <!-- Canvas Map replaces the ASCII pre tag -->
+            <canvas id="map-canvas" width="600" height="400" class="max-w-full bg-black/50 border border-green-900/50 rounded"></canvas>
         </div>
     </div>
 
@@ -651,34 +652,121 @@
 
         function showMapModal() {
             const modal = document.getElementById('map-modal');
-            const content = document.getElementById('map-content');
-
-            const curr = apartmentMap[localPlayer.currentRoom];
-            
-            const formatNode = (key) => {
-                if (!key || !apartmentMap[key]) return "           ";
-                let short = (apartmentMap[key].shortName || "???").substring(0,7);
-                let padLeft = Math.floor((7 - short.length) / 2);
-                let padRight = 7 - short.length - padLeft;
-                short = ' '.repeat(padLeft) + short + ' '.repeat(padRight);
-                return `[ ${short} ]`;
-            };
-
-            const currFmt = `<span class="text-black bg-green-500 font-bold shadow-[0_0_8px_rgba(0,255,65,0.8)]">${formatNode(localPlayer.currentRoom)}</span>`;
-
-            // Dynamically renders the cross-section of the graph you are currently standing in
-            content.innerHTML = `
-LOCAL TOPOLOGY MAP
-------------------
-
-                   ${formatNode(curr.exits?.north)}
-                          |
- ${formatNode(curr.exits?.west)} --- ${currFmt} --- ${formatNode(curr.exits?.east)}
-                          |
-                   ${formatNode(curr.exits?.south)}
-            `;
-            
+            const canvas = document.getElementById('map-canvas');
+            const ctx = canvas.getContext('2d');
             modal.classList.remove('hidden');
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Fetch active stratum theme colors to dynamically paint the map
+            const computedStyle = getComputedStyle(document.body);
+            const termGreen = computedStyle.getPropertyValue('--term-green').trim() || '#00ff41';
+            const termAmber = computedStyle.getPropertyValue('--term-amber').trim() || '#ffb000';
+            const termBg = computedStyle.getPropertyValue('--term-bg').trim() || '#050505';
+
+            const nodeSize = 40;
+            const spacing = 90;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Breadth-First Search (BFS) to map logical topology based on current room
+            let coords = {}; 
+            let queue = [{key: localPlayer.currentRoom, logicalX: 0, logicalY: 0}];
+            coords[localPlayer.currentRoom] = {x: 0, y: 0};
+            let processed = new Set();
+
+            while(queue.length > 0) {
+                let curr = queue.shift();
+                if (processed.has(curr.key)) continue;
+                processed.add(curr.key);
+
+                let node = apartmentMap[curr.key];
+                if(!node) continue;
+
+                if (node.exits) {
+                    if (node.exits.north && !coords[node.exits.north]) {
+                        coords[node.exits.north] = {x: curr.logicalX, y: curr.logicalY - 1};
+                        queue.push({key: node.exits.north, logicalX: curr.logicalX, logicalY: curr.logicalY - 1});
+                    }
+                    if (node.exits.south && !coords[node.exits.south]) {
+                        coords[node.exits.south] = {x: curr.logicalX, y: curr.logicalY + 1};
+                        queue.push({key: node.exits.south, logicalX: curr.logicalX, logicalY: curr.logicalY + 1});
+                    }
+                    if (node.exits.east && !coords[node.exits.east]) {
+                        coords[node.exits.east] = {x: curr.logicalX + 1, y: curr.logicalY};
+                        queue.push({key: node.exits.east, logicalX: curr.logicalX + 1, logicalY: curr.logicalY});
+                    }
+                    if (node.exits.west && !coords[node.exits.west]) {
+                        coords[node.exits.west] = {x: curr.logicalX - 1, y: curr.logicalY};
+                        queue.push({key: node.exits.west, logicalX: curr.logicalX - 1, logicalY: curr.logicalY});
+                    }
+                }
+            }
+
+            // Phase 1: Draw Connecting Edges (Lines)
+            ctx.strokeStyle = termGreen;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.5; // Dim the lines a bit
+            
+            processed.forEach(key => {
+                let node = apartmentMap[key];
+                let p1 = coords[key];
+                if(!node || !p1) return;
+
+                const drawEdge = (targetKey) => {
+                    let p2 = coords[targetKey];
+                    if(p2) {
+                        ctx.beginPath();
+                        ctx.moveTo(centerX + p1.x * spacing, centerY + p1.y * spacing);
+                        ctx.lineTo(centerX + p2.x * spacing, centerY + p2.y * spacing);
+                        ctx.stroke();
+                    }
+                };
+
+                if(node.exits) {
+                    if(node.exits.north) drawEdge(node.exits.north);
+                    if(node.exits.south) drawEdge(node.exits.south);
+                    if(node.exits.east) drawEdge(node.exits.east);
+                    if(node.exits.west) drawEdge(node.exits.west);
+                }
+            });
+
+            // Phase 2: Draw Node Boxes & Labels
+            ctx.globalAlpha = 1.0;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = "bold 10px monospace";
+
+            processed.forEach(key => {
+                let node = apartmentMap[key];
+                let p = coords[key];
+                if(!node || !p) return;
+
+                let x = centerX + p.x * spacing;
+                let y = centerY + p.y * spacing;
+                let isCurrent = (key === localPlayer.currentRoom);
+
+                // Draw background box
+                if (isCurrent) {
+                    ctx.fillStyle = termGreen; 
+                    ctx.shadowColor = termGreen;
+                    ctx.shadowBlur = 15;
+                } else {
+                    ctx.fillStyle = termBg; 
+                    ctx.shadowBlur = 0;
+                }
+
+                ctx.strokeStyle = isCurrent ? '#000' : termGreen;
+                ctx.fillRect(x - nodeSize/2, y - nodeSize/2, nodeSize, nodeSize);
+                ctx.strokeRect(x - nodeSize/2, y - nodeSize/2, nodeSize, nodeSize);
+
+                // Draw label
+                ctx.fillStyle = isCurrent ? '#000' : termAmber; 
+                ctx.shadowBlur = 0;
+                let shortName = (node.shortName || "???").substring(0, 5);
+                ctx.fillText(shortName, x, y);
+            });
         }
 
         async function compressImage(base64Str, maxWidth = 400, quality = 0.7) {
@@ -1245,7 +1333,7 @@ LOCAL TOPOLOGY MAP
                     
                     Player Context:
                     - Current Location: ${currentRoomData.name} (Key: ${localPlayer.currentRoom})
-                    - Current Stratum: ${localPlayer.stratum.toUpperCase()} (Narrative Tone: 'mundane' = gritty/noir realism, 'faen' = high fantasy/magic, 'technate' = sterile/dystopian sci-fi)
+                    - Current Stratum: ${localPlayer.stratum.toUpperCase()} (Narrative Tone: 'mundane' = gritty/noir realism, 'faen' = high fantasy/magic/Psychotasy lore like Atri, the Riftsea, and The Weaver, 'technate' = sterile/dystopian sci-fi/cybernetic)
                     - Room Description: ${currentRoomData.description}
                     - Room Marginalia (Player Etchings): ${marginaliaText || "None"}
                     - Items laying in Room: ${roomItemNames || "None"}
@@ -1254,13 +1342,14 @@ LOCAL TOPOLOGY MAP
                     - Player Inventory: ${inventoryNames || "Empty"}
 
                     Rules & Guardrails:
-                    1. Interpretation: Interpret user input for talking, looking at specific details, interacting with items, or changing posture. Tone of narration must match the Current Stratum.
+                    1. Interpretation: Interpret user input for talking, looking at specific details, interacting with items, or changing posture. Tone of narration MUST match the Current Stratum. If Stratum is FAEN, improvise high-fantasy elements, magic, and dynamic quests aligned with the Psychotasy lore.
                     2. Strict Movement: ALL movement is handled by the client. If the user tries to move (e.g. "go to char room"), REFUSE the action and instruct them to use directional commands (N, S, E, W) or Arrow Keys. Never output "new_room".
                     3. Inventory Logic: ALL picking up and dropping of items is handled by the client via "TAKE" and "DROP" commands. Do NOT tell the user they picked something up.
                     4. Item/Scenery Usage: Users can USE inventory items AND scenery items (like a Terminal or console). You play the role of the item (e.g. the Terminal AI) if they interact with it, and provide a flavorful outcome.
                     5. Marginalia (World Edits): If the user explicitly uses an item (like a marker, knife, or spray paint) to permanently write on, draw on, or alter the environment, output a "world_edit" object to permanently etch this into the room.
                     6. Self Avatar Creation: ONLY ALLOWED IN THE 'spare_room'. If the user says they want to create an avatar but HAS NOT given a name yet, ask them for a name in the narrative and leave 'trigger_character_creation' as null.
                     7. Strata Shifting (Dimensional Jump): If the user explicitly uses a tuning device (like a 'Hacked Schumann Generator') in an enclosed space (like 'Schrödinger's Closet') to shift to a different reality/strata ('Mundane', 'Faen', or 'Technate'), set "trigger_stratum_shift" to the target stratum name.
+                    8. Combat & Death: If the player sustains fatal damage or is killed in the narrative, set "trigger_respawn" to true to wake them up in their bed.
                     
                     Respond STRICTLY in JSON:
                     {
@@ -1274,7 +1363,8 @@ LOCAL TOPOLOGY MAP
                       "trigger_stratum_shift": null or "mundane", "faen", or "technate",
                       "world_edit": null or {"type": "add_marginalia", "target_room": "the_room_key", "text": "The text of the permanent modification (e.g., 'Scrawled on the north door is: Schrodinger\\'s Closet')"},
                       "trigger_view_characters": false,
-                      "trigger_character_creation": null or { "name": "Character Name", "archetype": "Character Role", "visual_prompt": "Appearance description", "stats": {"WILL": 20, "CONS": 20, "PHYS": 20} }
+                      "trigger_character_creation": null or { "name": "Character Name", "archetype": "Character Role", "visual_prompt": "Appearance description", "stats": {"WILL": 20, "CONS": 20, "PHYS": 20} },
+                      "trigger_respawn": false
                     }`;
                     
                     const res = await callGemini(`User Input: ${val}`, sysPrompt);
@@ -1285,14 +1375,25 @@ LOCAL TOPOLOGY MAP
                     }
 
                     let stateChanged = false;
-                    
-                    if (res.new_posture && res.new_posture !== localPlayer.posture) {
-                        localPlayer.posture = res.new_posture;
+
+                    // Execute Death/Respawn Protocol
+                    if (res.trigger_respawn) {
+                        localPlayer.currentRoom = "bedroom"; // Assuming standard start map has this node
+                        localPlayer.posture = "laying";
+                        localPlayer.hp = 20;
                         stateChanged = true;
-                    }
-                    if (res.new_facing && res.new_facing !== localPlayer.facing) {
-                        localPlayer.facing = res.new_facing;
-                        stateChanged = true;
+                        addLog(`[SYSTEM]: Critical integrity failure. Vessel destroyed. Re-rendering consciousness at last secure anchor...`, "var(--term-red)");
+                        updateCommandPrompt();
+                        projectVisual(apartmentMap['bedroom'] ? apartmentMap['bedroom'].visualPrompt : "A glitching bedroom.");
+                    } else {
+                        if (res.new_posture && res.new_posture !== localPlayer.posture) {
+                            localPlayer.posture = res.new_posture;
+                            stateChanged = true;
+                        }
+                        if (res.new_facing && res.new_facing !== localPlayer.facing) {
+                            localPlayer.facing = res.new_facing;
+                            stateChanged = true;
+                        }
                     }
 
                     // Process Strata Shifting!
@@ -1389,7 +1490,7 @@ LOCAL TOPOLOGY MAP
                         }
                     }
 
-                    if (res.trigger_visual && !res.trigger_character_creation) {
+                    if (res.trigger_visual && !res.trigger_character_creation && !res.trigger_respawn) {
                         projectVisual(res.trigger_visual);
                     } else if (res.trigger_stratum_shift) {
                         // Automatically render the new stratum if jumping realities!
