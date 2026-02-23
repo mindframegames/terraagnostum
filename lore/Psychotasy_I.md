@@ -8,7 +8,8 @@
 ---
 </div>
 
-<img width="2048" height="2048" alt="Gemini_Generated_Image_mrtqi7mrtqi7mrtq" src="https://github.com/user-attachments/assets/66494dcb-0991-4eba-beab-d06f87b8a951" />
+<img width="1778" height="889" alt="image" src="https://github.com/user-attachments/assets/935d4a2c-e30d-4488-9993-1930394467b5" />
+/>
 
 Ch. 1. The Solipsystem
 ======================
