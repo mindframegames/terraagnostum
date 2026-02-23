@@ -41,3 +41,25 @@ To establish a local instance of the Terminal, execute the following directives 
    cd terra-agnostum
 
 *"What your do, O Rama, know that it is nothing but pure consciousness."*
+
+---
+
+"The total number of minds in the universe is 1." 
+- Erwin Shrodinger
+<img width="201" height="251" alt="image" src="https://github.com/user-attachments/assets/2d5f97cd-cb64-47f5-bef8-fdc7275d55e7" />
+
+Of all the founder father's of quantum science, Schrodinger is perhaps the most broad minded.  He embraced both hard physics and Vedanta.  It is one thing to appreciate the products of a man's mind, but another level entirely to meet them where they are.  Erwin makes one wonder, indeed: where is he?
+
+Or as Ramana Maharshi said: *who am I?*
+
+<img width="739" height="768" alt="image" src="https://github.com/user-attachments/assets/0df181dc-5719-4223-8067-4a8e54080d0c" />
+
+Isn't that the most basic question?
+
+*Or is it: what is the nature of reality?*
+
+In either case, it is consciousness which persists, and consciousness which must be addressed, directly.  
+
+
+
+
