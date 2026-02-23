@@ -1,68 +1,88 @@
-# > TANDEM OS // TERRA AGNOSTUM TERMINAL  // AGM (Artificial Game Master)
+> TANDEM OS // TERRA AGNOSTUM TERMINAL // AGM (Artificial Game Master)
 
 <img width="1174" height="925" alt="unnamed" src="https://github.com/user-attachments/assets/333163ec-23a2-4e92-9262-3e06ebb0deb5" />
 
+>> SYSTEM STATE: LIVE
 
-`>> SYSTEM STATE: LIVE`  
-`>> NODE: SECURE`  
-`>> RENDER MODE: CONSENSUS`
+>> NODE: SECURE
 
-Welcome to the Archive. 
+>> RENDER MODE: CONSENSUS
 
-This repository contains the source code for the **Terra Agnostum Shared Reality Terminal**. To the uninitiated in the Mundane, this appears to be a web-based, AI-mediated MUD (Multi-User Dungeon). In truth, it is a bridge. 
+Welcome to the Archive.
 
-The UI is a pure function of state. Reality is not a fixed construct you merely inhabit; it is a render maintained by consensus. The world will take shape incrementally, becoming more real as you pour your consciousness into it. 
+This repository contains the source code for the Terra Agnostum Shared Reality Terminal. To the uninitiated in the Mundane, this appears to be a web-based, AI-mediated MUD (Multi-User Dungeon). In truth, it is a bridge.
 
-*"Whatever the consciousness conceives of as the order of nature (niyati) in that universe, that comes to be established there."*
+The UI is a pure function of state. Reality is not a fixed construct you merely inhabit; it is a render maintained by consensus. The world will take shape incrementally, becoming more real as you pour your consciousness into it.
 
-## [ SYSTEM CAPABILITIES ]
+"Whatever the consciousness conceives of as the order of nature (niyati) in that universe, that comes to be established there."
 
-* **AI-Mediated Reality (The Eld Master):** A dynamic, LLM-powered Game Master persona that evaluates user intent, generates real-time narrative responses, and enforces the physical and metaphysical laws of the render.
-* **Semantic Scripting (Aethal Integration):** Execute low-level assembly commands directly on the source code of reality using Aethal runes (e.g., `IXA` to ignite meaning, `SOL` to expose marginalia).
-* **Multi-Vector Sync:** Real-time, multiplayer state synchronization. When you alter the Archive, the rendering updates for all observing manifestations.
-* **Somatic Glitch Engine:** Push too much "Amn" (meaning) into the render, and the system will push back. High-stakes actions run the risk of desaturating the user's environment or triggering localized narrative loops.
+[ SYSTEM CAPABILITIES ]
 
-## [ ARCHITECTURE ]
+AI-Mediated Reality (The Eld Master): A dynamic, LLM-powered Game Master persona that evaluates user intent, generates real-time narrative responses, and enforces the physical and metaphysical laws of the render.
+
+Semantic Scripting (Aethal Integration): Execute low-level assembly commands directly on the source code of reality using Aethal runes (e.g., IXA to ignite meaning, SOL to expose marginalia).
+
+Multi-Vector Sync: Real-time, multiplayer state synchronization. When you alter the Archive, the rendering updates for all observing manifestations.
+
+Somatic Glitch Engine: Push too much "Amn" (meaning) into the render, and the system will push back. High-stakes actions run the risk of desaturating the user's environment or triggering localized narrative loops.
+
+[ ARCHITECTURE ]
 
 The terminal is built to be lightweight, resilient, and highly decentralized to avoid detection by the Technate.
 
-* **Client:** Vanilla JavaScript, HTML5, TailwindCSS (The "Plasteel" Layer)
-* **Backend:** Node.js, Vercel Serverless Functions (The "Projection Spire")
-* **Database / State Sync:** MongoDB Atlas / Firebase (The "Amniosis Fluids")
-* **Cognitive Engine:** Gemini Large Language Model APIs (The "Ghost Filter")
+Client (The "Plasteel" Layer): Vanilla JavaScript, HTML5, TailwindCSS
 
-## [ INITIALIZING THE NODE ]
+Backend (The "Projection Spire"): Vercel Serverless Functions (Node.js)
+
+State Sync (The "Amniosis Fluids"): Firebase (Firestore & Auth)
+
+Cognitive Engine (The "Ghost Filter"): Gemini 2.5 Flash Lite (Narrative) & Gemini 2.0 Flash Exp (Visuals)
+
+[ INITIALIZING THE NODE ]
 
 To establish a local instance of the Terminal, execute the following directives in your command line:
 
-1. **Clone the Repository:**
-   ```bash
-   git clone [https://github.com/your-username/terra-agnostum.git](https://github.com/your-username/terra-agnostum.git)
-   cd terra-agnostum
+Clone the Repository:
 
-*"O Rama, whatever your do, know that it is nothing but pure consciousness."*
+git clone [https://github.com/your-username/terra-agnostum.git](https://github.com/your-username/terra-agnostum.git)
+cd terra-agnostum
 
----
 
-"The total number of minds in the universe is 1." 
-- Erwin Shrodinger
+Configure the Environment:
+You must provide the Technate Secret Key to interface with the Source. Create a .env file in the root directory:
+
+GEMINI_API_KEY=your_gemini_api_key_here
+
+
+Ignite the Local Render:
+The terminal relies on Vercel Serverless Functions for API proxying. Use the Vercel CLI to deploy the local environment:
+
+npm i -g vercel
+vercel dev
+
+
+The Node will materialize at http://localhost:3000.
+
+[ PHILOSOPHICAL FOUNDATIONS ]
+
+"O Rama, whatever you do, know that it is nothing but pure consciousness."
+
+"The total number of minds in the universe is 1."
+— Erwin Schrödinger
+
 <img width="201" height="251" alt="image" src="https://github.com/user-attachments/assets/2d5f97cd-cb64-47f5-bef8-fdc7275d55e7" />
 
-Of all the founder father's of quantum science, Schrodinger is perhaps the most broad minded.  He embraced both hard physics and Vedanta.  It is one thing to appreciate the products of a man's mind, but another level entirely to meet them where they are.  Erwin makes one wonder, indeed: where is he?
+Of all the founding fathers of quantum science, Schrödinger is perhaps the most broad-minded. He embraced both hard physics and Vedanta. It is one thing to appreciate the products of a man's mind, but another level entirely to meet them where they are. Erwin makes one wonder, indeed: where is he?
 
-Or as Ramana Maharshi said: *who am I?*
+Or as Ramana Maharshi asked: who am I?
 
 <img width="739" height="768" alt="image" src="https://github.com/user-attachments/assets/0df181dc-5719-4223-8067-4a8e54080d0c" />
 
 Isn't that the most basic question?
 
-*Or is it: what is the nature of reality?*
+Or is it: what is the nature of reality?
 
-In either case, it is consciousness which persists, and consciousness which must be addressed, directly.  
+In either case, it is consciousness which persists, and consciousness which must be addressed, directly.
 
 <img width="1778" height="889" alt="image" src="https://github.com/user-attachments/assets/935d4a2c-e30d-4488-9993-1930394467b5" />
-*The Technate CityCore*
-
-
-
-
+The Technate CityCore
