@@ -52,7 +52,7 @@
             flex-direction: column;
             padding: 20px;
             box-sizing: border-box;
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             width: 100%;
         }
@@ -67,6 +67,8 @@
         .visual-buffer {
             width: 100%;
             height: 250px;
+            min-height: 250px;
+            flex-shrink: 0;
             border: 1px solid #1a3a1a;
             margin-bottom: 15px;
             background: #000;
@@ -100,6 +102,7 @@
             border-top: 1px solid #1a3a1a;
             padding-top: 15px;
             margin-top: 10px;
+            flex-shrink: 0;
         }
 
         #cmd-input {
@@ -139,6 +142,11 @@
             cursor: pointer;
             transition: all 0.2s;
         }
+        .char-card.deceased {
+            border-color: var(--term-red);
+            opacity: 0.6;
+            filter: grayscale(100%);
+        }
         .char-card:hover {
             border-color: var(--term-green);
             box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
@@ -157,6 +165,8 @@
             text-transform: uppercase;
             font-size: 0.9em;
         }
+        .deceased .char-card-title { color: var(--term-red); }
+        
         .char-card-archetype {
             color: var(--term-amber);
             font-size: 0.7em;
@@ -202,19 +212,8 @@
 </head>
 <body class="crt">
 
-    <!-- MAP MODAL OVERLAY -->
-    <div id="map-modal" class="hidden fixed inset-0 bg-black/85 z-[15] backdrop-blur-sm flex items-center justify-center" onclick="this.classList.add('hidden')">
-        <div class="border border-green-500 bg-[#050505] p-8 shadow-[0_0_20px_rgba(0,255,65,0.15)] text-green-500 font-mono flex flex-col items-center" onclick="event.stopPropagation()">
-            <div class="text-amber-500 mb-4 border-b border-green-900 pb-2 text-xs uppercase tracking-widest text-center w-full">
-                >> SYSTEM.TOPOLOGY.MAP // TAP OUTSIDE TO CLOSE <<
-            </div>
-            <!-- Canvas Map replaces the ASCII pre tag -->
-            <canvas id="map-canvas" width="600" height="400" class="max-w-full bg-black/50 border border-green-900/50 rounded"></canvas>
-        </div>
-    </div>
-
     <div class="terminal-container">
-        <div id="header-bar" class="p-2 mb-4 text-[10px] flex justify-between uppercase tracking-widest border-b border-green-900 opacity-70">
+        <div id="header-bar" class="p-2 mb-4 text-[10px] flex justify-between uppercase tracking-widest border-b border-green-900 opacity-70 flex-shrink-0">
             <span>Node: <span id="room-display">LORE1</span></span>
             <span id="stratum-display" class="text-gray-500 font-bold">STRATA: MUNDANE</span>
             <span id="player-status" class="text-amber-500">POS: STND | DIR: N</span>
@@ -235,7 +234,7 @@
 
                 <div id="output">
                     <div id="log">
-                        <p class="text-amber-500 font-bold">>> TECHNATE SHARED ARCHIVE [v6.1]</p>
+                        <p class="text-amber-500 font-bold">>> TECHNATE SHARED ARCHIVE [v6.2]</p>
                         <p>> The Overarching Mind is Online.</p>
                         <p>> Environment: <span class="text-blue-400">The Apartment</span></p>
                         <p>> Type <span class="text-blue-400">'HELP'</span> for system functions, or simply describe your actions.</p>
@@ -248,12 +247,20 @@
                 </div>
             </div>
 
-            <!-- BIOMETRICS & INVENTORY SIDEBAR (Hidden on mobile) -->
+            <!-- HUD SIDEBAR -->
             <div class="hidden md:flex w-64 flex-col border-l border-green-900 pl-4 overflow-y-auto shrink-0 pr-2">
-                <div class="text-[10px] text-green-600 uppercase tracking-widest border-b border-green-900 pb-2 mb-2">SYSTEM.BIOMETRICS</div>
+                
+                <!-- LIVE TOPOLOGY MAP -->
+                <div class="text-[10px] text-green-600 uppercase tracking-widest border-b border-green-900 pb-2 mb-2">SYSTEM.TOPOLOGY</div>
+                <div class="w-full bg-black/50 border border-green-900/50 rounded mb-4 flex items-center justify-center overflow-hidden h-40">
+                    <canvas id="map-canvas" width="230" height="150" class="max-w-full opacity-80"></canvas>
+                </div>
+
+                <!-- BIOMETRICS -->
+                <div class="text-[10px] text-green-600 uppercase tracking-widest border-b border-green-900 pb-2 mb-2 mt-2">SYSTEM.BIOMETRICS</div>
                 <div id="avatar-container">
                     <div class="text-amber-500 text-[10px] text-center border border-dashed border-amber-900 p-4 mt-2">
-                        NO VESSEL DETECTED<br>AWAITING IMPRINT
+                        NO VESSEL DETECTED<br>DISEMBODIED STATE
                     </div>
                 </div>
                 
@@ -303,7 +310,7 @@
             document.getElementById('sync-status').innerText = "SYNC: OFFLINE";
         }
 
-        // The Structured Graph Map (Now includes 'outside' unrendered placeholder)
+        // The Structured Graph Map
         let apartmentMap = {
             "lore1": {
                 name: "Lore Room (West)",
@@ -326,7 +333,7 @@
             "closet": {
                 name: "Schrödinger's Closet",
                 shortName: "CLOSET",
-                description: "A heavily reinforced closet door north of the main console. It hums with quantum uncertainty. It is currently sealed shut.",
+                description: "A heavily reinforced closet door north of the main console. It hums with quantum uncertainty.",
                 visualPrompt: "A heavy steel vault door in a mundane apartment hallway, glowing with strange quantum energy around the edges.",
                 exits: { south: "lore1" },
                 items: [],
@@ -342,9 +349,9 @@
                 marginalia: []
             },
             "spare_room": {
-                name: "Spare Room (Character Room)",
-                shortName: "CHAR_RM",
-                description: "An empty room east of the main area with mirrors covering the walls. A place to reflect and build oneself.",
+                name: "Spare Room (The Archive)",
+                shortName: "ARCHIVE",
+                description: "An empty room east of the main area with mirrors covering the walls. A place to reflect and forge your form.",
                 visualPrompt: "An empty room with walls entirely made of mirrors, reflecting a lonely terminal interface in the center.",
                 exits: { west: "lore2" },
                 items: [],
@@ -362,7 +369,7 @@
             "hallway": {
                 name: "Hallway",
                 shortName: "HALLWAY",
-                description: "A narrow corridor extending south. At the far southern end is the front door leading 'outside'. The deadbolts are currently unlocked.",
+                description: "A narrow corridor extending south. At the far southern end is the front door leading 'outside'.",
                 visualPrompt: "A narrow, dimly lit apartment hallway. At the end is a heavy metal door, standing slightly open.",
                 exits: { north: "lore2", south: "outside" },
                 items: [],
@@ -379,10 +386,10 @@
             }
         };
 
-        // Player State now includes Stratum
+        // Player State
         let localPlayer = { 
             hp: 20, 
-            currentRoom: "lore1",
+            currentRoom: "spare_room", // Default to archive for disembodied
             stratum: "mundane",
             posture: "standing",
             facing: "north",
@@ -442,6 +449,11 @@
             const prefixEl = document.getElementById('prompt-prefix');
             const roomShort = apartmentMap[localPlayer.currentRoom]?.shortName || localPlayer.currentRoom.toUpperCase();
             
+            if (!activeAvatar) {
+                prefixEl.innerHTML = `<span class="text-gray-500 font-bold">VOID@${roomShort}:~$</span>&nbsp;`;
+                return;
+            }
+
             if (user && !user.isAnonymous) {
                 const identity = user.email ? user.email.split('@')[0] : user.uid.substring(0, 5);
                 prefixEl.innerHTML = `<span class="text-blue-400 font-bold">ARCHITECT[${identity}]@${roomShort}:~$</span>&nbsp;`;
@@ -480,13 +492,14 @@
                     setupMapListener();
                     
                     await loadPlayerState(); 
-                    loadUserCharacters();
+                    await loadUserCharacters();
                     
                     applyStratumTheme(localPlayer.stratum);
                     printRoomDescription();
                     updateStatusUI();
                     updateInventoryUI();
                     updateRoomItemsUI();
+                    renderMapHUD();
                     projectVisual(apartmentMap[localPlayer.currentRoom]?.visualPrompt || apartmentMap["lore1"].visualPrompt);
                 }
             });
@@ -517,6 +530,7 @@
                     if (data.nodes) {
                         apartmentMap = data.nodes;
                         updateRoomItemsUI(); 
+                        renderMapHUD(); // Redraw map if someone else altered the graph
                     }
                 }
             });
@@ -561,14 +575,22 @@
                 const charCol = collection(db, 'artifacts', appId, 'users', user.uid, 'characters');
                 const snap = await getDocs(charCol);
                 localCharacters = [];
+                activeAvatar = null;
+                
                 snap.forEach(doc => {
-                    localCharacters.push(doc.data());
+                    const charData = { id: doc.id, ...doc.data() };
+                    localCharacters.push(charData);
+                    if (!charData.deceased) {
+                        activeAvatar = charData; // Most recent living avatar
+                    }
                 });
+                
                 if (localCharacters.length > 0) {
                     addLog(`[SYSTEM]: Retrieved ${localCharacters.length} saved avatar(s) from your private archive.`, "var(--term-green)");
-                    activeAvatar = localCharacters[localCharacters.length - 1];
-                    updateAvatarUI();
                 }
+                
+                updateAvatarUI();
+                updateCommandPrompt();
             } catch (error) {
                 console.error("Failed to load characters:", error);
             }
@@ -576,7 +598,13 @@
 
         function updateAvatarUI() {
             const container = document.getElementById('avatar-container');
-            if (!activeAvatar) return;
+            if (!activeAvatar) {
+                container.innerHTML = `
+                    <div class="text-amber-500 text-[10px] text-center border border-dashed border-amber-900 p-4 mt-2">
+                        NO VESSEL DETECTED<br>DISEMBODIED STATE<br><br><span class="text-gray-500 text-[8px]">Go to the Archive to forge a new form.</span>
+                    </div>`;
+                return;
+            }
 
             container.innerHTML = `
                 <div class="char-card w-full m-0 mt-2 p-3 bg-transparent shadow-none border-[#1a3a1a]" onclick="document.getElementById('cmd-input').value = 'stat'; document.getElementById('cmd-input').dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter'}));">
@@ -650,12 +678,11 @@
             addLog(`Obvious Exits: ${exits || 'NONE'}`, "#555");
         }
 
-        function showMapModal() {
-            const modal = document.getElementById('map-modal');
+        function renderMapHUD() {
             const canvas = document.getElementById('map-canvas');
+            if (!canvas) return;
             const ctx = canvas.getContext('2d');
-            modal.classList.remove('hidden');
-
+            
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -665,8 +692,8 @@
             const termAmber = computedStyle.getPropertyValue('--term-amber').trim() || '#ffb000';
             const termBg = computedStyle.getPropertyValue('--term-bg').trim() || '#050505';
 
-            const nodeSize = 40;
-            const spacing = 90;
+            const nodeSize = 30;
+            const spacing = 60;
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
 
@@ -706,8 +733,8 @@
 
             // Phase 1: Draw Connecting Edges (Lines)
             ctx.strokeStyle = termGreen;
-            ctx.lineWidth = 2;
-            ctx.globalAlpha = 0.5; // Dim the lines a bit
+            ctx.lineWidth = 1.5;
+            ctx.globalAlpha = 0.4; 
             
             processed.forEach(key => {
                 let node = apartmentMap[key];
@@ -736,7 +763,7 @@
             ctx.globalAlpha = 1.0;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.font = "bold 10px monospace";
+            ctx.font = "bold 9px monospace";
 
             processed.forEach(key => {
                 let node = apartmentMap[key];
@@ -751,7 +778,7 @@
                 if (isCurrent) {
                     ctx.fillStyle = termGreen; 
                     ctx.shadowColor = termGreen;
-                    ctx.shadowBlur = 15;
+                    ctx.shadowBlur = 10;
                 } else {
                     ctx.fillStyle = termBg; 
                     ctx.shadowBlur = 0;
@@ -764,7 +791,7 @@
                 // Draw label
                 ctx.fillStyle = isCurrent ? '#000' : termAmber; 
                 ctx.shadowBlur = 0;
-                let shortName = (node.shortName || "???").substring(0, 5);
+                let shortName = (node.shortName || "???").substring(0, 4);
                 ctx.fillText(shortName, x, y);
             });
         }
@@ -823,11 +850,13 @@
         function renderCharacterCard(charData, imgSrc) {
             const log = document.getElementById('log');
             const wrapper = document.createElement('div');
+            const deceasedClass = charData.deceased ? 'deceased' : '';
+            const statusLabel = charData.deceased ? '[DECEASED]' : '[ACTV]';
             
             wrapper.innerHTML = `
-                <div class="char-card">
+                <div class="char-card ${deceasedClass}">
                     <div class="char-card-header">
-                        <span class="char-card-title">[SELF] ${charData.name}</span>
+                        <span class="char-card-title">${statusLabel} ${charData.name}</span>
                         <span class="char-card-archetype">${charData.archetype}</span>
                     </div>
                     <div class="char-card-img-container">
@@ -902,6 +931,7 @@
                 updateStatusUI();
                 savePlayerState();
                 updateRoomItemsUI();
+                renderMapHUD();
                 
                 addLog(`[SYSTEM]: You move ${targetDir.toUpperCase()}.`, "var(--term-green)");
                 printRoomDescription();
@@ -992,6 +1022,7 @@
                     printRoomDescription();
                     projectVisual(apartmentMap[rKey].visualPrompt);
                     updateStatusUI();
+                    renderMapHUD();
 
                     updateCommandPrompt();
                     wizardState = { active: false, type: null, step: 0, pendingData: {}, existingData: {} };
@@ -1038,6 +1069,7 @@
                     addLog(`[SYSTEM]: Sector materialization complete. Path to the ${dir.toUpperCase()} is now open.`, "var(--term-green)");
                     
                     updateCommandPrompt();
+                    renderMapHUD();
                     wizardState = { active: false, type: null, step: 0, pendingData: {}, existingData: {} };
                 }
             }
@@ -1095,6 +1127,13 @@
 
                 const cmd = val.toLowerCase();
 
+                // Disembodied Intercept
+                if (!activeAvatar && !cmd.startsWith('join ') && !cmd.startsWith('register ')) {
+                    if (localPlayer.currentRoom !== 'spare_room') {
+                        addLog(`[SYSTEM]: You are an itinerant void. Go to the Archive to forge your form.`, "var(--term-amber)");
+                    }
+                }
+
                 // --- 1. LOCAL SYSTEM & DETERMINISTIC INTERCEPTS ---
                 const dirMatch = cmd.match(/^(?:go\s+(?:to\s+(?:the\s+)?)?|move\s+|walk\s+|head\s+)?(north|south|east|west|n|s|e|w)$/);
                 
@@ -1108,11 +1147,13 @@
                 }
 
                 if (cmd === 'create' || cmd === 'create item') {
+                    if (!activeAvatar) { addLog("[SYSTEM]: Only materialized beings can create.", "var(--term-red)"); return; }
                     wizardState = { active: true, type: 'item', step: 1, pendingData: {}, existingData: {} };
                     document.getElementById('prompt-prefix').innerHTML = `<span class="text-amber-500">WIZARD@MATERIA:~$</span>&nbsp;`;
                     addLog(`[WIZARD]: Materialization Protocol Started. Enter the name of the new item:`, "var(--term-amber)");
                     return;
                 } else if (cmd === 'edit room' || cmd === 'rewrite room' || cmd === 'render room') {
+                    if (!activeAvatar) { addLog("[SYSTEM]: Voids cannot render.", "var(--term-red)"); return; }
                     const currentRoomData = apartmentMap[localPlayer.currentRoom];
                     wizardState = { 
                         active: true, 
@@ -1131,6 +1172,7 @@
                     addLog(`Enter new NAME (or press Enter to keep current):`, "var(--term-amber)");
                     return;
                 } else if (cmd.startsWith('build ')) {
+                    if (!activeAvatar) { addLog("[SYSTEM]: Voids cannot expand space.", "var(--term-red)"); return; }
                     const dir = cmd.split(' ')[1];
                     if (!['north', 'south', 'east', 'west'].includes(dir)) {
                         addLog(`[SYSTEM]: Invalid direction. Use 'build north/south/east/west'.`, "var(--term-amber)");
@@ -1162,7 +1204,11 @@
                     addLog(`>> PHYSICALITY (Health/HP): ${activeAvatar.stats.PHYS || 20}`, "var(--term-amber)");
                     addLog(`====================================`, "var(--crayola-blue)");
                     return;
+                } else if (cmd === 'map') {
+                    addLog(`[SYSTEM]: Topology map is streaming live to your HUD.`, "var(--term-green)");
+                    return;
                 } else if (cmd.startsWith('take ') || cmd.startsWith('get ') || cmd.startsWith('pick up ')) {
+                    if (!activeAvatar) { addLog("[SYSTEM]: Your hands pass right through it.", "var(--term-amber)"); return; }
                     const itemName = cmd.replace(/^(take|get|pick up)\s+/, '').toLowerCase();
                     const room = apartmentMap[localPlayer.currentRoom];
                     
@@ -1252,9 +1298,6 @@
                     isGameMode = true;
                     addLog("ARCHITECT MODE ACTIVE.");
                     return;
-                } else if (cmd === 'map') {
-                    showMapModal();
-                    return;
                 } else if (cmd === 'inv' || cmd === 'inventory') {
                     if (localPlayer.inventory.length === 0) {
                         addLog("[SYSTEM]: Your inventory is empty.", "var(--term-amber)");
@@ -1332,6 +1375,7 @@
                     const sysPrompt = `You are the overarching Game Master (The Source) of Terra Agnostum, a text-based terminal reality.
                     
                     Player Context:
+                    - Avatar Status: ${activeAvatar ? "Materialized" : "Disembodied Void"}
                     - Current Location: ${currentRoomData.name} (Key: ${localPlayer.currentRoom})
                     - Current Stratum: ${localPlayer.stratum.toUpperCase()} (Narrative Tone: 'mundane' = gritty/noir realism, 'faen' = high fantasy/magic/Psychotasy lore like Atri, the Riftsea, and The Weaver, 'technate' = sterile/dystopian sci-fi/cybernetic)
                     - Room Description: ${currentRoomData.description}
@@ -1343,13 +1387,13 @@
 
                     Rules & Guardrails:
                     1. Interpretation: Interpret user input for talking, looking at specific details, interacting with items, or changing posture. Tone of narration MUST match the Current Stratum. If Stratum is FAEN, improvise high-fantasy elements, magic, and dynamic quests aligned with the Psychotasy lore.
-                    2. Strict Movement: ALL movement is handled by the client. If the user tries to move (e.g. "go to char room"), REFUSE the action and instruct them to use directional commands (N, S, E, W) or Arrow Keys. Never output "new_room".
+                    2. Strict Movement vs Fluid Travel: Standard movement (N,S,E,W) is handled by the client. HOWEVER, if the player uses a portal, jumps strata, or fluidly explores a new unmapped area (e.g. 'go outside' into Faen forest), you MUST transport them by outputting the 'trigger_teleport' object with a generated room ID, name, and visual prompt. The client will build this room and warp them there.
                     3. Inventory Logic: ALL picking up and dropping of items is handled by the client via "TAKE" and "DROP" commands. Do NOT tell the user they picked something up.
                     4. Item/Scenery Usage: Users can USE inventory items AND scenery items (like a Terminal or console). You play the role of the item (e.g. the Terminal AI) if they interact with it, and provide a flavorful outcome.
                     5. Marginalia (World Edits): If the user explicitly uses an item (like a marker, knife, or spray paint) to permanently write on, draw on, or alter the environment, output a "world_edit" object to permanently etch this into the room.
                     6. Self Avatar Creation: ONLY ALLOWED IN THE 'spare_room'. If the user says they want to create an avatar but HAS NOT given a name yet, ask them for a name in the narrative and leave 'trigger_character_creation' as null.
                     7. Strata Shifting (Dimensional Jump): If the user explicitly uses a tuning device (like a 'Hacked Schumann Generator') in an enclosed space (like 'Schrödinger's Closet') to shift to a different reality/strata ('Mundane', 'Faen', or 'Technate'), set "trigger_stratum_shift" to the target stratum name.
-                    8. Combat & Death: If the player sustains fatal damage or is killed in the narrative, set "trigger_respawn" to true to wake them up in their bed.
+                    8. Combat & Death: If the player sustains fatal damage or is killed in the narrative, set "trigger_respawn" to true to sever their connection.
                     
                     Respond STRICTLY in JSON:
                     {
@@ -1361,7 +1405,8 @@
                       "new_posture": "New posture if changed, otherwise null",
                       "new_facing": "New facing if changed, otherwise null",
                       "trigger_stratum_shift": null or "mundane", "faen", or "technate",
-                      "world_edit": null or {"type": "add_marginalia", "target_room": "the_room_key", "text": "The text of the permanent modification (e.g., 'Scrawled on the north door is: Schrodinger\\'s Closet')"},
+                      "trigger_teleport": null or { "new_room_id": "unique_id_no_spaces", "name": "Room Name", "description": "Narrative Description", "visual_prompt": "Prompt for image" },
+                      "world_edit": null or {"type": "add_marginalia", "target_room": "the_room_key", "text": "The text of the permanent modification"},
                       "trigger_view_characters": false,
                       "trigger_character_creation": null or { "name": "Character Name", "archetype": "Character Role", "visual_prompt": "Appearance description", "stats": {"WILL": 20, "CONS": 20, "PHYS": 20} },
                       "trigger_respawn": false
@@ -1378,13 +1423,26 @@
 
                     // Execute Death/Respawn Protocol
                     if (res.trigger_respawn) {
-                        localPlayer.currentRoom = "bedroom"; // Assuming standard start map has this node
-                        localPlayer.posture = "laying";
-                        localPlayer.hp = 20;
+                        if (activeAvatar && user) {
+                            try {
+                                const charRef = doc(db, 'artifacts', appId, 'users', user.uid, 'characters', activeAvatar.id);
+                                await updateDoc(charRef, { deceased: true });
+                                activeAvatar.deceased = true;
+                            } catch (e) { console.error("Could not write death state.", e); }
+                        }
+                        
+                        activeAvatar = null;
+                        localPlayer.currentRoom = "spare_room"; 
+                        localPlayer.stratum = "mundane";
+                        localPlayer.posture = "standing";
                         stateChanged = true;
-                        addLog(`[SYSTEM]: Critical integrity failure. Vessel destroyed. Re-rendering consciousness at last secure anchor...`, "var(--term-red)");
+                        
+                        addLog(`[SYSTEM]: Critical integrity failure. Vessel destroyed. Connection severed.`, "var(--term-red)");
+                        addLog(`[SYSTEM]: You are once again an itinerant void. Find a mirror to forge a new form.`, "var(--term-amber)");
+                        applyStratumTheme('mundane');
                         updateCommandPrompt();
-                        projectVisual(apartmentMap['bedroom'] ? apartmentMap['bedroom'].visualPrompt : "A glitching bedroom.");
+                        updateAvatarUI();
+                        projectVisual(apartmentMap['spare_room'] ? apartmentMap['spare_room'].visualPrompt : "An empty room with mirrors.");
                     } else {
                         if (res.new_posture && res.new_posture !== localPlayer.posture) {
                             localPlayer.posture = res.new_posture;
@@ -1396,7 +1454,37 @@
                         }
                     }
 
-                    // Process Strata Shifting!
+                    // Process Fluid Teleportation (Wandering off the map / AI Quests)
+                    if (res.trigger_teleport && !res.trigger_respawn) {
+                        const t = res.trigger_teleport;
+                        const newRoomId = t.new_room_id;
+                        
+                        // If this hallucinated node doesn't exist yet, build it in memory and DB
+                        if (!apartmentMap[newRoomId]) {
+                            apartmentMap[newRoomId] = {
+                                name: t.name,
+                                shortName: t.name.substring(0, 7).toUpperCase(),
+                                description: t.description,
+                                visualPrompt: t.visual_prompt,
+                                exits: {}, // A floating node generated by the AI
+                                items: [],
+                                marginalia: []
+                            };
+                            
+                            if (isSyncEnabled) {
+                                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                                updateDoc(mapRef, { [`nodes.${newRoomId}`]: apartmentMap[newRoomId] });
+                            }
+                        }
+                        
+                        localPlayer.currentRoom = newRoomId;
+                        stateChanged = true;
+                        addLog(`[SYSTEM]: Reality warp successful. Materializing at new coordinates.`, "var(--gm-purple)");
+                        renderMapHUD();
+                        updateCommandPrompt();
+                    }
+
+                    // Process Strata Shifting
                     if (res.trigger_stratum_shift) {
                         const targetStratum = res.trigger_stratum_shift.toLowerCase();
                         if (['mundane', 'faen', 'technate'].includes(targetStratum) && localPlayer.stratum !== targetStratum) {
@@ -1410,6 +1498,7 @@
                     if (stateChanged) {
                         updateStatusUI();
                         savePlayerState(); 
+                        renderMapHUD();
                     }
                     
                     const speakerPrefix = (res.speaker === 'SYSTEM' || res.speaker === 'NARRATOR') ? `[${res.speaker}]` : `${res.speaker.toUpperCase()}`;
@@ -1442,6 +1531,7 @@
                             charData.stats = charData.stats || { WILL: 20, CONS: 20, PHYS: 20 };
                             charData.archetype = charData.archetype || "Wanderer";
                             charData.visual_prompt = charData.visual_prompt || charData.name;
+                            charData.deceased = false;
                             
                             addLog(`[SYSTEM]: Extracting genetic imprint for your primary vessel [${charData.name}]...`, "var(--gm-purple)");
                             
@@ -1463,21 +1553,24 @@
                             }
                             
                             const fullCharData = { ...charData, image: compressedImageSrc || cardImageSrc, timestamp: Date.now() };
-                            renderCharacterCard(fullCharData, compressedImageSrc || cardImageSrc);
-                            localCharacters.push(fullCharData);
-                            activeAvatar = fullCharData; 
-                            updateAvatarUI(); 
                             
                             if (user) {
                                 try {
                                     const charCol = collection(db, 'artifacts', appId, 'users', user.uid, 'characters');
-                                    await addDoc(charCol, fullCharData);
+                                    const docRef = await addDoc(charCol, fullCharData);
+                                    fullCharData.id = docRef.id; // Attach ID for death tracking
                                     addLog(`[SYSTEM]: Avatar Card [${charData.name}] permanently registered to your profile.`, "var(--term-green)");
                                 } catch (e) {
                                     console.error("Firestore Save Error:", e);
                                     addLog(`[SYSTEM ERROR]: Could not save Avatar to the archive. The image may still be too large.`, "var(--term-red)");
                                 }
                             }
+
+                            renderCharacterCard(fullCharData, compressedImageSrc || cardImageSrc);
+                            localCharacters.push(fullCharData);
+                            activeAvatar = fullCharData; 
+                            updateAvatarUI(); 
+                            updateCommandPrompt();
                         }
                     }
 
@@ -1490,10 +1583,9 @@
                         }
                     }
 
-                    if (res.trigger_visual && !res.trigger_character_creation && !res.trigger_respawn) {
+                    if (res.trigger_visual && !res.trigger_character_creation && !res.trigger_respawn && !res.trigger_teleport) {
                         projectVisual(res.trigger_visual);
-                    } else if (res.trigger_stratum_shift) {
-                        // Automatically render the new stratum if jumping realities!
+                    } else if (res.trigger_stratum_shift || res.trigger_teleport) {
                         projectVisual(apartmentMap[localPlayer.currentRoom].visualPrompt);
                     }
                     
