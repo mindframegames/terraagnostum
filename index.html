@@ -472,38 +472,41 @@ body.desaturated {
 
         // Theme Engine
         function applyStratumTheme(stratum) {
-            const root = document.documentElement;
-            const stratDisp = document.getElementById('stratum-display');
-            
-            if (stratum === 'faen') {
-                root.style.setProperty('--term-green', '#fce788');
-                root.style.setProperty('--term-amber', '#ff9d00');
-                root.style.setProperty('--term-red', '#e53935'); 
-                root.style.setProperty('--term-bg', '#1c0f1a');
-                root.style.setProperty('--crayola-blue', '#b084e8'); 
-                root.style.setProperty('--gm-purple', '#ff77ff');
-                stratDisp.innerText = 'STRATA: FAEN';
-                stratDisp.style.color = 'var(--crayola-blue)';
-            } else if (stratum === 'technate') {
-                root.style.setProperty('--term-green', '#e0f7fa');
-                root.style.setProperty('--term-amber', '#ff2a2a');
-                root.style.setProperty('--term-red', '#ff0000'); 
-                root.style.setProperty('--term-bg', '#010a0f');
-                root.style.setProperty('--crayola-blue', '#00ffff'); 
-                root.style.setProperty('--gm-purple', '#ffffff');
-                stratDisp.innerText = 'STRATA: TECHNATE';
-                stratDisp.style.color = 'var(--term-green)';
-            } else {
-                root.style.setProperty('--term-green', '#00ff41');
-                root.style.setProperty('--term-amber', '#ffb000');
-                root.style.setProperty('--term-red', '#ff3e3e');
-                root.style.setProperty('--term-bg', '#050505');
-                root.style.setProperty('--crayola-blue', '#3b82f6');
-                root.style.setProperty('--gm-purple', '#a855f7');
-                stratDisp.innerText = 'STRATA: MUNDANE';
-                stratDisp.style.color = '#888';
-            }
-        }
+    const root = document.documentElement;
+    const stratDisp = document.getElementById('stratum-display');
+    
+    // Check if we are jumping TO Faen from somewhere else
+    if (stratum === 'faen' && localPlayer.stratum !== 'faen') {
+        document.body.classList.add('desaturated');
+        addLog("[SYSTEM]: REALITY_RENDER_STUTTER_DETECTED...", "var(--term-red)");
+        
+        setTimeout(() => {
+            document.body.classList.remove('desaturated');
+            document.body.classList.add('faen-mode');
+        }, 1000);
+    } else if (stratum !== 'faen') {
+        document.body.classList.remove('faen-mode');
+    }
+
+    // Apply the colors
+    if (stratum === 'faen') {
+        root.style.setProperty('--term-green', '#fce788');
+        root.style.setProperty('--term-bg', '#1c0f1a');
+        root.style.setProperty('--crayola-blue', '#b084e8'); 
+        stratDisp.innerText = 'STRATA: FAEN';
+    } else if (stratum === 'technate') {
+        root.style.setProperty('--term-green', '#e0f7fa');
+        root.style.setProperty('--term-bg', '#010a0f');
+        stratDisp.innerText = 'STRATA: TECHNATE';
+    } else {
+        root.style.setProperty('--term-green', '#00ff41');
+        root.style.setProperty('--term-bg', '#050505');
+        stratDisp.innerText = 'STRATA: MUNDANE';
+    }
+    
+    localPlayer.stratum = stratum;
+    renderMapHUD(); // Map logic will now check for .faen-mode automatically
+}
 
         function updateCommandPrompt() {
             const prefixEl = document.getElementById('prompt-prefix');
