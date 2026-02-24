@@ -102,45 +102,56 @@ export default async function handler(req, res) {
         }
 
         // 1. STATIC ANCHOR INJECTION
-        // Fetch the immutable core universe rules
         const anchorLore = fetchAnchorLore();
 
         // 2. DYNAMIC RAG INJECTION
-        // Fetch specific lore chunks based on what the user typed in `userMessage`
         const dynamicLoreContext = fetchRelevantLore(userMessage);
 
         // 3. AUGMENT THE SYSTEM PROMPT
-        // We combine your base Tandy instructions with the Anchor Bible AND the situational RAG lore
         const augmentedSystemPrompt = systemPrompt + anchorLore + dynamicLoreContext;
 
-        // 4. CALL THE LLM API
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        // 4. CALL THE GEMINI API
+        const apiKey = process.env.GEMINI_API_KEY; 
+        
+        if (!apiKey) {
+            console.error("Missing GEMINI_API_KEY environment variable.");
+            return res.status(500).json({ error: 'Server configuration error: Missing API Key' });
+        }
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` 
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'gpt-4o-mini', 
-                messages: [
-                    { role: 'system', content: augmentedSystemPrompt },
-                    { role: 'user', content: userMessage }
+                systemInstruction: {
+                    parts: [{ text: augmentedSystemPrompt }]
+                },
+                contents: [
+                    { role: 'user', parts: [{ text: userMessage }] }
                 ],
-                max_tokens: 300,
-                temperature: 0.7
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 800,
+                }
             })
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error?.message || 'LLM API Error');
+            throw new Error(data.error?.message || 'Gemini API Error');
         }
 
-        const data = await response.json();
-        const gmReply = data.choices[0].message.content;
+        const gmReply = data.candidates[0].content.parts[0].text;
 
-        // Return the response back to index.html
-        return res.status(200).json({ text: gmReply });
+        // Return both 'text' and 'candidates' so index.html doesn't crash regardless of how it parses it
+        return res.status(200).json({ 
+            text: gmReply,
+            candidates: data.candidates 
+        });
 
     } catch (error) {
         console.error("Generate API Error:", error);
