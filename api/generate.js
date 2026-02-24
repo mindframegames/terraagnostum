@@ -74,23 +74,28 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
-        const body = req.body;
         const apiKey = process.env.GEMINI_API_KEY;
-
         if (!apiKey) {
-            return res.status(500).json({ error: 'Missing GEMINI_API_KEY' });
+            return res.status(500).json({ error: 'Missing GEMINI_API_KEY environment variable.' });
         }
 
-        // 1. EXTRACT DATA FROM THE CLIENT'S GEMINI PAYLOAD
-        let systemPrompt = body.systemInstruction?.parts?.[0]?.text || "";
-        let userMessage = body.contents?.[body.contents.length - 1]?.parts?.[0]?.text || "";
+        const body = req.body;
+        
+        // 1. EXTRACT USER MESSAGE FOR RAG
+        // Your index.html sends contents: [{ role: "user", parts: [{ text: userInput }] }]
+        const userMessage = body.contents?.[body.contents.length - 1]?.parts?.[0]?.text || "";
 
-        // 2. AUGMENT WITH LORE
+        // 2. FETCH LORE
         const anchorLore = fetchAnchorLore();
         const dynamicLore = fetchRelevantLore(userMessage);
-        const finalSystemPrompt = systemPrompt + anchorLore + dynamicLore;
 
-        // 3. REBUILD PAYLOAD FOR GOOGLE
+        // 3. AUGMENT SYSTEM INSTRUCTION
+        // index.html sends systemInstruction: { parts: [{ text: systemPrompt }] }
+        let originalSystemPrompt = body.systemInstruction?.parts?.[0]?.text || "";
+        const finalSystemPrompt = originalSystemPrompt + anchorLore + dynamicLore;
+
+        // 4. CONSTRUCT THE FORWARDED PAYLOAD
+        // We must ensure the structure is exactly what Gemini v1beta expects.
         const geminiPayload = {
             contents: body.contents,
             systemInstruction: {
@@ -98,12 +103,14 @@ export default async function handler(req, res) {
             },
             generationConfig: body.generationConfig || {
                 temperature: 0.7,
-                maxOutputTokens: 800
+                maxOutputTokens: 1000,
+                responseMimeType: "application/json"
             }
         };
 
-        // 4. FORWARD TO GOOGLE
+        // 5. CALL THE SOURCE
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -112,11 +119,24 @@ export default async function handler(req, res) {
 
         const data = await response.json();
 
-        // 5. RETURN RAW GEMINI FORMAT (Crucial for client-side parsing)
-        return res.status(response.status).json(data);
+        if (!response.ok) {
+            console.error("Gemini API Error Response:", JSON.stringify(data, null, 2));
+            // Return a mock success structure so index.html doesn't crash on candidates[0]
+            return res.status(response.status).json({
+                ...data,
+                candidates: data.candidates || [{ content: { parts: [{ text: JSON.stringify({ speaker: "SYSTEM", narrative: "The Source is currently unstable. Try again.", color: "var(--term-red)" }) }] } }]
+            });
+        }
+
+        // 6. RETURN DATA TO CLIENT
+        return res.status(200).json(data);
 
     } catch (error) {
-        console.error("Generate API Error:", error);
-        return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+        console.error("Critical Generate API Error:", error);
+        return res.status(500).json({ 
+            error: 'Internal Server Error', 
+            details: error.message,
+            candidates: [{ content: { parts: [{ text: JSON.stringify({ speaker: "SYSTEM", narrative: "Critical link failure: " + error.message, color: "var(--term-red)" }) }] } }]
+        });
     }
 }
