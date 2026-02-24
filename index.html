@@ -247,7 +247,7 @@
 
                 <div id="output">
                     <div id="log">
-                        <p class="text-amber-500 font-bold">>> TECHNATE SHARED ARCHIVE [v6.5 - Manifestation Node]</p>
+                        <p class="text-amber-500 font-bold">>> TECHNATE SHARED ARCHIVE [v6.6 - Manifestation Node]</p>
                         <p>> The Overarching Mind is Online.</p>
                         <p>> <span class="text-crayola-blue font-bold">CURRENT DIRECTIVE:</span> Remote connection established. Escape the local sector.</p>
                         <p>> Type <span class="text-blue-400">'HELP'</span> for system functions, or simply describe your actions.</p>
@@ -284,8 +284,14 @@
 
                 <!-- ROOM ITEMS / LOCAL MATERIA -->
                 <div class="text-[10px] text-green-600 uppercase tracking-widest border-b border-green-900 pb-2 mb-2 mt-6">LOCAL.MATERIA</div>
-                <div id="room-items-container" class="text-xs text-gray-500 flex flex-col gap-2 pb-6">
+                <div id="room-items-container" class="text-xs text-gray-500 flex flex-col gap-2">
                     [EMPTY]
+                </div>
+
+                <!-- ROOM NPCS / LOCAL ENTITIES -->
+                <div class="text-[10px] text-green-600 uppercase tracking-widest border-b border-green-900 pb-2 mb-2 mt-6">LOCAL.ENTITIES</div>
+                <div id="room-entities-container" class="text-xs text-gray-500 flex flex-col gap-2 pb-6">
+                    [NONE]
                 </div>
             </div>
         </div>
@@ -520,6 +526,7 @@
                     updateStatusUI();
                     updateInventoryUI();
                     updateRoomItemsUI();
+                    updateRoomEntitiesUI();
                     renderMapHUD();
                     projectVisual(apartmentMap[localPlayer.currentRoom]?.visualPrompt || apartmentMap["lore1"].visualPrompt);
                 }
@@ -551,6 +558,7 @@
                     if (data.nodes) {
                         apartmentMap = data.nodes;
                         updateRoomItemsUI(); 
+                        updateRoomEntitiesUI();
                         renderMapHUD();
                     }
                 }
@@ -676,6 +684,31 @@
                     <span class="text-amber-500 font-bold block">${item.name}</span>
                     <span class="text-[9px] text-blue-400 uppercase">${item.type}</span>
                     <div class="mt-1 leading-tight">${item.description}</div>
+                </div>
+            `).join('');
+        }
+
+        function updateRoomEntitiesUI() {
+            const container = document.getElementById('room-entities-container');
+            const room = apartmentMap[localPlayer.currentRoom];
+
+            if (!room || !room.npcs || room.npcs.length === 0) {
+                container.innerHTML = "[NONE]";
+                return;
+            }
+
+            container.innerHTML = room.npcs.map(npc => `
+                <div class="border border-[#1a3a1a] p-2 rounded bg-black/40 border-l-4 cursor-pointer transition-colors flex items-center gap-3 hover:bg-[#001a33]"
+                     style="border-left-color: var(--crayola-blue);"
+                     onclick="document.getElementById('cmd-input').value = 'look at ${npc.name}'; document.getElementById('cmd-input').focus();">
+                    ${npc.image 
+                        ? `<img src="${npc.image}" style="width: 36px; height: 36px; object-fit: cover; border: 1px solid #333; border-radius: 4px;" alt="${npc.name}">` 
+                        : `<div style="width: 36px; height: 36px; background: #111; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 8px; border-radius: 4px; color: #555;">[?]</div>`
+                    }
+                    <div style="flex: 1; min-width: 0;">
+                        <span style="color: var(--crayola-blue); font-weight: bold; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px;" class="uppercase">${npc.name}</span>
+                        <span class="text-[9px] text-gray-500 uppercase block truncate">${npc.archetype}</span>
+                    </div>
                 </div>
             `).join('');
         }
@@ -971,6 +1004,7 @@
                 updateStatusUI();
                 savePlayerState();
                 updateRoomItemsUI();
+                updateRoomEntitiesUI();
                 renderMapHUD();
                 
                 addLog(`[SYSTEM]: You move ${targetDir.toUpperCase()}.`, "var(--term-green)");
@@ -1199,6 +1233,7 @@
                         name: activeAvatar.name,
                         archetype: activeAvatar.archetype,
                         visual_prompt: activeAvatar.visual_prompt,
+                        image: activeAvatar.image, // Ensure the portrait is copied over
                         personality: personality,
                         owner: user ? user.uid : 'guest'
                     };
@@ -1225,6 +1260,7 @@
                     activeAvatar = null;
                     updateAvatarUI();
                     updateCommandPrompt();
+                    updateRoomEntitiesUI(); // Update the entities UI immediately
                     wizardState = { active: false, type: null, step: 0, pendingData: {}, existingData: {} };
                 }
             }
@@ -1634,6 +1670,8 @@
                         updateStatusUI();
                         savePlayerState(); 
                         renderMapHUD();
+                        updateRoomItemsUI();
+                        updateRoomEntitiesUI();
                     }
                     
                     const speakerPrefix = (res.speaker === 'SYSTEM' || res.speaker === 'NARRATOR') ? `[${res.speaker}]` : `${res.speaker.toUpperCase()}`;
