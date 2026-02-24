@@ -1,142 +1,129 @@
 /**
  * Vercel Serverless Function
  * Path: /api/generate.js
- * Purpose: The AI Game Master (Tandy) brain, augmented with the Akashic Record (RAG) 
- * and the Core Bible (Anchor), specifically built for Gemini 1.5 Flash.
+ * Purpose: The AI Game Master (Tandy) brain, now augmented with the Akashic Record (RAG).
  */
 import fs from 'fs';
 import path from 'path';
 
-// --- THE ANCHOR ENGINE (ALWAYS INCLUDED) ---
-// This reads the central 'core_bible.md' for unbreakable universe rules.
-function fetchAnchorLore() {
-    try {
-        const anchorPath = path.join(process.cwd(), 'lore/vault/lore/core_bible.md');
-        if (fs.existsSync(anchorPath)) {
-            const anchorText = fs.readFileSync(anchorPath, 'utf8');
-            return `\n\n[CORE UNIVERSE BIBLE - ALWAYS ADHERE TO THESE RULES]:\n"${anchorText}"\n`;
-        }
-    } catch (e) {
-        console.error("Anchor Fetch Error:", e);
-    }
-    return "";
-}
-
-// --- THE ZERO-DB RAG ENGINE (DYNAMICALLY INCLUDED) ---
-// Chunks the vault and finds relevant lore based on user input.
+// --- THE ZERO-DB RAG ENGINE ---
+// This reads the vault, chunks it, and finds the most relevant canonical lore.
 function fetchRelevantLore(userCommand) {
     if (!userCommand) return "";
+
     try {
-        const paths = [
-            path.join(process.cwd(), 'lore/vault/lore/Psychotasy_I.md'),
-            path.join(process.cwd(), 'lore/vault/lore/Interregnum.md'),
-            path.join(process.cwd(), 'lore/vault/lore/The_Coast.md')
-        ];
+        // Resolve the paths to your private vault documents
+        const psychotasyPath = path.join(process.cwd(), 'lore/vault/lore/Psychotasy_I.md');
+        const interregnumPath = path.join(process.cwd(), 'lore/vault/lore/Interregnum.md');
+        const coastPath = path.join(process.cwd(), 'lore/vault/lore/The_Coast.md');
 
         let combinedText = "";
-        paths.forEach(p => {
-            if (fs.existsSync(p)) combinedText += fs.readFileSync(p, 'utf8') + "\n\n";
-        });
+
+        // Safely attempt to read the files (if they exist)
+        if (fs.existsSync(psychotasyPath)) combinedText += fs.readFileSync(psychotasyPath, 'utf8') + "\n\n";
+        if (fs.existsSync(interregnumPath)) combinedText += fs.readFileSync(interregnumPath, 'utf8') + "\n\n";
+        if (fs.existsSync(coastPath)) combinedText += fs.readFileSync(coastPath, 'utf8') + "\n\n";
 
         if (!combinedText) return "";
 
+        // Chunk the text by double line breaks (paragraphs)
         const chunks = combinedText.split('\n\n').filter(chunk => chunk.length > 50);
+       
+        // Extract meaningful words from the user's command to use as search terms
         const searchTerms = userCommand.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
-        
+       
         if (searchTerms.length === 0) return "";
 
         let bestChunks = [];
+
+        // Score each chunk based on keyword overlap
         for (const chunk of chunks) {
             let score = 0;
             const chunkLower = chunk.toLowerCase();
+           
             for (const term of searchTerms) {
                 if (chunkLower.includes(term)) score++;
             }
-            // Logic weighting for core concepts
+
+            // Heavily weight core universe concepts to ensure they trigger strongly
             if (chunkLower.includes('technate') && userCommand.toLowerCase().includes('technate')) score += 3;
             if (chunkLower.includes('faen') && userCommand.toLowerCase().includes('faen')) score += 3;
-            
-            if (score > 0) bestChunks.push({ score, text: chunk });
+            if (chunkLower.includes('sek lum') && userCommand.toLowerCase().includes('sek')) score += 3;
+            if (chunkLower.includes('archive') && userCommand.toLowerCase().includes('archive')) score += 2;
+
+            if (score > 0) {
+                bestChunks.push({ score, text: chunk });
+            }
         }
 
+        // Sort by highest score and grab the top 2 most relevant paragraphs
         bestChunks.sort((a, b) => b.score - a.score);
         const topLore = bestChunks.slice(0, 2).map(c => c.text).join('\n\n');
 
-        return topLore ? `\n\n[SITUATIONAL CANON CONTEXT]:\n"${topLore}"\n(Incorporate these facts naturally.)` : "";
+        // Return the formatted injection string for the AI
+        return topLore ? `\n\n[CRITICAL CANONICAL CONTEXT TO INCORPORATE]:\n"${topLore}"\n(Do not quote this directly, but use its facts, tone, and specific details to shape your narrative response.)` : "";
+
     } catch (e) {
-        console.error("RAG Error:", e);
-        return "";
+        console.error("RAG Chunking Error:", e);
+        return ""; // Fail gracefully so the game doesn't crash if files are missing
     }
 }
 
+
 // --- MAIN HANDLER ---
 export default async function handler(req, res) {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    // Only allow POST requests
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
 
     try {
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) {
-            return res.status(500).json({ error: 'Missing GEMINI_API_KEY environment variable.' });
+        const { systemPrompt, userMessage } = req.body;
+
+        if (!systemPrompt || !userMessage) {
+             return res.status(400).json({ error: 'Missing prompt data' });
         }
 
-        const body = req.body;
-        
-        // 1. EXTRACT USER MESSAGE FOR RAG
-        // Your index.html sends contents: [{ role: "user", parts: [{ text: userInput }] }]
-        const userMessage = body.contents?.[body.contents.length - 1]?.parts?.[0]?.text || "";
+        // 1. DYNAMIC RAG INJECTION
+        // We fetch the lore based on what the user typed in `userMessage`
+        const dynamicLoreContext = fetchRelevantLore(userMessage);
 
-        // 2. FETCH LORE
-        const anchorLore = fetchAnchorLore();
-        const dynamicLore = fetchRelevantLore(userMessage);
+        // 2. AUGMENT THE SYSTEM PROMPT
+        // We combine your base Tandy instructions with the newly fetched lore
+        const augmentedSystemPrompt = systemPrompt + dynamicLoreContext;
 
-        // 3. AUGMENT SYSTEM INSTRUCTION
-        // index.html sends systemInstruction: { parts: [{ text: systemPrompt }] }
-        let originalSystemPrompt = body.systemInstruction?.parts?.[0]?.text || "";
-        const finalSystemPrompt = originalSystemPrompt + anchorLore + dynamicLore;
-
-        // 4. CONSTRUCT THE FORWARDED PAYLOAD
-        // We must ensure the structure is exactly what Gemini v1beta expects.
-        const geminiPayload = {
-            contents: body.contents,
-            systemInstruction: {
-                parts: [{ text: finalSystemPrompt }]
-            },
-            generationConfig: body.generationConfig || {
-                temperature: 0.7,
-                maxOutputTokens: 1000,
-                responseMimeType: "application/json"
-            }
-        };
-
-        // 5. CALL THE SOURCE
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-        const response = await fetch(url, {
+        // 3. CALL THE LLM API
+        // (Assuming you are using OpenAI here, adjust the fetch URL/Headers if you are using Gemini or Anthropic)
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(geminiPayload)
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}` // Make sure this matches your environment variable
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini', // or your preferred model
+                messages: [
+                    { role: 'system', content: augmentedSystemPrompt },
+                    { role: 'user', content: userMessage }
+                ],
+                max_tokens: 300,
+                temperature: 0.7
+            })
         });
-
-        const data = await response.json();
 
         if (!response.ok) {
-            console.error("Gemini API Error Response:", JSON.stringify(data, null, 2));
-            // Return a mock success structure so index.html doesn't crash on candidates[0]
-            return res.status(response.status).json({
-                ...data,
-                candidates: data.candidates || [{ content: { parts: [{ text: JSON.stringify({ speaker: "SYSTEM", narrative: "The Source is currently unstable. Try again.", color: "var(--term-red)" }) }] } }]
-            });
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || 'LLM API Error');
         }
 
-        // 6. RETURN DATA TO CLIENT
-        return res.status(200).json(data);
+        const data = await response.json();
+        const gmReply = data.choices[0].message.content;
+
+        // Return the response back to index.html
+        return res.status(200).json({ text: gmReply });
 
     } catch (error) {
-        console.error("Critical Generate API Error:", error);
-        return res.status(500).json({ 
-            error: 'Internal Server Error', 
-            details: error.message,
-            candidates: [{ content: { parts: [{ text: JSON.stringify({ speaker: "SYSTEM", narrative: "Critical link failure: " + error.message, color: "var(--term-red)" }) }] } }]
-        });
+        console.error("Generate API Error:", error);
+        return res.status(500).json({ error: 'Failed to generate response.', details: error.message });
     }
 }
