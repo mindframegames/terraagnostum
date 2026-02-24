@@ -221,6 +221,39 @@
         .map-clickable-zone:hover {
             background-color: rgba(255, 255, 255, 0.1);
         }
+        /* --- FAEN MODE SPECIFICS --- */
+:root {
+    --faen-cyan: #00f5ff;
+    --faen-pink: #ff00ff;
+}
+
+/* The Chromatic Aberration Effect */
+body.faen-mode {
+    text-shadow: 2px 0 var(--faen-pink), -2px 0 var(--faen-cyan);
+    filter: contrast(1.2) brightness(1.1);
+}
+
+/* The Reality Stutter Glitch */
+body.desaturated {
+    filter: grayscale(100%) brightness(0.2) contrast(2);
+    transition: filter 0.1s steps(2);
+}
+
+/* Obfuscate the map when in Faen */
+.faen-mode #map-canvas-container::after {
+    content: "SIGNAL LOST // FAEN INTERFERENCE";
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    color: var(--faen-pink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    letter-spacing: 1px;
+    z-index: 40;
+    animation: flicker 0.1s infinite;
+}
     </style>
 </head>
 <body class="crt">
