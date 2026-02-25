@@ -21,10 +21,16 @@
         <div class="flex flex-1 min-h-0">
             <!-- MAIN TERMINAL COLUMN -->
             <div class="flex flex-col flex-1 min-w-0 md:pr-4">
-                <div id="visual-buffer" class="visual-buffer">
-                    <div class="visual-overlay">Source Projection</div>
-                    <img id="visual-image" src="" alt="">
-                    <div id="visual-loading" class="absolute inset-0 flex items-center justify-center text-amber-500 text-xs italic hidden">
+                <div id="visual-buffer" class="visual-buffer relative">
+                    <div class="visual-overlay z-30">Source Projection</div>
+                    <img id="visual-image" src="" alt="" class="absolute inset-0 w-full h-full object-cover opacity-70 z-10">
+                    
+                    <!-- THE PIN BUTTON (Architects Only) -->
+                    <button id="pin-view-btn" class="hidden absolute bottom-2 right-2 bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded hover:bg-blue-500 z-50 transition-colors border border-blue-400 cursor-pointer">
+                        PIN VIEW
+                    </button>
+
+                    <div id="visual-loading" class="absolute inset-0 flex items-center justify-center text-amber-500 text-xs italic hidden z-20 bg-black/80">
                         RENDERING REALITY<span class="loading-dots"></span>
                     </div>
                 </div>
@@ -85,7 +91,10 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, serverTimestamp, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { apartmentMap } from './js/mapData.js';
+        // IMPORT FIREBASE STORAGE FOR PINNING
+        import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+
+        import { apartmentMap as initialMap } from './js/mapData.js';
         import { callGemini, projectVisual, compressImage } from './js/apiService.js';
 
         const firebaseConfig = {
@@ -98,16 +107,15 @@
         };
 
         const appId = 'terra-agnostum-shared';
-        const API_GENERATE = "/api/generate";
-        const API_IMAGE = "/api/image";
 
-        let app, auth, db;
+        let app, auth, db, storage;
         let isSyncEnabled = false;
 
         try {
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
+            storage = getStorage(app);
             isSyncEnabled = true;
             document.getElementById('sync-status').innerText = "SYNC: READY";
             document.getElementById('sync-status').style.color = "var(--term-amber)";
@@ -115,10 +123,13 @@
             document.getElementById('sync-status').innerText = "SYNC: OFFLINE";
         }
 
-        // Player State
+        // Initialize with seed data
+        let apartmentMap = { ...initialMap };
+
+        // Player State (Added facing: 'north')
         let localPlayer = { 
             hp: 20, 
-            currentRoom: "spare_room",
+            currentRoom: "spare_room", 
             stratum: "mundane",
             posture: "standing",
             facing: "north",
@@ -130,6 +141,9 @@
         let user = null;
         let hasInitialized = false;
 
+        // Base64 storage for pinning
+        let currentBase64 = null;
+
         // Expanded Creation Wizard State
         let wizardState = {
             active: false,
@@ -139,23 +153,15 @@
             existingData: {}
         };
 
-        // --- PLACEHOLDER FOR CLIENT RAG ---
-        function fetchLocalLore(val) {
-            // This is handled on the server in generate.js, 
-            // but we leave this here to avoid snippet errors.
-            return "";
-        }
-
-        // --- THE THEME ENGINE WITH FAEN JUMP ---
+        // Theme Engine
         function applyStratumTheme(stratum) {
             const root = document.documentElement;
             const stratDisp = document.getElementById('stratum-display');
             
-            // Start the "Reality Stutter" if jumping TO Faen
+            // JUMP VISUAL GLITCH
             if (stratum === 'faen' && localPlayer.stratum !== 'faen') {
                 document.body.classList.add('desaturated');
                 addLog("[SYSTEM]: REALITY_RENDER_STUTTER_DETECTED...", "var(--term-red)");
-                
                 setTimeout(() => {
                     document.body.classList.remove('desaturated');
                     document.body.classList.add('faen-mode');
@@ -164,27 +170,37 @@
                 document.body.classList.remove('faen-mode');
             }
 
-            // Apply palette shifts
             if (stratum === 'faen') {
                 root.style.setProperty('--term-green', '#fce788');
+                root.style.setProperty('--term-amber', '#ff9d00');
+                root.style.setProperty('--term-red', '#e53935'); 
                 root.style.setProperty('--term-bg', '#1c0f1a');
                 root.style.setProperty('--crayola-blue', '#b084e8'); 
+                root.style.setProperty('--gm-purple', '#ff77ff');
                 stratDisp.innerText = 'STRATA: FAEN';
                 stratDisp.style.color = 'var(--crayola-blue)';
             } else if (stratum === 'technate') {
                 root.style.setProperty('--term-green', '#e0f7fa');
+                root.style.setProperty('--term-amber', '#ff2a2a');
+                root.style.setProperty('--term-red', '#ff0000'); 
                 root.style.setProperty('--term-bg', '#010a0f');
+                root.style.setProperty('--crayola-blue', '#00ffff'); 
+                root.style.setProperty('--gm-purple', '#ffffff');
                 stratDisp.innerText = 'STRATA: TECHNATE';
                 stratDisp.style.color = 'var(--term-green)';
             } else {
                 root.style.setProperty('--term-green', '#00ff41');
+                root.style.setProperty('--term-amber', '#ffb000');
+                root.style.setProperty('--term-red', '#ff3e3e');
                 root.style.setProperty('--term-bg', '#050505');
+                root.style.setProperty('--crayola-blue', '#3b82f6');
+                root.style.setProperty('--gm-purple', '#a855f7');
                 stratDisp.innerText = 'STRATA: MUNDANE';
                 stratDisp.style.color = '#888';
             }
             
             localPlayer.stratum = stratum;
-            renderMapHUD(); // Canvas logic handles obfuscation via CSS
+            renderMapHUD();
         }
 
         function updateCommandPrompt() {
@@ -243,7 +259,7 @@
                     updateRoomItemsUI();
                     updateRoomEntitiesUI();
                     renderMapHUD();
-                    projectVisual(apartmentMap[localPlayer.currentRoom]?.visualPrompt || apartmentMap["lore1"].visualPrompt);
+                    triggerVisualUpdate(apartmentMap[localPlayer.currentRoom]?.visualPrompt || apartmentMap["lore1"].visualPrompt);
                 }
             });
 
@@ -291,7 +307,8 @@
                         ...localPlayer, 
                         ...data,
                         inventory: data.inventory || [],
-                        stratum: data.stratum || "mundane"
+                        stratum: data.stratum || "mundane",
+                        facing: data.facing || "north"
                     };
                     if (localPlayer.currentRoom === 'main_room') {
                         localPlayer.currentRoom = 'lore1';
@@ -431,6 +448,9 @@
             const room = apartmentMap[localPlayer.currentRoom];
             addLog(`[NARRATOR]: ${room.description}`, "#888");
             
+            // Render Directional Facing
+            addLog(`You are currently facing ${localPlayer.facing.toUpperCase()}.`, "var(--crayola-blue)");
+
             if (room.marginalia && room.marginalia.length > 0) {
                 room.marginalia.forEach(note => {
                     addLog(`[MARGINALIA]: ${note}`, "var(--crayola-blue)");
@@ -447,8 +467,12 @@
                 addLog(`Entities Present: ${npcNames}`, "#aaa");
             }
             
-            const exits = Object.keys(room.exits || {}).join(', ').toUpperCase();
-            addLog(`Obvious Exits: ${exits || 'NONE'}`, "#555");
+            if (localPlayer.stratum !== 'faen') {
+                const exits = Object.keys(room.exits || {}).join(', ').toUpperCase();
+                addLog(`Obvious Exits: ${exits || 'NONE'}`, "#555");
+            } else {
+                addLog(`The ethereal plane stretches infinitely.`, "var(--faen-pink)");
+            }
         }
 
         function renderMapHUD() {
@@ -461,6 +485,9 @@
             existingZones.forEach(zone => zone.remove());
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Bypass drawing lines in Faen (handled via CSS static)
+            if (localPlayer.stratum === 'faen') return;
 
             const computedStyle = getComputedStyle(document.body);
             const termGreen = computedStyle.getPropertyValue('--term-green').trim() || '#00ff41';
@@ -584,6 +611,64 @@
             });
         }
 
+        // --- VISUAL & PINNING LOGIC WRAPPER ---
+        async function triggerVisualUpdate(overridePrompt = null) {
+            const roomId = localPlayer.currentRoom;
+            const facing = localPlayer.facing;
+            const room = apartmentMap[roomId] || {};
+            const pinBtn = document.getElementById('pin-view-btn');
+            
+            pinBtn.classList.add('hidden');
+            currentBase64 = null;
+
+            const pinnedUrl = (!overridePrompt && room.pinnedViews) ? room.pinnedViews[facing] : null;
+            const basePrompt = overridePrompt || room.visualPrompt || "A glitching void.";
+
+            currentBase64 = await projectVisual(basePrompt, localPlayer.stratum, addLog, facing, pinnedUrl);
+
+            if (currentBase64 && user && !user.isAnonymous) {
+                pinBtn.classList.remove('hidden');
+                pinBtn.innerText = "PIN VIEW";
+            }
+        }
+
+        async function pinCurrentView() {
+            if (!currentBase64 || !user || user.isAnonymous) return;
+            const roomId = localPlayer.currentRoom;
+            const facing = localPlayer.facing;
+            const pinBtn = document.getElementById('pin-view-btn');
+            
+            pinBtn.innerText = "UPLOADING..."; pinBtn.disabled = true;
+            
+            try {
+                const dataUrl = `data:image/png;base64,${currentBase64}`;
+                const fileRef = ref(storage, `maps/${appId}/${roomId}_${facing}_${Date.now()}.png`);
+                
+                await uploadString(fileRef, dataUrl, 'data_url');
+                const downloadUrl = await getDownloadURL(fileRef);
+                
+                // Save URL to Firestore Map
+                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                await updateDoc(mapRef, { [`nodes.${roomId}.pinnedViews.${facing}`]: downloadUrl });
+                
+                // Update Local State
+                if (!apartmentMap[roomId].pinnedViews) apartmentMap[roomId].pinnedViews = {};
+                apartmentMap[roomId].pinnedViews[facing] = downloadUrl;
+
+                pinBtn.innerText = "PINNED!";
+                pinBtn.classList.add('bg-green-600', 'border-green-400');
+                addLog(`[SYSTEM]: Consensus reality locked. The ${facing.toUpperCase()} view of ${apartmentMap[roomId].name} is now canonical.`, "var(--gm-purple)");
+                
+                setTimeout(() => { pinBtn.classList.add('hidden'); pinBtn.classList.remove('bg-green-600', 'border-green-400'); pinBtn.disabled = false; }, 2000);
+            } catch (e) {
+                console.error("Pinning error:", e);
+                pinBtn.innerText = "ERROR"; pinBtn.disabled = false;
+                addLog(`[SYSTEM ERROR]: Failed to anchor memory to the cloud.`, "var(--term-red)");
+            }
+        }
+
+        document.getElementById('pin-view-btn').addEventListener('click', pinCurrentView);
+
         function renderCharacterCard(charData, imgSrc) {
             const log = document.getElementById('log');
             const wrapper = document.createElement('div');
@@ -625,14 +710,32 @@
 
         function updateStatusUI() {
             const posShort = localPlayer.posture === 'standing' ? 'STND' : (localPlayer.posture === 'sitting' ? 'SIT' : 'LAY');
-            const dirShort = localPlayer.facing.charAt(0).toUpperCase();
+            const dirShort = localPlayer.facing.toUpperCase();
             document.getElementById('player-status').innerText = `POS: ${posShort} | DIR: ${dirShort}`;
             document.getElementById('room-display').innerText = apartmentMap[localPlayer.currentRoom]?.shortName || localPlayer.currentRoom.toUpperCase();
         }
 
         async function executeMovement(targetDir) {
+            localPlayer.facing = targetDir; // Set facing to movement direction
             const currentRoom = apartmentMap[localPlayer.currentRoom];
             
+            // --- PROCEDURAL FAEN MOVEMENT ---
+            if (localPlayer.stratum === 'faen') {
+                const nextId = 'faen_' + Date.now();
+                apartmentMap[nextId] = {
+                    name: "Procedural Faen Pocket", shortName: "FAEN",
+                    description: "A surreal, ever-shifting landscape of translucent light and geometric fractals. Directions have no meaning here.",
+                    visualPrompt: "Abstract ethereal plane, glowing cyan and pink geometric structures, floating light particles.",
+                    exits: {}, pinnedViews: {}, items: [], marginalia: [], npcs: []
+                };
+                localPlayer.currentRoom = nextId;
+                updateCommandPrompt(); updateStatusUI(); savePlayerState(); updateRoomItemsUI(); updateRoomEntitiesUI(); renderMapHUD();
+                addLog(`[SYSTEM]: You traverse the ethereal currents to a new pocket of Faen.`, "var(--term-green)");
+                printRoomDescription();
+                triggerVisualUpdate();
+                return;
+            }
+
             if (currentRoom.exits && currentRoom.exits[targetDir]) {
                 const nextRoomKey = currentRoom.exits[targetDir];
                 localPlayer.currentRoom = nextRoomKey;
@@ -647,7 +750,7 @@
                 
                 addLog(`[SYSTEM]: You move ${targetDir.toUpperCase()}.`, "var(--term-green)");
                 printRoomDescription();
-                projectVisual(nextRoom.visualPrompt);
+                triggerVisualUpdate(nextRoom.visualPrompt);
                 
                 if (isSyncEnabled && user) {
                     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', 'archive_apartment');
@@ -660,7 +763,9 @@
                     });
                 }
             } else {
-                addLog(`[SYSTEM]: There is no path to the ${targetDir.toUpperCase()}.`, "var(--term-amber)");
+                updateStatusUI();
+                addLog(`[SYSTEM]: You turn to face ${targetDir.toUpperCase()}, but there is no path.`, "var(--term-amber)");
+                triggerVisualUpdate();
             }
         }
 
@@ -722,7 +827,7 @@
                     }
                     addLog(`[SYSTEM]: Sector successfully re-rendered.`, "var(--term-green)");
                     printRoomDescription();
-                    projectVisual(apartmentMap[rKey].visualPrompt);
+                    triggerVisualUpdate(apartmentMap[rKey].visualPrompt);
                     updateStatusUI();
                     renderMapHUD();
                     updateCommandPrompt();
@@ -743,13 +848,14 @@
                     const newRoomId = 'node_' + Date.now();
                     const currentRoomKey = localPlayer.currentRoom;
                     const dir = wizardState.pendingData.direction; 
-                    const reverseDir = { 'north':'south', 'south':'north', 'east':'west', 'west':'east' }[dir];
+                    const reverseDir = { 'north':'south', 'south':'north', 'east':'west', 'west':'east', 'up':'down', 'down':'up' }[dir];
                     const newNode = {
                         name: wizardState.pendingData.name,
                         shortName: wizardState.pendingData.name.substring(0, 7).toUpperCase(),
                         description: wizardState.pendingData.description,
                         visualPrompt: wizardState.pendingData.visualPrompt,
                         exits: { [reverseDir]: currentRoomKey },
+                        pinnedViews: {},
                         items: [],
                         marginalia: [],
                         npcs: []
@@ -799,7 +905,7 @@
                         let compressedImageSrc = "";
                         try {
                             const combinedPrompt = `Highly detailed character portrait, ${localPlayer.stratum} aesthetic, Magic the Gathering card art style: ${charData.visual_prompt}`;
-                            const imgRes = await fetch(API_IMAGE, {
+                            const imgRes = await fetch("/api/image", {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ instances: [{ prompt: combinedPrompt }] })
@@ -915,10 +1021,22 @@
                     }
                 }
 
-                const dirMatch = cmd.match(/^(?:go\s+(?:to\s+(?:the\s+)?)?|move\s+|walk\s+|head\s+)?(north|south|east|west|n|s|e|w)$/);
+                // Parse 'look [direction]'
+                const lookMatch = cmd.match(/^look\s+(north|south|east|west|up|down|n|s|e|w|u|d)$/);
+                if (lookMatch) {
+                    const expandMap = { 'n': 'north', 's': 'south', 'e': 'east', 'w': 'west', 'u': 'up', 'd': 'down' };
+                    localPlayer.facing = expandMap[lookMatch[1]] || lookMatch[1];
+                    updateStatusUI();
+                    printRoomDescription();
+                    triggerVisualUpdate();
+                    return;
+                }
+
+                // Parse Movement
+                const dirMatch = cmd.match(/^(?:go\s+(?:to\s+(?:the\s+)?)?|move\s+|walk\s+|head\s+)?(north|south|east|west|up|down|n|s|e|w|u|d)$/);
                 if (dirMatch) {
                     const parsedDir = dirMatch[1];
-                    const expandMap = { 'n': 'north', 's': 'south', 'e': 'east', 'w': 'west' };
+                    const expandMap = { 'n': 'north', 's': 'south', 'e': 'east', 'w': 'west', 'u': 'up', 'd': 'down' };
                     executeMovement(expandMap[parsedDir] || parsedDir);
                     return;
                 }
@@ -948,14 +1066,14 @@
                 } else if (cmd.startsWith('build ')) {
                     if (!activeAvatar) { addLog("[SYSTEM]: Voids cannot expand space.", "var(--term-red)"); return; }
                     const dir = cmd.split(' ')[1];
-                    if (!['north', 'south', 'east', 'west'].includes(dir)) { addLog(`Use 'build north/south/east/west'.`, "var(--term-amber)"); return; }
+                    if (!['north', 'south', 'east', 'west', 'up', 'down'].includes(dir)) { addLog(`Use 'build north/south/east/west/up/down'.`, "var(--term-amber)"); return; }
                     wizardState = { active: true, type: 'expand', step: 1, pendingData: { direction: dir }, existingData: {} };
                     document.getElementById('prompt-prefix').innerHTML = `<span class="text-amber-500">WIZARD@EXPAND:~$</span>&nbsp;`;
                     addLog(`[WIZARD]: Expansion Protocol Started. Enter NAME for new room:`, "var(--term-amber)");
                     return;
                 } else if (cmd === 'look' || cmd === 'l') {
                     printRoomDescription();
-                    projectVisual(apartmentMap[localPlayer.currentRoom].visualPrompt);
+                    triggerVisualUpdate();
                     return;
                 } else if (cmd === 'stat' || cmd === 'stats') {
                     if (!activeAvatar) return;
@@ -982,7 +1100,7 @@
                     else localPlayer.inventory.forEach(item => addLog(`- ${item.name} [${item.type}]`, "var(--term-green)"));
                     return;
                 } else if (cmd === 'help') {
-                    addLog("HELP // Commands: LOOK, N/S/E/W, CREATE AVATAR, LEAVE VESSEL, CREATE ITEM, EDIT ROOM, BUILD [DIR], INV, MAP, STAT.", "var(--term-amber)");
+                    addLog("HELP // Commands: LOOK [DIR], N/S/E/W/U/D, CREATE AVATAR, LEAVE VESSEL, CREATE ITEM, EDIT ROOM, BUILD [DIR], INV, MAP, STAT.", "var(--term-amber)");
                     return;
                 }
 
@@ -994,14 +1112,11 @@
                     const currentRoomData = apartmentMap[localPlayer.currentRoom];
                     const inventoryNames = localPlayer.inventory.map(i => i.name).join(', ');
                     const npcText = (currentRoomData.npcs || []).map(n => `[NPC] ${n.name} - Personality: ${n.personality}`).join('\n') || "None";
-                    
-                    const retrievedLore = fetchLocalLore(val);
-                    const loreContext = retrievedLore ? `\n--- SECRET WORLD LORE ---\nUse the following canon to inform your narrative response:\n${retrievedLore}\n-------------------------\n` : "";
 
                     const sysPrompt = `You are Tandy, the GM of Terra Agnostum. 
-                    Context: ${currentRoomData.name} (${localPlayer.stratum.toUpperCase()}). ${currentRoomData.description}.
+                    Context: ${currentRoomData.name} (${localPlayer.stratum.toUpperCase()}). ${currentRoomData.description}. Player is currently facing ${localPlayer.facing.toUpperCase()}.
                     Entities: ${npcText}. Inventory: ${inventoryNames}.
-                    ${loreContext}
+                    IMPORTANT: A 'faen_jump' can ONLY happen if the user is in 'Schrödinger's Closet' (CLOSET) or explicitly uses specific 'Aethal' code.
                     
                     Respond STRICTLY in JSON:
                     {
@@ -1016,15 +1131,29 @@
                       "trigger_respawn": false
                     }`;
                     
-                    // --- THE "TRIGGER": FUNCTION CALL ---
                     const res = await callGemini(`User: ${val}`, sysPrompt);
                     
                     let stateChanged = false;
 
-                    // --- THE RESPONSE HANDLING LOGIC (Process the result) ---
-                    if (res.trigger_stratum_shift || res.faen_jump) {
-                        const target = (res.trigger_stratum_shift || (res.faen_jump ? 'faen' : null))?.toLowerCase();
-                        if (target && localPlayer.stratum !== target) {
+                    // --- FAEN JUMP & STRATUM LOGIC ---
+                    if (res.faen_jump && localPlayer.stratum !== 'faen') {
+                        if (localPlayer.currentRoom === 'closet' || cmd.includes('aethal')) {
+                            applyStratumTheme('faen');
+                            localPlayer.currentRoom = 'faen_entry';
+                            apartmentMap['faen_entry'] = {
+                                name: "Faen Nexus", shortName: "NEXUS",
+                                description: "The entry point to the ethereal plane. Space is fluid and glowing.",
+                                visualPrompt: "Glowing ethereal nexus portal.",
+                                exits: {}, pinnedViews: {}, items: [], marginalia: [], npcs: []
+                            };
+                            stateChanged = true;
+                            addLog(`[SYSTEM]: Conventional geometry discarded. Welcome to Faen.`, "var(--faen-pink)");
+                        } else {
+                            addLog("[SYSTEM]: Dimensional shift failed. Anchors too strong in this node.", "var(--term-red)");
+                        }
+                    } else if (res.trigger_stratum_shift) {
+                        const target = res.trigger_stratum_shift.toLowerCase();
+                        if (localPlayer.stratum !== target) {
                             applyStratumTheme(target);
                             stateChanged = true;
                         }
@@ -1041,10 +1170,8 @@
                     if (res.trigger_teleport && !res.trigger_respawn) {
                         const t = res.trigger_teleport;
                         if (!apartmentMap[t.new_room_id]) {
-                            apartmentMap[t.new_room_id] = { ...t, shortName: t.name.substring(0, 7).toUpperCase(), exits: {}, items: [], marginalia: [], npcs: [] };
-                            if (isSyncEnabled) {
-                                updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live'), { [`nodes.${t.new_room_id}`]: apartmentMap[t.new_room_id] });
-                            }
+                            apartmentMap[t.new_room_id] = { ...t, shortName: t.name.substring(0, 7).toUpperCase(), exits: {}, pinnedViews: {}, items: [], marginalia: [], npcs: [] };
+                            if (isSyncEnabled) updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live'), { [`nodes.${t.new_room_id}`]: apartmentMap[t.new_room_id] });
                         }
                         localPlayer.currentRoom = t.new_room_id;
                         stateChanged = true;
@@ -1064,9 +1191,9 @@
                     }
 
                     if (res.trigger_visual && !res.trigger_respawn && !res.trigger_teleport) {
-                        projectVisual(res.trigger_visual);
-                    } else if (res.trigger_stratum_shift || res.trigger_teleport) {
-                        projectVisual(apartmentMap[localPlayer.currentRoom].visualPrompt);
+                        triggerVisualUpdate(res.trigger_visual);
+                    } else if (res.trigger_stratum_shift || res.trigger_teleport || res.faen_jump) {
+                        triggerVisualUpdate();
                     }
                 } catch (err) { 
                     console.error("GM Error:", err);
