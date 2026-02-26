@@ -1,0 +1,3 @@
+[submodule "lore/vault"]
+	path = lore/vault
+	url = https://github.com/mindframegames/psychotasy.git
