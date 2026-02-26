@@ -1181,7 +1181,7 @@
                     }
                 } catch (err) { 
                     console.error("GM Error:", err);
-                    addLog("SYSTEM EVALUATION FAILED.", "var(--term-red)"); 
+                    addLog("SYSTEM EVALUATION FAILED!", "var(--term-red)"); 
                 } finally { 
                     document.getElementById('thinking-indicator')?.remove();
                     isProcessing = false; 
