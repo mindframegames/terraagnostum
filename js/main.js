@@ -221,13 +221,13 @@ export async function triggerVisualUpdate(overridePrompt = null) {
     
     currentBase64 = await projectVisual(basePrompt, localPlayer.stratum, UI.addLog, pinnedUrl);
     
-    if (currentBase64 && user && !user.isAnonymous) {
+    if (currentBase64 && user) {
         UI.togglePinButton(true, "PIN VIEW");
     }
 }
 
 export async function pinCurrentView() {
-    if (!currentBase64 || !user || user.isAnonymous) return;
+    if (!currentBase64 || !user) return;
     const roomId = localPlayer.currentRoom;
     
     UI.togglePinButton(true, "UPLOADING...", "uploading");
