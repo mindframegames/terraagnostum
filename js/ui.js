@@ -146,7 +146,7 @@ export function updateRoomEntitiesUI(npcs) {
     `).join('');
 }
 
-export function printRoomDescription(room, isFaen) {
+export function printRoomDescription(room, isFaen, fullMap = null) {
     addLog(`[NARRATOR]: ${room.description}`, "#888");
     if (room.marginalia && room.marginalia.length > 0) {
         room.marginalia.forEach(note => {
@@ -161,8 +161,26 @@ export function printRoomDescription(room, isFaen) {
         const npcNames = room.npcs.map(n => `<span class="text-crayola-blue font-bold">${n.name} (${n.archetype})</span>`).join(', ');
         addLog(`Entities Present: ${npcNames}`, "#aaa");
     }
+    
+    // Check for ADJACENT NPCs through exits
+    if (fullMap && !isFaen) {
+        let adjacentNpcs = [];
+        for (let [dir, exitData] of Object.entries(room.exits || {})) {
+            const targetId = typeof exitData === 'object' ? exitData.target : exitData;
+            const targetRoom = fullMap[targetId];
+            if (targetRoom && targetRoom.npcs && targetRoom.npcs.length > 0) {
+                targetRoom.npcs.forEach(n => {
+                    adjacentNpcs.push(`<span class="text-crayola-blue font-bold">${n.name}</span> (to the ${dir})`);
+                });
+            }
+        }
+        if (adjacentNpcs.length > 0) {
+            addLog(`You can see nearby: ${adjacentNpcs.join(', ')}`, "#aaa");
+        }
+    }
+    
     if (!isFaen) {
-        const exits = Object.keys(room.exits || {}).join(', ').toUpperCase();
+        const exits = Object.keys(room.exits || {}).map(e => e.toUpperCase()).join(', ');
         addLog(`Obvious Exits: ${exits || 'NONE'}`, "#555");
     } else {
         addLog(`The ethereal plane stretches infinitely.`, "var(--faen-pink)");
@@ -202,21 +220,28 @@ export function renderMapHUD(apartmentMap, currentRoomKey, stratum) {
         let node = apartmentMap[curr.key];
         if(!node) continue;
         if (node.exits) {
-            if (node.exits.north && !coords[node.exits.north]) {
-                coords[node.exits.north] = {x: curr.logicalX, y: curr.logicalY - 1};
-                queue.push({key: node.exits.north, logicalX: curr.logicalX, logicalY: curr.logicalY - 1});
+            const nId = typeof node.exits.north === 'object' ? node.exits.north.target : node.exits.north;
+            if (nId && !coords[nId]) {
+                coords[nId] = {x: curr.logicalX, y: curr.logicalY - 1};
+                queue.push({key: nId, logicalX: curr.logicalX, logicalY: curr.logicalY - 1});
             }
-            if (node.exits.south && !coords[node.exits.south]) {
-                coords[node.exits.south] = {x: curr.logicalX, y: curr.logicalY + 1};
-                queue.push({key: node.exits.south, logicalX: curr.logicalX, logicalY: curr.logicalY + 1});
+            
+            const sId = typeof node.exits.south === 'object' ? node.exits.south.target : node.exits.south;
+            if (sId && !coords[sId]) {
+                coords[sId] = {x: curr.logicalX, y: curr.logicalY + 1};
+                queue.push({key: sId, logicalX: curr.logicalX, logicalY: curr.logicalY + 1});
             }
-            if (node.exits.east && !coords[node.exits.east]) {
-                coords[node.exits.east] = {x: curr.logicalX + 1, y: curr.logicalY};
-                queue.push({key: node.exits.east, logicalX: curr.logicalX + 1, logicalY: curr.logicalY});
+            
+            const eId = typeof node.exits.east === 'object' ? node.exits.east.target : node.exits.east;
+            if (eId && !coords[eId]) {
+                coords[eId] = {x: curr.logicalX + 1, y: curr.logicalY};
+                queue.push({key: eId, logicalX: curr.logicalX + 1, logicalY: curr.logicalY});
             }
-            if (node.exits.west && !coords[node.exits.west]) {
-                coords[node.exits.west] = {x: curr.logicalX - 1, y: curr.logicalY};
-                queue.push({key: node.exits.west, logicalX: curr.logicalX - 1, logicalY: curr.logicalY});
+            
+            const wId = typeof node.exits.west === 'object' ? node.exits.west.target : node.exits.west;
+            if (wId && !coords[wId]) {
+                coords[wId] = {x: curr.logicalX - 1, y: curr.logicalY};
+                queue.push({key: wId, logicalX: curr.logicalX - 1, logicalY: curr.logicalY});
             }
         }
     }
@@ -228,12 +253,15 @@ export function renderMapHUD(apartmentMap, currentRoomKey, stratum) {
         let node = apartmentMap[key];
         let p1 = coords[key];
         if(!node || !p1) return;
-        const drawEdge = (targetKey) => {
+        const drawEdge = (targetData, colorOverride) => {
+            const targetKey = typeof targetData === 'object' ? targetData.target : targetData;
+            const isLocked = typeof targetData === 'object' && targetData.locked;
             let p2 = coords[targetKey];
             if(p2) {
                 ctx.beginPath();
                 ctx.moveTo(centerX + p1.x * spacing, centerY + p1.y * spacing);
                 ctx.lineTo(centerX + p2.x * spacing, centerY + p2.y * spacing);
+                ctx.strokeStyle = isLocked ? '#ff0000' : termGreen; // Draw red line if locked
                 ctx.stroke();
             }
         };
