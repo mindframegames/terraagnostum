@@ -8,11 +8,12 @@ import { apartmentMap as initialMap } from './mapData.js';
 import { callGemini, projectVisual, compressImage } from './apiService.js';
 import * as UI from './ui.js';
 
+// Configuration for your specific Firebase Project
 const firebaseConfig = {
     apiKey: "AIzaSyDtWZdtC-IeKDVyFqcwuqa_tn0hoH91dtc",
-    authDomain: "terra-agnostum.firebaseapp.com",
-    projectId: "terra-agnostum",
-    storageBucket: "terra-agnostum.firebasestorage.app",
+    authDomain: "topical-305318.firebaseapp.com",
+    projectId: "topical-305318",
+    storageBucket: "topical-305318.appspot.com", 
     messagingSenderId: "809154092201",
     appId: "1:809154092201:web:95aaddd47c6ce021cf1db8"
 };
@@ -117,10 +118,14 @@ if (isSyncEnabled) {
             await loadUserCharacters();
             
             shiftStratum(localPlayer.stratum);
-            UI.printRoomDescription(apartmentMap[localPlayer.currentRoom], localPlayer.stratum === 'faen');
+            
+            // Initial render
+            const currentRoom = apartmentMap[localPlayer.currentRoom] || apartmentMap["lore1"];
+            UI.printRoomDescription(currentRoom, localPlayer.stratum === 'faen');
             refreshAllUI();
             
-            triggerVisualUpdate(apartmentMap[localPlayer.currentRoom]?.visualPrompt || apartmentMap["lore1"].visualPrompt);
+            // BUGFIX: Call with no arguments to let the function detect the pin!
+            triggerVisualUpdate();
         }
     });
 
@@ -216,20 +221,29 @@ export async function triggerVisualUpdate(overridePrompt = null) {
     UI.togglePinButton(false);
     currentBase64 = null;
     
+    // Check for pinned view if no manual override is passed (like a GM spell effect)
     const pinnedUrl = (!overridePrompt && room.pinnedView) ? room.pinnedView : null;
-    const basePrompt = overridePrompt || room.visualPrompt || "A glitching void.";
+    // Standardize lookup to support both properties
+    const basePrompt = overridePrompt || room.visualPrompt || room.visual_prompt || "A glitching void.";
     
     currentBase64 = await projectVisual(basePrompt, localPlayer.stratum, UI.addLog, pinnedUrl);
     
-    if (currentBase64 && user) {
+    // Only show the PIN button if we generated a FRESH image and we have an architect logged in
+    if (currentBase64 && user && !user.isAnonymous && !pinnedUrl) {
         UI.togglePinButton(true, "PIN VIEW");
     }
 }
 
 export async function pinCurrentView() {
-    if (!currentBase64 || !user) return;
+    if (!currentBase64) {
+        UI.addLog("[SYSTEM]: No projection active to anchor.", "var(--term-amber)");
+        return;
+    }
+    if (!user || user.isAnonymous) {
+        UI.addLog("[SYSTEM]: Identity verification required for reality anchoring.", "var(--term-red)");
+        return;
+    }
     const roomId = localPlayer.currentRoom;
-    
     UI.togglePinButton(true, "UPLOADING...", "uploading");
     
     try {
@@ -249,7 +263,7 @@ export async function pinCurrentView() {
     } catch (e) {
         console.error("Pinning error:", e);
         UI.togglePinButton(true, "ERROR", "normal");
-        UI.addLog(`[SYSTEM ERROR]: Failed to anchor memory to the cloud.`, "var(--term-red)");
+        UI.addLog(`[SYSTEM ERROR]: Failed to anchor memory to the cloud. ${e.message.includes('CORS') ? 'Check CORS settings on bucket.' : ''}`, "var(--term-red)");
     }
 }
 
@@ -286,7 +300,9 @@ async function executeMovement(targetDir) {
         
         UI.addLog(`[SYSTEM]: You move ${targetDir.toUpperCase()}.`, "var(--term-green)");
         UI.printRoomDescription(nextRoom, false);
-        triggerVisualUpdate(nextRoom.visualPrompt);
+        
+        // BUGFIX: Call with no arguments to let the function pull the pin for the new room
+        triggerVisualUpdate();
         
         if (isSyncEnabled && user) {
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', 'archive_apartment');
@@ -340,17 +356,18 @@ function handleWizardInput(val) {
         } else if (wizardState.step === 2) {
             wizardState.pendingData.description = val || wizardState.existingData.description;
             UI.addLog(`[WIZARD]: Description saved.`);
-            UI.addLog(`Current VISUAL PROMPT: "${wizardState.existingData.visualPrompt}"`, "var(--crayola-blue)");
+            UI.addLog(`Current VISUAL PROMPT: "${wizardState.existingData.visualPrompt || wizardState.existingData.visual_prompt}"`, "var(--crayola-blue)");
             UI.addLog(`Enter new VISUAL PROMPT (or press Enter to keep current):`, "var(--term-amber)");
             wizardState.step++;
         } else if (wizardState.step === 3) {
-            wizardState.pendingData.visualPrompt = val || wizardState.existingData.visualPrompt;
+            wizardState.pendingData.visualPrompt = val || wizardState.existingData.visualPrompt || wizardState.existingData.visual_prompt;
             const rKey = localPlayer.currentRoom;
             
             apartmentMap[rKey].name = wizardState.pendingData.name;
             apartmentMap[rKey].shortName = wizardState.pendingData.name.substring(0, 7).toUpperCase();
             apartmentMap[rKey].description = wizardState.pendingData.description;
             apartmentMap[rKey].visualPrompt = wizardState.pendingData.visualPrompt;
+            apartmentMap[rKey].pinnedView = null; // Clear pin on rewrite
             
             if (isSyncEnabled) {
                 const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
@@ -358,13 +375,14 @@ function handleWizardInput(val) {
                     [`nodes.${rKey}.name`]: wizardState.pendingData.name,
                     [`nodes.${rKey}.shortName`]: apartmentMap[rKey].shortName,
                     [`nodes.${rKey}.description`]: wizardState.pendingData.description,
-                    [`nodes.${rKey}.visualPrompt`]: wizardState.pendingData.visualPrompt
+                    [`nodes.${rKey}.visualPrompt`]: wizardState.pendingData.visualPrompt,
+                    [`nodes.${rKey}.pinnedView`]: null
                 });
             }
             
-            UI.addLog(`[SYSTEM]: Sector successfully re-rendered.`, "var(--term-green)");
+            UI.addLog(`[SYSTEM]: Sector successfully re-rendered. Old pins discarded.`, "var(--term-green)");
             UI.printRoomDescription(apartmentMap[rKey], localPlayer.stratum === 'faen');
-            triggerVisualUpdate(apartmentMap[rKey].visualPrompt);
+            triggerVisualUpdate();
             
             refreshStatusUI();
             UI.renderMapHUD(apartmentMap, rKey, localPlayer.stratum);
@@ -609,6 +627,54 @@ input.addEventListener('keydown', async (e) => {
             UI.setWizardPrompt("WIZARD@EXPAND:~$");
             UI.addLog(`[WIZARD]: Expansion Protocol Started. Enter NAME for new room:`, "var(--term-amber)");
             return;
+        } else if (cmd === 'generate room' || cmd === 'render sector') {
+            if (!activeAvatar) { UI.addLog("[SYSTEM]: Only materialized beings can command the loom of reality.", "var(--term-red)"); return; }
+            const currentRoom = apartmentMap[localPlayer.currentRoom];
+            isProcessing = true;
+            UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">COLLAPSING PROBABILITY FIELDS...</span>`);
+            try {
+                const sysPrompt = `You are the Architect of Terra Agnostum. 
+                Generate a thematic room definition based on the current stratum: ${localPlayer.stratum.toUpperCase()}.
+                The current context is: ${currentRoom.name} - ${currentRoom.description}.
+                Respond STRICTLY in JSON:
+                {
+                  "name": "Evocative Name",
+                  "description": "Atmospheric narrative description",
+                  "visual_prompt": "Detailed prompt for image generation"
+                }`;
+                const res = await callGemini("Generate a full room definition.", sysPrompt);
+                if (res && res.name && res.description) {
+                    apartmentMap[localPlayer.currentRoom].name = res.name;
+                    apartmentMap[localPlayer.currentRoom].shortName = res.name.substring(0, 7).toUpperCase();
+                    apartmentMap[localPlayer.currentRoom].description = res.description;
+                    apartmentMap[localPlayer.currentRoom].visualPrompt = res.visual_prompt;
+                    apartmentMap[localPlayer.currentRoom].pinnedView = null; // Clear old pin if generating a new room concept
+                    
+                    if (isSyncEnabled) {
+                        const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                        await updateDoc(mapRef, {
+                            [`nodes.${localPlayer.currentRoom}.name`]: res.name,
+                            [`nodes.${localPlayer.currentRoom}.shortName`]: apartmentMap[localPlayer.currentRoom].shortName,
+                            [`nodes.${localPlayer.currentRoom}.description`]: res.description,
+                            [`nodes.${localPlayer.currentRoom}.visualPrompt`]: res.visual_prompt,
+                            [`nodes.${localPlayer.currentRoom}.pinnedView`]: null
+                        });
+                    }
+                    UI.addLog(`[SYSTEM]: Sector successfully rendered.`, "var(--term-green)");
+                    UI.printRoomDescription(apartmentMap[localPlayer.currentRoom], localPlayer.stratum === 'faen');
+                    triggerVisualUpdate();
+                    refreshStatusUI();
+                    UI.renderMapHUD(apartmentMap, localPlayer.currentRoom, localPlayer.stratum);
+                }
+            } catch (err) {
+                UI.addLog("[SYSTEM ERROR]: Reality collapse failed.", "var(--term-red)");
+            } finally {
+                document.getElementById('thinking-indicator')?.remove();
+                isProcessing = false;
+            }
+            return;
+        } else if (cmd === 'pin' || cmd === 'pin view') {
+            pinCurrentView(); return;
         } else if (cmd === 'look' || cmd === 'l') {
             UI.printRoomDescription(apartmentMap[localPlayer.currentRoom], localPlayer.stratum === 'faen'); 
             triggerVisualUpdate(); return;
@@ -638,7 +704,7 @@ input.addEventListener('keydown', async (e) => {
             else localPlayer.inventory.forEach(item => UI.addLog(`- ${item.name} [${item.type}]`, "var(--term-green)"));
             return;
         } else if (cmd === 'help') {
-            UI.addLog("HELP // Commands: LOOK, N/S/E/W, CREATE AVATAR, LEAVE VESSEL, CREATE ITEM, EDIT ROOM, BUILD [DIR], INV, MAP, STAT.", "var(--term-amber)");
+            UI.addLog("HELP // Commands: LOOK, N/S/E/W, CREATE AVATAR, LEAVE VESSEL, CREATE ITEM, EDIT ROOM, BUILD [DIR], GENERATE ROOM, PIN, INV, MAP, STAT.", "var(--term-amber)");
             return;
         }
 
@@ -731,9 +797,9 @@ input.addEventListener('keydown', async (e) => {
             }
             
             if (res.trigger_visual && !res.trigger_respawn && !res.trigger_teleport) {
-                triggerVisualUpdate(res.trigger_visual);
+                triggerVisualUpdate(res.trigger_visual); // GM Override passed here!
             } else if (res.trigger_stratum_shift || res.trigger_teleport || res.faen_jump) {
-                triggerVisualUpdate();
+                triggerVisualUpdate(); // No override passed
             }
         } catch (err) { 
             UI.addLog("SYSTEM EVALUATION FAILED!", "var(--term-red)"); 
