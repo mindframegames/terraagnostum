@@ -195,7 +195,7 @@ export function printRoomDescription(room, isFaen, fullMap = null, activeAvatar 
     }
 
     if (!activeAvatar) {
-        addLog(`[TANDY]: Is someone there? I feel a ripple... Ian? No, the signature is different. But you're in his room. You're too thin, Wanderer. Find the Character Room (Spare Bedroom) and sketch a life.`, "var(--gm-purple)");
+        addLog(`[TANDY]: Is someone there? I feel a ripple... Ian? No, the signature is different.  You're too thin, Wanderer. Find the Character Room (Spare Bedroom) and sketch a life.`, "var(--gm-purple)");
     }
 }
 
