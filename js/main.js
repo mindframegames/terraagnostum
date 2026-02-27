@@ -1,12 +1,30 @@
-import { signInAnonymously, onAuthStateChanged, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, serverTimestamp, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
-import { auth, db, storage, isSyncEnabled, appId } from './firebaseConfig.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, serverTimestamp, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
 // IMPORT DECOMPOSED DATA & SERVICES
 import { apartmentMap as initialMap } from './mapData.js';
 import { callGemini, projectVisual, compressImage } from './apiService.js';
 import * as UI from './ui.js';
+import { firebaseConfig } from './firebaseConfig.js';
+
+const appId = 'terra-agnostum-shared';
+
+let app, auth, db, storage;
+let isSyncEnabled = false;
+
+try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+    isSyncEnabled = true;
+    document.getElementById('sync-status').innerText = "SYNC: READY";
+    document.getElementById('sync-status').style.color = "var(--term-amber)";
+} catch (e) {
+    document.getElementById('sync-status').innerText = "SYNC: OFFLINE";
+}
 
 // Initialize with seed data
 let apartmentMap = { ...initialMap };
@@ -446,6 +464,72 @@ function handleWizardInput(val) {
             wizardState = { active: false, type: null, step: 0, pendingData: {}, existingData: {} };
         }
     }
+    else if (wizardState.type === 'auto_expand') {
+        if (wizardState.step === 1) {
+            const seedPhrase = val || "An undefined anomaly.";
+            const dir = wizardState.pendingData.direction;
+            const currentRoomKey = localPlayer.currentRoom;
+            const currentRoom = apartmentMap[currentRoomKey];
+            
+            isProcessing = true;
+            wizardState = { active: false, type: null, step: 0, pendingData: {}, existingData: {} };
+            refreshCommandPrompt();
+            
+            UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">WEAVING ADJACENT REALITY BASED ON SEED: "${seedPhrase}"...</span>`);
+            
+            (async () => {
+                try {
+                    const sysPrompt = `You are the Architect of Terra Agnostum. 
+                    Generate a thematic new room located to the ${dir.toUpperCase()} of the current room.
+                    Current Stratum: ${localPlayer.stratum.toUpperCase()}.
+                    Current Room Context: ${currentRoom.name} - ${currentRoom.description}.
+                    User's Seed Idea for New Room: "${seedPhrase}".
+                    Expand on this seed idea to create a rich, atmospheric room.
+                    Respond STRICTLY in JSON:
+                    {
+                      "name": "Evocative Name",
+                      "description": "Atmospheric narrative description",
+                      "visual_prompt": "Detailed prompt for image generation"
+                    }`;
+                    const res = await callGemini("Generate an adjacent room from seed.", sysPrompt);
+                    
+                    if (res && res.name && res.description) {
+                        const newRoomId = 'node_' + Date.now();
+                        const reverseDir = { 'north':'south', 'south':'north', 'east':'west', 'west':'east' }[dir];
+                        
+                        const newNode = {
+                            name: res.name,
+                            shortName: res.name.substring(0, 7).toUpperCase(),
+                            description: res.description,
+                            visualPrompt: res.visual_prompt || res.visualPrompt,
+                            exits: { [reverseDir]: currentRoomKey },
+                            pinnedView: null, items: [], marginalia: [], npcs: []
+                        };
+                        
+                        apartmentMap[newRoomId] = newNode;
+                        if (!apartmentMap[currentRoomKey].exits) apartmentMap[currentRoomKey].exits = {};
+                        apartmentMap[currentRoomKey].exits[dir] = newRoomId;
+                        
+                        if (isSyncEnabled) {
+                            const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                            await updateDoc(mapRef, {
+                                [`nodes.${currentRoomKey}.exits.${dir}`]: newRoomId,
+                                [`nodes.${newRoomId}`]: newNode
+                            });
+                        }
+                        
+                        UI.addLog(`[SYSTEM]: Auto-sector materialization complete. Path to the ${dir.toUpperCase()} is now open to [${res.name}].`, "var(--term-green)");
+                        UI.renderMapHUD(apartmentMap, localPlayer.currentRoom, localPlayer.stratum);
+                    }
+                } catch (err) {
+                    UI.addLog("[SYSTEM ERROR]: Reality weave failed.", "var(--term-red)");
+                } finally {
+                    document.getElementById('thinking-indicator')?.remove();
+                    isProcessing = false;
+                }
+            })();
+        }
+    }
     else if (wizardState.type === 'avatar') {
         if (wizardState.step === 1) {
             if (!val) { UI.addLog(`[WIZARD]: Name cannot be empty.`, "var(--term-red)"); return; }
@@ -734,68 +818,23 @@ if (input) {
             } else if (cmd.startsWith('build ')) {
                 if (!activeAvatar) { UI.addLog("[SYSTEM]: Voids cannot expand space.", "var(--term-red)"); return; }
                 const parts = cmd.split(' ');
-                const dir = parts[1];
                 const isAuto = parts.includes('--auto') || parts.includes('auto');
                 
-                if (!['north', 'south', 'east', 'west'].includes(dir)) { UI.addLog(`Use 'build north/south/east/west [--auto]'.`, "var(--term-amber)"); return; }
+                // Allow "build auto north" or "build north auto" or abbreviations like "build n auto"
+                const dirRaw = parts.find(p => ['north', 'south', 'east', 'west', 'n', 's', 'e', 'w'].includes(p));
+                const expandMap = { 'n': 'north', 's': 'south', 'e': 'east', 'w': 'west' };
+                const finalDir = expandMap[dirRaw] || dirRaw;
+                
+                if (!finalDir) { UI.addLog(`Use 'build north/south/east/west [auto]'.`, "var(--term-amber)"); return; }
                 
                 if (isAuto) {
-                    const currentRoom = apartmentMap[localPlayer.currentRoom];
-                    isProcessing = true;
-                    UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">WEAVING ADJACENT REALITY...</span>`);
-                    try {
-                        const sysPrompt = `You are the Architect of Terra Agnostum. 
-                        Generate a thematic new room located to the ${dir.toUpperCase()} of the current room.
-                        Current Stratum: ${localPlayer.stratum.toUpperCase()}.
-                        Current Room Context: ${currentRoom.name} - ${currentRoom.description}.
-                        Respond STRICTLY in JSON:
-                        {
-                          "name": "Evocative Name",
-                          "description": "Atmospheric narrative description",
-                          "visual_prompt": "Detailed prompt for image generation"
-                        }`;
-                        const res = await callGemini("Generate an adjacent room.", sysPrompt);
-                        
-                        if (res && res.name && res.description) {
-                            const newRoomId = 'node_' + Date.now();
-                            const currentRoomKey = localPlayer.currentRoom;
-                            const reverseDir = { 'north':'south', 'south':'north', 'east':'west', 'west':'east' }[dir];
-                            
-                            const newNode = {
-                                name: res.name,
-                                shortName: res.name.substring(0, 7).toUpperCase(),
-                                description: res.description,
-                                visualPrompt: res.visual_prompt,
-                                exits: { [reverseDir]: currentRoomKey },
-                                pinnedView: null, items: [], marginalia: [], npcs: []
-                            };
-                            
-                            apartmentMap[newRoomId] = newNode;
-                            if (!apartmentMap[currentRoomKey].exits) apartmentMap[currentRoomKey].exits = {};
-                            apartmentMap[currentRoomKey].exits[dir] = newRoomId;
-                            
-                            if (isSyncEnabled) {
-                                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
-                                await updateDoc(mapRef, {
-                                    [`nodes.${currentRoomKey}.exits.${dir}`]: newRoomId,
-                                    [`nodes.${newRoomId}`]: newNode
-                                });
-                            }
-                            
-                            UI.addLog(`[SYSTEM]: Auto-sector materialization complete. Path to the ${dir.toUpperCase()} is now open to [${res.name}].`, "var(--term-green)");
-                            refreshCommandPrompt();
-                            UI.renderMapHUD(apartmentMap, localPlayer.currentRoom, localPlayer.stratum);
-                        }
-                    } catch (err) {
-                        UI.addLog("[SYSTEM ERROR]: Reality weave failed.", "var(--term-red)");
-                    } finally {
-                        document.getElementById('thinking-indicator')?.remove();
-                        isProcessing = false;
-                    }
+                    wizardState = { active: true, type: 'auto_expand', step: 1, pendingData: { direction: finalDir }, existingData: {} };
+                    UI.setWizardPrompt("WIZARD@AUTO-WEAVE:~$");
+                    UI.addLog(`[WIZARD]: Auto-Weave Protocol Initiated. Provide a 1-line seed phrase or concept for the new room (e.g., 'The Whistle Stop Cafe Main Room'):`, "var(--term-amber)");
                     return;
                 }
 
-                wizardState = { active: true, type: 'expand', step: 1, pendingData: { direction: dir }, existingData: {} };
+                wizardState = { active: true, type: 'expand', step: 1, pendingData: { direction: finalDir }, existingData: {} };
                 UI.setWizardPrompt("WIZARD@EXPAND:~$");
                 UI.addLog(`[WIZARD]: Expansion Protocol Started. Enter NAME for new room:`, "var(--term-amber)");
                 return;
