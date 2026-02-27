@@ -78,6 +78,14 @@ if (isSyncEnabled) {
     }
 
     onAuthStateChanged(auth, async (u) => {
+        // Wait for Firebase to check state. If genuinely no user, THEN assign guest.
+        if (!u) {
+            if (!isSignInWithEmailLink(auth, window.location.href)) {
+                signInAnonymously(auth);
+            }
+            return;
+        }
+
         user = u;
         if (user && !hasInitialized) {
             hasInitialized = true;
@@ -99,10 +107,6 @@ if (isSyncEnabled) {
             triggerVisualUpdate();
         }
     });
-
-    if (!auth.currentUser && !isSignInWithEmailLink(auth, window.location.href)) {
-        signInAnonymously(auth);
-    }
 }
 
 function setupWorldListener() {
@@ -194,7 +198,7 @@ export async function triggerVisualUpdate(overridePrompt = null) {
     const pinnedUrl = (!overridePrompt && room.pinnedView) ? room.pinnedView : null;
     const basePrompt = overridePrompt || room.visualPrompt || room.visual_prompt || "A glitching void.";
     
-    if (user) {
+    if (user && !user.isAnonymous) {
         if (pinnedUrl) {
             UI.togglePinButton(true, "UNPIN VIEW", "normal");
         } else {
@@ -206,7 +210,7 @@ export async function triggerVisualUpdate(overridePrompt = null) {
     
     currentBase64 = await projectVisual(basePrompt, localPlayer.stratum, UI.addLog, pinnedUrl);
     
-    if (user) {
+    if (user && !user.isAnonymous) {
         if (pinnedUrl) {
             UI.togglePinButton(true, "UNPIN VIEW", "normal");
         } else if (currentBase64) {
@@ -218,7 +222,7 @@ export async function triggerVisualUpdate(overridePrompt = null) {
 }
 
 export async function togglePinView() {
-    if (!user) { 
+    if (!user || user.isAnonymous) { 
         UI.addLog("[SYSTEM]: Identity verification required for reality anchoring.", "var(--term-red)");
         return;
     }
