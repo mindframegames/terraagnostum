@@ -16,7 +16,7 @@ let apartmentMap = { ...initialMap };
 // Player State
 let localPlayer = { 
     hp: 20, 
-    currentRoom: "spare_room", 
+    currentRoom: "bedroom", 
     stratum: "mundane",
     posture: "standing",
     inventory: []
@@ -28,6 +28,9 @@ let user = null;
 let hasInitialized = false;
 let mapUnsubscribe = null;
 let currentMapPath = null;
+
+const privateRooms = ['lore1', 'lore2', 'kitchen', 'spare_room', 'bedroom', 'closet'];
+const isArchiveRoom = (roomId) => privateRooms.includes(roomId);
 
 // --- HELPER WRAPPERS ---
 function shiftStratum(targetStratum) {
@@ -119,8 +122,7 @@ function setupWorldListener() {
 function updateMapListener() {
     if (!db) return;
 
-    const privateRooms = ['lore1', 'lore2', 'kitchen', 'spare_room', 'bedroom', 'closet'];
-    const isPrivate = privateRooms.includes(localPlayer.currentRoom);
+    const isPrivate = isArchiveRoom(localPlayer.currentRoom);
     
     // Determine path based on room
     const newPath = isPrivate && user
@@ -294,12 +296,18 @@ if (input) {
                     { 
                         refreshCommandPrompt, 
                         refreshStatusUI, 
+                        refreshAllUI,
                         setActiveAvatar: (v) => { 
                             activeAvatar = v; 
-                            if (v) UI.materializeEffect();
+                            if (v) {
+                                UI.materializeEffect();
+                                UI.addLog("[SYSTEM]: VESSEL COLLAPSE COMPLETE. YOU ARE REAL.", "var(--term-green)");
+                                refreshAllUI();
+                            }
                         },
                         addLocalCharacter: (c) => { localCharacters.push(c); },
-                        setIsProcessing: (v) => { isProcessing = v; }
+                        setIsProcessing: (v) => { isProcessing = v; },
+                        isArchiveRoom
                     }
                 ); 
                 return; 

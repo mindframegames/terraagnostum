@@ -35,7 +35,8 @@ export function handleWizardInput(val, state, actions) {
         refreshStatusUI, 
         setActiveAvatar, 
         addLocalCharacter,
-        setIsProcessing 
+        setIsProcessing,
+        isArchiveRoom
     } = actions;
 
     if (wizardState.type === 'item') {
@@ -57,7 +58,11 @@ export function handleWizardInput(val, state, actions) {
             room.items.push(wizardState.pendingData);
             
             if (isSyncEnabled) {
-                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
+                const path = isPrivate && user 
+                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
+                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+                const mapRef = doc(db, path);
                 updateDoc(mapRef, { [`nodes.${localPlayer.currentRoom}.items`]: arrayUnion(wizardState.pendingData) });
             }
             
@@ -91,7 +96,11 @@ export function handleWizardInput(val, state, actions) {
             apartmentMap[rKey].pinnedView = null; // Clear old pin on edit
             
             if (isSyncEnabled) {
-                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
+                const path = isPrivate && user 
+                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
+                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+                const mapRef = doc(db, path);
                 updateDoc(mapRef, {
                     [`nodes.${rKey}.name`]: wizardState.pendingData.name,
                     [`nodes.${rKey}.shortName`]: apartmentMap[rKey].shortName,
@@ -141,7 +150,11 @@ export function handleWizardInput(val, state, actions) {
             apartmentMap[currentRoomKey].exits[dir] = newRoomId;
             
             if (isSyncEnabled) {
-                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
+                const path = isPrivate && user 
+                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
+                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+                const mapRef = doc(db, path);
                 updateDoc(mapRef, {
                     [`nodes.${currentRoomKey}.exits.${dir}`]: newRoomId,
                     [`nodes.${newRoomId}`]: newNode
@@ -210,7 +223,11 @@ export function handleWizardInput(val, state, actions) {
                             apartmentMap[currentRoomKey].pinnedView = null; // Clear old pin
                             
                             if (isSyncEnabled) {
-                                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
+                                const path = isPrivate && user 
+                                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
+                                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+                                const mapRef = doc(db, path);
                                 await updateDoc(mapRef, {
                                     [`nodes.${currentRoomKey}.name`]: res.name,
                                     [`nodes.${currentRoomKey}.shortName`]: apartmentMap[currentRoomKey].shortName,
@@ -243,7 +260,11 @@ export function handleWizardInput(val, state, actions) {
                             apartmentMap[currentRoomKey].exits[dir] = newRoomId;
                             
                             if (isSyncEnabled) {
-                                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
+                                const path = isPrivate && user 
+                                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
+                                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+                                const mapRef = doc(db, path);
                                 await updateDoc(mapRef, {
                                     [`nodes.${currentRoomKey}.exits.${dir}`]: newRoomId,
                                     [`nodes.${newRoomId}`]: newNode
@@ -341,7 +362,11 @@ export function handleWizardInput(val, state, actions) {
             room.npcs.push(newNPC);
             
             if (isSyncEnabled) {
-                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
+                const path = isPrivate && user 
+                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
+                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+                const mapRef = doc(db, path);
                 updateDoc(mapRef, { [`nodes.${roomKey}.npcs`]: arrayUnion(newNPC) });
             }
             
@@ -395,7 +420,11 @@ export function handleWizardInput(val, state, actions) {
             room.npcs.push(newNPC);
             
             if (isSyncEnabled) {
-                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
+                const path = isPrivate && user 
+                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
+                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+                const mapRef = doc(db, path);
                 updateDoc(mapRef, { [`nodes.${roomKey}.npcs`]: arrayUnion(newNPC) });
             }
             
@@ -418,7 +447,11 @@ export function handleWizardInput(val, state, actions) {
                             updatedRoom.npcs[npcIdx].image = compressedImageSrc;
                             UI.updateRoomEntitiesUI(updatedRoom.npcs);
                             if (isSyncEnabled) {
-                                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
+                                const path = isPrivate && user 
+                                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
+                                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+                                const mapRef = doc(db, path);
                                 updateDoc(mapRef, { [`nodes.${localPlayer.currentRoom}.npcs`]: updatedRoom.npcs });
                             }
                         }
@@ -444,7 +477,11 @@ export function handleWizardInput(val, state, actions) {
             };
             
             if (isSyncEnabled) {
-                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
+                const path = isPrivate && user 
+                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
+                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+                const mapRef = doc(db, path);
                 updateDoc(mapRef, { [`nodes.${roomKey}.exits.${dir}`]: room.exits[dir] });
             }
             

@@ -5,8 +5,10 @@
 // Inject Void Mode CSS
 const style = document.createElement('style');
 style.innerHTML = `
-.void-mode img { filter: grayscale(1) contrast(1.2); }
+.void-mode img { filter: grayscale(1) brightness(0.6) contrast(1.3) !important; }
 .void-mode #log div { color: var(--gm-purple) !important; }
+.materialize-flash { position: fixed; inset: 0; background: white; z-index: 9999; pointer-events: none; animation: flash-out 1.2s ease-out forwards; }
+@keyframes flash-out { from { opacity: 1; } to { opacity: 0; } }
 `;
 document.head.appendChild(style);
 
@@ -195,7 +197,7 @@ export function printRoomDescription(room, isFaen, fullMap = null, activeAvatar 
     }
 
     if (!activeAvatar) {
-        addLog(`[TANDY]: Is someone there? I feel a ripple... Ian? No, the signature is different.  You're too thin, Wanderer. Find the Character Room (Spare Bedroom) and sketch a life.`, "var(--gm-purple)");
+        addLog(`[TANDY]: Is someone there? I feel a ripple... Ian? No, the signature is different. But you're in his room. You're too thin, Wanderer. Find the Character Room and sketch a life.`, "var(--gm-purple)");
     }
 }
 
@@ -398,5 +400,8 @@ export function togglePinButton(isVisible, text = "PIN VIEW", state = "normal") 
 
 export function materializeEffect() {
     document.body.classList.remove('void-mode');
-    addLog("[SYSTEM]: VESSEL COLLAPSE COMPLETE. YOU ARE REAL.", "var(--term-green)");
+    const flash = document.createElement('div');
+    flash.className = 'materialize-flash';
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 1200);
 }
