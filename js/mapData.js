@@ -48,7 +48,7 @@ export const apartmentMap = {
         shortName: "CHARS",
         description: "A room full of character sheets. There are an endless variety of them. The creators of this world have obsessively logged an enormous range of living beings. They cover the table and walls in piles and layers. It is an RPG bonanza of color and stats and drawings. You can create characters here. Use CREATE AVATAR to make your main character.",
         visualPrompt: "A room overflowing with sketches, RPG character sheets, and anatomical drawings pinned to walls, cinematic lighting, cluttered desk.",
-        exits: { "east": "hallway_archive" },
+        exits: { "west": "lore2" },
         pinnedView: null, items: [], marginalia: [], npcs: []
     },
     "bedroom": {
