@@ -8,7 +8,7 @@ import { apartmentMap as initialMap } from './mapData.js';
 import { callGemini, projectVisual, compressImage } from './apiService.js';
 import * as UI from './ui.js';
 
-// Configuration for your specific Firebase Project - REVERTED TO WORKING STATE
+// Configuration for your specific Firebase Project
 const firebaseConfig = {
     apiKey: "AIzaSyDtWZdtC-IeKDVyFqcwuqa_tn0hoH91dtc",
     authDomain: "terra-agnostum.firebaseapp.com",
@@ -124,7 +124,6 @@ if (isSyncEnabled) {
             UI.printRoomDescription(currentRoom, localPlayer.stratum === 'faen');
             refreshAllUI();
             
-            // BUGFIX: Call with no arguments to let the function detect the pin!
             triggerVisualUpdate();
         }
     });
@@ -228,46 +227,70 @@ export async function triggerVisualUpdate(overridePrompt = null) {
     
     currentBase64 = await projectVisual(basePrompt, localPlayer.stratum, UI.addLog, pinnedUrl);
     
-    // Only show the PIN button if we generated a FRESH image and we have an architect logged in
-    if (currentBase64 && user && !user.isAnonymous && !pinnedUrl) {
-        UI.togglePinButton(true, "PIN VIEW");
+    if (user && !user.isAnonymous) {
+        if (pinnedUrl) {
+            UI.togglePinButton(true, "UNPIN VIEW", "normal");
+        } else if (currentBase64) {
+            UI.togglePinButton(true, "PIN VIEW", "normal");
+        }
     }
 }
 
-export async function pinCurrentView() {
-    if (!currentBase64) {
-        UI.addLog("[SYSTEM]: No projection active to anchor.", "var(--term-amber)");
-        return;
-    }
+export async function togglePinView() {
     if (!user || user.isAnonymous) {
         UI.addLog("[SYSTEM]: Identity verification required for reality anchoring.", "var(--term-red)");
         return;
     }
-    const roomId = localPlayer.currentRoom;
-    UI.togglePinButton(true, "UPLOADING...", "uploading");
     
-    try {
-        const dataUrl = `data:image/png;base64,${currentBase64}`;
-        const fileRef = ref(storage, `maps/${appId}/${roomId}_pinned_${Date.now()}.png`);
-        await uploadString(fileRef, dataUrl, 'data_url');
-        const downloadUrl = await getDownloadURL(fileRef);
+    const roomId = localPlayer.currentRoom;
+    const room = apartmentMap[roomId] || {};
+
+    if (room.pinnedView) {
+        // --- UNPIN LOGIC ---
+        UI.togglePinButton(true, "UNPINNING...", "uploading");
+        try {
+            const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+            await updateDoc(mapRef, { [`nodes.${roomId}.pinnedView`]: null });
+            apartmentMap[roomId].pinnedView = null;
+            
+            UI.addLog(`[SYSTEM]: Consensus reality anchor lifted. Space is fluid again.`, "var(--term-amber)");
+            triggerVisualUpdate(); // Regenerate a fresh view
+        } catch (e) {
+            console.error("Unpinning error:", e);
+            UI.togglePinButton(true, "ERROR", "normal");
+            UI.addLog(`[SYSTEM ERROR]: Failed to lift anchor.`, "var(--term-red)");
+        }
+    } else {
+        // --- PIN LOGIC ---
+        if (!currentBase64) {
+            UI.addLog("[SYSTEM]: No projection active to anchor.", "var(--term-amber)");
+            return;
+        }
         
-        const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
-        await updateDoc(mapRef, { [`nodes.${roomId}.pinnedView`]: downloadUrl });
-        apartmentMap[roomId].pinnedView = downloadUrl;
-        
-        UI.togglePinButton(true, "PINNED!", "pinned");
-        UI.addLog(`[SYSTEM]: Consensus reality locked. The visual projection of ${apartmentMap[roomId].name} is now canonical.`, "var(--gm-purple)");
-        
-        setTimeout(() => { UI.togglePinButton(false); }, 2000);
-    } catch (e) {
-        console.error("Pinning error:", e);
-        UI.togglePinButton(true, "ERROR", "normal");
-        UI.addLog(`[SYSTEM ERROR]: Failed to anchor memory to the cloud. ${e.message.includes('CORS') ? 'Check CORS settings on bucket.' : ''}`, "var(--term-red)");
+        UI.togglePinButton(true, "UPLOADING...", "uploading");
+        try {
+            const dataUrl = `data:image/png;base64,${currentBase64}`;
+            const fileRef = ref(storage, `maps/${appId}/${roomId}_pinned_${Date.now()}.png`);
+            await uploadString(fileRef, dataUrl, 'data_url');
+            const downloadUrl = await getDownloadURL(fileRef);
+            
+            const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+            await updateDoc(mapRef, { [`nodes.${roomId}.pinnedView`]: downloadUrl });
+            apartmentMap[roomId].pinnedView = downloadUrl;
+            
+            UI.togglePinButton(true, "PINNED!", "pinned");
+            UI.addLog(`[SYSTEM]: Consensus reality locked. The visual projection of ${apartmentMap[roomId].name} is now canonical.`, "var(--gm-purple)");
+            
+            setTimeout(() => { UI.togglePinButton(true, "UNPIN VIEW", "normal"); }, 2000);
+        } catch (e) {
+            console.error("Pinning error:", e);
+            UI.togglePinButton(true, "ERROR", "normal");
+            UI.addLog(`[SYSTEM ERROR]: Failed to anchor memory to the cloud.`, "var(--term-red)");
+        }
     }
 }
 
-document.getElementById('pin-view-btn').addEventListener('click', pinCurrentView);
+document.getElementById('pin-view-btn').addEventListener('click', togglePinView);
 
 // --- NARRATIVE MOVEMENT ENGINE ---
 async function executeMovement(targetDir) {
@@ -301,7 +324,6 @@ async function executeMovement(targetDir) {
         UI.addLog(`[SYSTEM]: You move ${targetDir.toUpperCase()}.`, "var(--term-green)");
         UI.printRoomDescription(nextRoom, false);
         
-        // BUGFIX: Call with no arguments to let the function pull the pin for the new room
         triggerVisualUpdate();
         
         if (isSyncEnabled && user) {
@@ -382,7 +404,8 @@ function handleWizardInput(val) {
             
             UI.addLog(`[SYSTEM]: Sector successfully re-rendered. Old pins discarded.`, "var(--term-green)");
             UI.printRoomDescription(apartmentMap[rKey], localPlayer.stratum === 'faen');
-            triggerVisualUpdate();
+            // Force a regeneration with the new prompt
+            triggerVisualUpdate(apartmentMap[rKey].visualPrompt);
             
             refreshStatusUI();
             UI.renderMapHUD(apartmentMap, rKey, localPlayer.stratum);
@@ -662,7 +685,8 @@ input.addEventListener('keydown', async (e) => {
                     }
                     UI.addLog(`[SYSTEM]: Sector successfully rendered.`, "var(--term-green)");
                     UI.printRoomDescription(apartmentMap[localPlayer.currentRoom], localPlayer.stratum === 'faen');
-                    triggerVisualUpdate();
+                    // Force a regeneration with the new prompt
+                    triggerVisualUpdate(res.visual_prompt);
                     refreshStatusUI();
                     UI.renderMapHUD(apartmentMap, localPlayer.currentRoom, localPlayer.stratum);
                 }
@@ -674,7 +698,13 @@ input.addEventListener('keydown', async (e) => {
             }
             return;
         } else if (cmd === 'pin' || cmd === 'pin view') {
-            pinCurrentView(); return;
+            if (!apartmentMap[localPlayer.currentRoom].pinnedView) togglePinView();
+            else UI.addLog("[SYSTEM]: View is already pinned. Use 'unpin' to clear.", "var(--term-amber)");
+            return;
+        } else if (cmd === 'unpin' || cmd === 'unpin view') {
+            if (apartmentMap[localPlayer.currentRoom].pinnedView) togglePinView();
+            else UI.addLog("[SYSTEM]: View is not pinned.", "var(--term-amber)");
+            return;
         } else if (cmd === 'look' || cmd === 'l') {
             UI.printRoomDescription(apartmentMap[localPlayer.currentRoom], localPlayer.stratum === 'faen'); 
             triggerVisualUpdate(); return;
@@ -704,7 +734,7 @@ input.addEventListener('keydown', async (e) => {
             else localPlayer.inventory.forEach(item => UI.addLog(`- ${item.name} [${item.type}]`, "var(--term-green)"));
             return;
         } else if (cmd === 'help') {
-            UI.addLog("HELP // Commands: LOOK, N/S/E/W, CREATE AVATAR, LEAVE VESSEL, CREATE ITEM, EDIT ROOM, BUILD [DIR], GENERATE ROOM, PIN, INV, MAP, STAT.", "var(--term-amber)");
+            UI.addLog("HELP // Commands: LOOK, N/S/E/W, CREATE AVATAR, LEAVE VESSEL, CREATE ITEM, EDIT ROOM, BUILD [DIR], GENERATE ROOM, PIN, UNPIN, INV, MAP, STAT.", "var(--term-amber)");
             return;
         }
 
