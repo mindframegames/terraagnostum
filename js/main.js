@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, isSignInWithEmailLink, signInWithEmailLink } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, arrayUnion, arrayRemove, serverTimestamp, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
@@ -219,11 +219,13 @@ export async function triggerVisualUpdate(overridePrompt = null) {
     
     currentBase64 = null;
     
+    // Check for pinned view if no manual override is passed (like a GM spell effect)
     const pinnedUrl = (!overridePrompt && room.pinnedView) ? room.pinnedView : null;
+    // Standardize lookup to support both properties
     const basePrompt = overridePrompt || room.visualPrompt || room.visual_prompt || "A glitching void.";
     
-    // UI Feedback for Pinning States
-    if (user && !user.isAnonymous) {
+    // UI Feedback for Pinning States (Removed user.isAnonymous restriction)
+    if (user) {
         if (pinnedUrl) {
             UI.togglePinButton(true, "UNPIN VIEW", "normal");
         } else {
@@ -236,7 +238,7 @@ export async function triggerVisualUpdate(overridePrompt = null) {
     currentBase64 = await projectVisual(basePrompt, localPlayer.stratum, UI.addLog, pinnedUrl);
     
     // Update button text after generation is complete
-    if (user && !user.isAnonymous) {
+    if (user) {
         if (pinnedUrl) {
             UI.togglePinButton(true, "UNPIN VIEW", "normal");
         } else if (currentBase64) {
@@ -248,7 +250,7 @@ export async function triggerVisualUpdate(overridePrompt = null) {
 }
 
 export async function togglePinView() {
-    if (!user || user.isAnonymous) {
+    if (!user) { // Removed user.isAnonymous restriction
         UI.addLog("[SYSTEM]: Identity verification required for reality anchoring.", "var(--term-red)");
         return;
     }
@@ -606,11 +608,45 @@ if (input) {
             if (isProcessing) return;
             if (val) UI.addLog(val, "#ffffff");
             if (wizardState.active) { handleWizardInput(val); return; }
-            
-            const cmd = val.toLowerCase();
+        
+        const cmd = val.toLowerCase();
 
-            // CORE SYSTEM COMMANDS
-            if (cmd === 'create avatar' || cmd === 'forge form' || cmd === 'make avatar') {
+        // --- AUTH & IDENTITY COMMANDS ---
+        if (cmd === 'whoami') {
+            if (!user) {
+                UI.addLog("[SYSTEM]: No active connection.", "var(--term-red)");
+            } else if (user.isAnonymous) {
+                UI.addLog(`[SYSTEM]: Connected as GUEST (Anonymous). ID: ${user.uid}`, "var(--term-amber)");
+                UI.addLog(`Use 'register [email]' or 'log in [email]' to secure your identity.`, "var(--crayola-blue)");
+            } else {
+                UI.addLog(`[SYSTEM]: Connected as ARCHITECT. Email: ${user.email} | ID: ${user.uid}`, "var(--term-green)");
+            }
+            return;
+        }
+
+        const authMatch = cmd.match(/^(?:register|log in|login)\s+(.+@.+\..+)$/i);
+        if (authMatch) {
+            const email = authMatch[1].trim();
+            UI.addLog(`[SYSTEM]: Initiating secure handshake for ${email}...`, "var(--term-amber)");
+            const actionCodeSettings = {
+                url: window.location.href.split('?')[0], // Clean URL to return to
+                handleCodeInApp: true,
+            };
+            try {
+                await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+                window.localStorage.setItem('emailForSignIn', email);
+                UI.addLog(`[SYSTEM]: Authentication link dispatched. Check the inbox for ${email} to complete the uplink.`, "var(--term-green)");
+            } catch (err) {
+                UI.addLog(`[SYSTEM ERROR]: Registration failed. ${err.message}`, "var(--term-red)");
+            }
+            return;
+        } else if (cmd === 'register' || cmd === 'log in' || cmd === 'login') {
+            UI.addLog(`[SYSTEM]: Invalid format. Use 'register [your@email.com]' or 'log in [your@email.com]'.`, "var(--term-red)");
+            return;
+        }
+
+        // CORE SYSTEM COMMANDS
+        if (cmd === 'create avatar' || cmd === 'forge form' || cmd === 'make avatar') {
                 if (localPlayer.currentRoom !== 'spare_room') {
                     UI.addLog(`[SYSTEM]: You must be in the Archive (Spare Room) to forge a form.`, "var(--term-amber)");
                     return;
@@ -745,15 +781,15 @@ if (input) {
                 }
                 return;
             } else if (cmd === 'inv' || cmd === 'inventory') {
-                if (localPlayer.inventory.length === 0) UI.addLog("Inventory empty.", "var(--term-amber)");
-                else localPlayer.inventory.forEach(item => UI.addLog(`- ${item.name} [${item.type}]`, "var(--term-green)"));
-                return;
-            } else if (cmd === 'help') {
-                UI.addLog("HELP // Commands: LOOK, N/S/E/W, CREATE AVATAR, LEAVE VESSEL, CREATE ITEM, EDIT ROOM, BUILD [DIR], GENERATE ROOM, PIN, UNPIN, INV, MAP, STAT.", "var(--term-amber)");
-                return;
-            }
+            if (localPlayer.inventory.length === 0) UI.addLog("Inventory empty.", "var(--term-amber)");
+            else localPlayer.inventory.forEach(item => UI.addLog(`- ${item.name} [${item.type}]`, "var(--term-green)"));
+            return;
+        } else if (cmd === 'help') {
+            UI.addLog("HELP // Commands: LOOK, N/S/E/W, WHOAMI, LOGIN [EMAIL], CREATE AVATAR, LEAVE VESSEL, CREATE ITEM, EDIT ROOM, BUILD [DIR], GENERATE ROOM, PIN, UNPIN, INV, MAP, STAT.", "var(--term-amber)");
+            return;
+        }
 
-            // --- THE UNIVERSAL GM INTENT ENGINE ---
+        // --- THE UNIVERSAL GM INTENT ENGINE ---
             isProcessing = true;
             UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">EVALUATING INTENT...</span>`);
             
