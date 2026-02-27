@@ -760,8 +760,68 @@ if (input) {
                 return;
             } else if (cmd.startsWith('build ')) {
                 if (!activeAvatar) { UI.addLog("[SYSTEM]: Voids cannot expand space.", "var(--term-red)"); return; }
-                const dir = cmd.split(' ')[1];
-                if (!['north', 'south', 'east', 'west'].includes(dir)) { UI.addLog(`Use 'build north/south/east/west'.`, "var(--term-amber)"); return; }
+                const parts = cmd.split(' ');
+                const dir = parts[1];
+                const isAuto = parts.includes('--auto') || parts.includes('auto');
+                
+                if (!['north', 'south', 'east', 'west'].includes(dir)) { UI.addLog(`Use 'build north/south/east/west [--auto]'.`, "var(--term-amber)"); return; }
+                
+                if (isAuto) {
+                    const currentRoom = apartmentMap[localPlayer.currentRoom];
+                    isProcessing = true;
+                    UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">WEAVING ADJACENT REALITY...</span>`);
+                    try {
+                        const sysPrompt = `You are the Architect of Terra Agnostum. 
+                        Generate a thematic new room located to the ${dir.toUpperCase()} of the current room.
+                        Current Stratum: ${localPlayer.stratum.toUpperCase()}.
+                        Current Room Context: ${currentRoom.name} - ${currentRoom.description}.
+                        Respond STRICTLY in JSON:
+                        {
+                          "name": "Evocative Name",
+                          "description": "Atmospheric narrative description",
+                          "visual_prompt": "Detailed prompt for image generation"
+                        }`;
+                        const res = await callGemini("Generate an adjacent room.", sysPrompt);
+                        
+                        if (res && res.name && res.description) {
+                            const newRoomId = 'node_' + Date.now();
+                            const currentRoomKey = localPlayer.currentRoom;
+                            const reverseDir = { 'north':'south', 'south':'north', 'east':'west', 'west':'east' }[dir];
+                            
+                            const newNode = {
+                                name: res.name,
+                                shortName: res.name.substring(0, 7).toUpperCase(),
+                                description: res.description,
+                                visualPrompt: res.visual_prompt,
+                                exits: { [reverseDir]: currentRoomKey },
+                                pinnedView: null, items: [], marginalia: [], npcs: []
+                            };
+                            
+                            apartmentMap[newRoomId] = newNode;
+                            if (!apartmentMap[currentRoomKey].exits) apartmentMap[currentRoomKey].exits = {};
+                            apartmentMap[currentRoomKey].exits[dir] = newRoomId;
+                            
+                            if (isSyncEnabled) {
+                                const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                                await updateDoc(mapRef, {
+                                    [`nodes.${currentRoomKey}.exits.${dir}`]: newRoomId,
+                                    [`nodes.${newRoomId}`]: newNode
+                                });
+                            }
+                            
+                            UI.addLog(`[SYSTEM]: Auto-sector materialization complete. Path to the ${dir.toUpperCase()} is now open to [${res.name}].`, "var(--term-green)");
+                            refreshCommandPrompt();
+                            UI.renderMapHUD(apartmentMap, localPlayer.currentRoom, localPlayer.stratum);
+                        }
+                    } catch (err) {
+                        UI.addLog("[SYSTEM ERROR]: Reality weave failed.", "var(--term-red)");
+                    } finally {
+                        document.getElementById('thinking-indicator')?.remove();
+                        isProcessing = false;
+                    }
+                    return;
+                }
+
                 wizardState = { active: true, type: 'expand', step: 1, pendingData: { direction: dir }, existingData: {} };
                 UI.setWizardPrompt("WIZARD@EXPAND:~$");
                 UI.addLog(`[WIZARD]: Expansion Protocol Started. Enter NAME for new room:`, "var(--term-amber)");
@@ -849,7 +909,7 @@ if (input) {
             else localPlayer.inventory.forEach(item => UI.addLog(`- ${item.name} [${item.type}]`, "var(--term-green)"));
             return;
         } else if (cmd === 'help') {
-            UI.addLog("HELP // Commands: LOOK, N/S/E/W, WHOAMI, LOGIN [EMAIL], CREATE AVATAR, LEAVE VESSEL, ASSUME [NPC], CREATE ITEM, EDIT ROOM, BUILD [DIR], GENERATE ROOM, PIN, UNPIN, INV, MAP, STAT.", "var(--term-amber)");
+            UI.addLog("HELP // Commands: LOOK, N/S/E/W, WHOAMI, LOGIN [EMAIL], CREATE AVATAR, LEAVE VESSEL, ASSUME [NPC], CREATE ITEM, EDIT ROOM, BUILD [DIR] [--AUTO], GENERATE ROOM, PIN, UNPIN, INV, MAP, STAT.", "var(--term-amber)");
             return;
         }
 
