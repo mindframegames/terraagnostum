@@ -1,7 +1,7 @@
 import { collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { sendSignInLinkToEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { auth, db, appId, isSyncEnabled } from './firebaseConfig.js';
-import { callGemini, projectVisual } from './apiService.js';
+import { callGemini, projectVisual, generatePortrait } from './apiService.js'; // Added generatePortrait
 import * as UI from './ui.js';
 
 const CHAR_COLLECTION = 'v3_characters'; // Matches main.js for safety
@@ -100,14 +100,19 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
             let finalImage = null;
             try {
                 UI.addLog(`[SYSTEM]: Rendering vessel matrix...`, "var(--term-amber)");
-                const rawImage = await projectVisual(wizardState.pendingData.visual_prompt);
+                // Use generatePortrait instead of projectVisual for avatars
+                const b64 = await generatePortrait(wizardState.pendingData.visual_prompt, localPlayer.stratum);
                 
-                // CRITICAL COMPRESSION FIX
-                if (rawImage && rawImage.startsWith('data:image')) {
+                if (b64) {
                     UI.addLog(`[SYSTEM]: Optimizing visual signature for stability...`, "var(--term-amber)");
-                    finalImage = await compressImage(rawImage, 512, 0.7);
+                    // Format correctly so the compressor actually fires
+                    const dataUrl = `data:image/png;base64,${b64}`;
+                    finalImage = await compressImage(dataUrl, 512, 0.7);
                 }
-            } catch(e) { UI.addLog("[SYSTEM ERROR]: Render failed.", "var(--term-red)"); }
+            } catch(e) { 
+                UI.addLog("[SYSTEM ERROR]: Render failed.", "var(--term-red)"); 
+                console.error("Avatar render error:", e);
+            }
 
             const finalData = {
                 name: wizardState.pendingData.name,
@@ -263,9 +268,15 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
             
             let npcImg = null;
             try {
-                const rawImg = await projectVisual(wizardState.pendingData.visualPrompt);
-                if (rawImg) npcImg = await compressImage(rawImg, 512, 0.7);
-            } catch(e) {}
+                // Fix for NPCs as well
+                const b64 = await generatePortrait(wizardState.pendingData.visualPrompt, localPlayer.stratum);
+                if (b64) {
+                    const dataUrl = `data:image/png;base64,${b64}`;
+                    npcImg = await compressImage(dataUrl, 512, 0.7);
+                }
+            } catch(e) {
+                console.error("NPC render error:", e);
+            }
             
             const newNpc = {
                 name: wizardState.pendingData.name,
