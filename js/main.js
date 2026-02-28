@@ -332,6 +332,7 @@ if (input) {
                             if (v) {
                                 UI.materializeEffect();
                                 UI.addLog("[SYSTEM]: VESSEL COLLAPSE COMPLETE. YOU ARE REAL.", "var(--term-green)");
+                                UI.addLog("[TANDY]: Your form is anchored. You have weight now. Explore the Archive, but remember—your vessel is temporary until you 'resonate' at the terminal in the Lore room.");
                                 refreshAllUI();
                             }
                         },
@@ -637,8 +638,9 @@ if (input) {
                 if (localPlayer.currentRoom === 'closet') {
                     if (!localPlayer.hasGenerator) {
                         UI.addLog("[NARRATOR]: You reach into the vibrating metal crate. The air crackles against your skin.");
-                        UI.addLog("[SYSTEM]: ITEM ACQUIRED: Hacked Schumman Resonance Generator.");
+                        UI.addLog("[SYSTEM]: ACQUIRED [1x Hacked Schumman Resonance Generator]. Added to inventory.", "var(--term-green)");
                         localPlayer.hasGenerator = true;
+                        UI.flashInventory();
                         localPlayer.inventory.push({ name: "Hacked Schumman Resonance Generator", type: "Key Item", description: "A device tuned to the earth's heartbeat." });
                         refreshAllUI();
                         UI.addLog("[TANDY]: This is the key. It matches the earth's heartbeat, but it's been tuned for the Technate. Go to the Tandem Terminal in the Lore Room. We can use this to 'Resonate' your soul.");
@@ -655,6 +657,11 @@ if (input) {
             return;
         } else if (cmd === 'help') {
             UI.addLog("HELP // Commands: LOOK, N/S/E/W, WHOAMI, LOGIN [EMAIL], CREATE AVATAR, LEAVE VESSEL, ASSUME [NPC], CREATE NPC, LOCK [DIR], CREATE ITEM, EDIT ROOM, BUILD [DIR] [--AUTO], GENERATE ROOM, PIN, UNPIN, INV, MAP, STAT, INVESTIGATE.", "var(--term-amber)");
+            return;
+        }
+
+        if ((cmd === 'use terminal' || cmd === 'use tandem terminal') && localPlayer.currentRoom === 'lore1') {
+            UI.addLog("[SYSTEM]: The Tandem Terminal hums, waiting for a frequency. To bind your signature to the Technate, type 'resonate'.");
             return;
         }
 

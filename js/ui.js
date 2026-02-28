@@ -9,6 +9,10 @@ style.innerHTML = `
 .void-mode #log div { color: var(--gm-purple) !important; }
 .materialize-flash { position: fixed; inset: 0; background: white; z-index: 9999; pointer-events: none; animation: flash-out 1.2s ease-out forwards; }
 @keyframes flash-out { from { opacity: 1; } to { opacity: 0; } }
+#right-sidebar { overflow-y: auto; overflow-x: hidden; }
+#right-sidebar > div { flex-shrink: 0; min-height: min-content; }
+@keyframes inv-flash { 0% { box-shadow: 0 0 20px var(--term-green); border-color: var(--term-green); } 100% { box-shadow: none; border-color: inherit; } }
+.flash-inv { animation: inv-flash 1s ease-out; }
 `;
 document.head.appendChild(style);
 
@@ -419,4 +423,13 @@ export function materializeEffect() {
     flash.className = 'materialize-flash';
     document.body.appendChild(flash);
     setTimeout(() => flash.remove(), 1200);
+}
+
+export function flashInventory() {
+    const inv = document.getElementById('inventory-container');
+    if(inv) {
+        inv.classList.remove('flash-inv');
+        void inv.offsetWidth;
+        inv.classList.add('flash-inv');
+    }
 }
