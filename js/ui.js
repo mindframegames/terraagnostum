@@ -62,26 +62,34 @@ export function applyStratumTheme(stratum, isTransitioningToFaen) {
     }
 }
 
-export function updateCommandPrompt(user, activeAvatar, roomShort, activeTerminal = false) {
+export function updateCommandPrompt(tier, roomShort, activeTerminal = false, isWizard = false) {
     const prefixEl = document.getElementById('prompt-prefix');
-    if (activeTerminal) { prefixEl.innerHTML = '<span class="text-emerald-400 font-bold tracking-widest">TANDEM:~$</span>&nbsp;'; return; }
-    if (!activeAvatar) {
-        prefixEl.innerHTML = `<span class="text-gray-500 font-bold">VOID@${roomShort}:~$</span>&nbsp;`;
+    const inputEl = document.getElementById('cmd-input');
+    if (!prefixEl || !inputEl) return;
+
+    // Reset classes
+    inputEl.className = "w-full bg-transparent text-white outline-none font-mono text-sm sm:text-base";
+
+    if (isWizard) {
+        inputEl.placeholder = "[ AWAITING SYSTEM INPUT... ]";
+        inputEl.classList.add("border-b", "border-amber-500");
+    } else if (activeTerminal) {
+        prefixEl.innerHTML = '<span class="text-emerald-400 font-bold tracking-widest">TANDEM:~$</span>&nbsp;';
+        inputEl.placeholder = "TANDEM_OS // Awaiting command ('exit' to disconnect)...";
+        inputEl.classList.add("border-b", "border-emerald-500");
         return;
+    } else {
+        inputEl.placeholder = "Enter command...";
     }
 
-    let tier = "RESONANT";
-    if (user && user.isAnonymous) tier = "GUEST";
-    else if (user && user.email === 'matthewcarltyson@gmail.com') tier = "ARCHITECT";
-
-    if (tier === "ARCHITECT") {
-        const identity = user.email ? user.email.split('@')[0] : user.uid.substring(0, 5);
-        prefixEl.innerHTML = `<span class="text-blue-400 font-bold">ARCHITECT[${identity}]@${roomShort}:~$</span>&nbsp;`;
-    } else if (tier === "GUEST") {
+    if (tier === 'VOID') {
+        prefixEl.innerHTML = `<span class="text-purple-500 font-bold">VOID@${roomShort}:~$</span>&nbsp;`;
+    } else if (tier === 'ARCHITECT') {
+        prefixEl.innerHTML = `<span class="text-blue-400 font-bold">ARCHITECT@${roomShort}:~$</span>&nbsp;`;
+    } else if (tier === 'GUEST') {
         prefixEl.innerHTML = `<span class="text-gray-500">GUEST@${roomShort}:~$</span>&nbsp;`;
     } else {
-        const identity = user.email ? user.email.split('@')[0] : user.uid.substring(0, 5);
-        prefixEl.innerHTML = `<span class="text-amber-500 font-bold">RESONANT[${identity}]@${roomShort}:~$</span>&nbsp;`;
+        prefixEl.innerHTML = `<span class="text-green-400 font-bold">ENTITY@${roomShort}:~$</span>&nbsp;`;
     }
 }
 

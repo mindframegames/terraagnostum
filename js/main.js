@@ -37,7 +37,7 @@ const isArchiveRoom = (roomId) => ARCHIVE_NODES.includes(roomId);
 
 function getUserTier() {
     if (!activeAvatar) return "VOID";
-    if (localPlayer.isArchitect || (user && user.email === 'matthewcarltyson@gmail.com')) return "ARCHITECT";
+    if (localPlayer.isArchitect) return "ARCHITECT";
     if (user && user.isAnonymous) return "GUEST";
     return "RESONANT";
 }
@@ -52,7 +52,7 @@ function shiftStratum(targetStratum) {
 
 function refreshCommandPrompt() {
     const roomShort = apartmentMap[localPlayer.currentRoom]?.shortName || localPlayer.currentRoom.toUpperCase();
-    UI.updateCommandPrompt(user, activeAvatar, roomShort, activeTerminal);
+    UI.updateCommandPrompt(getUserTier(), roomShort, activeTerminal, wizardState.active);
 }
 
 function refreshStatusUI() {
@@ -351,7 +351,7 @@ if (input) {
                         wizardState.step = 0;
                         wizardState.pendingData = {};
                         const currentRoom = apartmentMap[localPlayer.currentRoom];
-                        UI.updateCommandPrompt(user, activeAvatar, currentRoom.shortName || "LORE", activeTerminal);
+                        UI.updateCommandPrompt(getUserTier(), currentRoom.shortName || "LORE", activeTerminal, false);
                     }
                     return;
                 }
@@ -427,8 +427,20 @@ if (input) {
         }
 
         if (cmd === 'login') {
-            UI.addLog("[SYSTEM]: You must access the Tandem Terminal in the Lore Room to login.", "var(--term-amber)");
-            return;
+            if (localPlayer.currentRoom === 'lore1') {
+                activeTerminal = true;
+                wizardState.active = true;
+                wizardState.type = 'login';
+                wizardState.step = 1;
+                wizardState.pendingData = {};
+                UI.addLog("[TANDY]: To anchor this vessel permanently, the Technate requires a frequency signature. An email address will do.", "#b084e8");
+                UI.setWizardPrompt("TANDEM@LOGIN:~$");
+                refreshAllUI();
+                return;
+            } else {
+                UI.addLog("[SYSTEM]: You must access the Tandem Terminal in the Lore Room to login.", "var(--term-amber)");
+                return;
+            }
         }
 
         // --- AUTH & IDENTITY COMMANDS ---
