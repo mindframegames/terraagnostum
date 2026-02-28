@@ -131,9 +131,13 @@ function setupWorldListener() {
 
 function mergeAndRefreshMap(fetchedNodes = {}) {
     apartmentMap = { ...initialMap, ...fetchedNodes };
-    UI.updateRoomItemsUI(apartmentMap[localPlayer.currentRoom]?.items);
-    UI.updateRoomEntitiesUI(apartmentMap[localPlayer.currentRoom]?.npcs);
-    UI.renderMapHUD(apartmentMap, localPlayer.currentRoom, localPlayer.stratum);
+    
+    if (!apartmentMap[localPlayer.currentRoom]) {
+        console.warn("[SYSTEM]: Reality sync interrupted. Re-anchoring to Bedroom.");
+        localPlayer.currentRoom = "bedroom";
+    }
+    
+    refreshAllUI();
 }
 
 function updateMapListener() {
@@ -255,14 +259,10 @@ async function executeMovement(targetDir) {
 
         const nextRoomKey = typeof exitData === 'string' ? exitData : exitData.target;
         
-        if (!activeAvatar && !isArchiveRoom(nextRoomKey)) {
-             UI.addLog("[TANDY]: You cannot drift beyond the threshold. Anchor yourself in the Character Room first.");
-             return;
-        }
-
-        if (getUserTier() === "GUEST" && nextRoomKey === "hallway_public") {
-             UI.addLog("[TANDY]: Your vessel is unstable, Guest. If you step into the Shared Hallway now, you'll evaporate. Visit the Tandem Terminal in the Lore Room to 'Resonate' first.");
-             return;
+        const tier = getUserTier();
+        if ((tier === "VOID" || tier === "GUEST") && !isArchiveRoom(nextRoomKey)) {
+            UI.addLog(`[TANDY]: You cannot leave the Archive yet. Your vessel will evaporate. Go to the Tandem Terminal in the Lore Room and type 'login'.`, "#b084e8");
+            return;
         }
 
         const nextRoom = apartmentMap[nextRoomKey];
@@ -322,6 +322,39 @@ if (input) {
             if (isProcessing) return;
             if (val) UI.addLog(val, "#ffffff");
             if (wizardState.active) { 
+                if (wizardState.type === 'login') {
+                    if (wizardState.step === 1) {
+                        const email = val.trim();
+                        if (!email.includes('@')) {
+                            UI.addLog("[SYSTEM]: Invalid signature format.", "var(--term-red)");
+                            return;
+                        }
+                        
+                        UI.addLog(`[SYSTEM]: Transmitting anchoring frequency to ${email}...`, "var(--term-amber)");
+                        
+                        const actionCodeSettings = {
+                            url: window.location.href,
+                            handleCodeInApp: true
+                        };
+                        
+                        sendSignInLinkToEmail(auth, email, actionCodeSettings)
+                            .then(() => {
+                                window.localStorage.setItem('emailForSignIn', email);
+                                UI.addLog("[TANDY]: I've sent a pulse to your inbox. Click the link inside to fuse your signature with the Technate. You can close this terminal or wait here.", "#b084e8");
+                            })
+                            .catch((error) => {
+                                UI.addLog(`[SYSTEM ERROR]: ${error.message}`, "var(--term-red)");
+                            });
+                            
+                        wizardState.active = false;
+                        wizardState.type = null;
+                        wizardState.step = 0;
+                        wizardState.pendingData = {};
+                        const currentRoom = apartmentMap[localPlayer.currentRoom];
+                        UI.updateCommandPrompt(user, activeAvatar, currentRoom.shortName || "LORE", activeTerminal);
+                    }
+                    return;
+                }
                 handleWizardInput(
                     val, 
                     { apartmentMap, localPlayer, user, activeAvatar },
@@ -378,27 +411,23 @@ if (input) {
                 refreshAllUI();
                 return;
             }
-            if (cmd === 'resonate') {
-                if (!localPlayer.hasGenerator) {
-                    UI.addLog("[TANDY]: You need the Schumman Resonance Generator to sync. Did you check the closet?", "#b084e8");
-                    return;
-                }
-                UI.addLog("[SYSTEM]: COMMENCING RESONANCE PROTOCOL...", "var(--term-amber)");
-                // Placeholder for actual Firebase Auth trigger
-                UI.addLog("[SYSTEM]: (Firebase Auth Placeholder) BINDING COMPLETE.", "var(--term-green)");
-                activeTerminal = false;
-                refreshAllUI();
+            if (cmd === 'login') {
+                wizardState.active = true;
+                wizardState.type = 'login';
+                wizardState.step = 1;
+                wizardState.pendingData = {};
+                UI.addLog("[TANDY]: To anchor this vessel permanently, the Technate requires a frequency signature. An email address will do.", "#b084e8");
+                UI.setWizardPrompt("TANDEM@LOGIN:~$");
                 return;
             }
 
             // Catch all other commands while in terminal
-            UI.addLog("[TANDEM]: Unknown command. Type 'resonate' or 'exit'.", "var(--term-amber)");
+            UI.addLog("[TANDEM]: Unknown command. Type 'login' or 'exit'.", "var(--term-amber)");
             return;
         }
 
-        // Catch raw resonate if they aren't logged into the terminal
-        if (cmd === 'resonate') {
-            UI.addLog("[SYSTEM]: You must access the Tandem Terminal to resonate.");
+        if (cmd === 'login') {
+            UI.addLog("[SYSTEM]: You must access the Tandem Terminal in the Lore Room to login.", "var(--term-amber)");
             return;
         }
 
