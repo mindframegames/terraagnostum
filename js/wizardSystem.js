@@ -1,493 +1,291 @@
-import { doc, updateDoc, arrayUnion, addDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { callGemini, compressImage, generatePortrait } from './apiService.js';
-import { triggerVisualUpdate } from './visualSystem.js';
+import { collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { sendSignInLinkToEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { auth, db, appId, isSyncEnabled } from './firebaseConfig.js';
+import { callGemini, projectVisual } from './apiService.js';
 import * as UI from './ui.js';
-import { db, appId, isSyncEnabled } from './firebaseConfig.js';
 
-export const wizardState = {
-    active: false,
-    type: null,
-    step: 0,
-    pendingData: {},
-    existingData: {}
-};
+const CHAR_COLLECTION = 'v3_characters'; // Matches main.js for safety
+
+export let wizardState = { active: false, type: null, step: 0, pendingData: {} };
+
+export function startWizard(type, initialData = {}) {
+    wizardState = { active: true, type, step: 1, pendingData: initialData };
+}
 
 export function resetWizard() {
-    wizardState.active = false;
-    wizardState.type = null;
-    wizardState.step = 0;
-    wizardState.pendingData = {};
-    wizardState.existingData = {};
+    wizardState = { active: false, type: null, step: 0, pendingData: {} };
 }
 
-export function startWizard(type, existingData = {}) {
-    wizardState.active = true;
-    wizardState.type = type;
-    wizardState.step = 1;
-    wizardState.pendingData = {};
-    wizardState.existingData = existingData;
+// Built-in Compression Utility to prevent 1MB Firestore limits
+async function compressImage(base64Str, maxWidth = 512, quality = 0.7) {
+    return new Promise((resolve) => {
+        if (!base64Str || !base64Str.startsWith('data:image')) return resolve(base64Str);
+        const img = new Image();
+        img.src = base64Str;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(base64Str);
+    });
 }
 
-export function handleWizardInput(val, state, actions) {
-    const { apartmentMap, localPlayer, user, activeAvatar } = state;
-    const { 
-        refreshCommandPrompt, 
-        refreshStatusUI, 
-        setActiveAvatar, 
-        addLocalCharacter,
-        setIsProcessing,
-        isArchiveRoom
-    } = actions;
+// The Core Handler (Now Context-Aware!)
+export async function handleWizardInput(val, context = {}, callbacks = {}) {
+    let currentVal = val.trim();
+    
+    // Unpack the state passed from main.js
+    const { apartmentMap, localPlayer, user, activeAvatar } = context;
+    const { refreshAllUI, updateMapListener, setActiveAvatar, addLocalCharacter } = callbacks;
 
-    if (wizardState.type === 'item') {
-        if (wizardState.step === 1) {
-            if (!val) { UI.addLog(`[WIZARD]: Name cannot be empty.`, "var(--term-red)"); return; }
-            wizardState.pendingData.name = val;
-            UI.addLog(`[WIZARD]: Name set to '${val}'. What type of item is this? (e.g., Book, Key, Weapon)`, "var(--term-amber)");
-            wizardState.step++;
-        } else if (wizardState.step === 2) {
-            wizardState.pendingData.type = val || 'Artifact';
-            UI.addLog(`[WIZARD]: Type set to '${wizardState.pendingData.type}'. Finally, provide a short physical description.`, "var(--term-amber)");
-            wizardState.step++;
-        } else if (wizardState.step === 3) {
-            wizardState.pendingData.description = val || 'An unknown manifestation.';
-            wizardState.pendingData.id = Date.now().toString(); 
-            const room = apartmentMap[localPlayer.currentRoom];
-            
-            if (!room.items) room.items = [];
-            room.items.push(wizardState.pendingData);
-            
-            if (isSyncEnabled) {
-                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
-                const path = isPrivate && user 
-                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
-                const mapRef = doc(db, path);
-                updateDoc(mapRef, { [`nodes.${localPlayer.currentRoom}.items`]: arrayUnion(wizardState.pendingData) });
-            }
-            
-            UI.updateRoomItemsUI(room.items);
-            UI.addLog(`[SYSTEM]: Successfully materialized [${wizardState.pendingData.name}] into ${room.name}.`, "var(--term-green)");
-            refreshCommandPrompt();
-            resetWizard();
-        }
-    } 
-    else if (wizardState.type === 'room') {
-        if (wizardState.step === 1) {
-            wizardState.pendingData.name = val || wizardState.existingData.name;
-            UI.addLog(`[WIZARD]: Room Name set to '${wizardState.pendingData.name}'.`);
-            UI.addLog(`Current NARRATIVE: "${wizardState.existingData.description}"`, "var(--crayola-blue)");
-            UI.addLog(`Enter new NARRATIVE (or press Enter to keep current):`, "var(--term-amber)");
-            wizardState.step++;
-        } else if (wizardState.step === 2) {
-            wizardState.pendingData.description = val || wizardState.existingData.description;
-            UI.addLog(`[WIZARD]: Description saved.`);
-            UI.addLog(`Current VISUAL PROMPT: "${wizardState.existingData.visualPrompt || wizardState.existingData.visual_prompt}"`, "var(--crayola-blue)");
-            UI.addLog(`Enter new VISUAL PROMPT (or press Enter to keep current):`, "var(--term-amber)");
-            wizardState.step++;
-        } else if (wizardState.step === 3) {
-            wizardState.pendingData.visualPrompt = val || wizardState.existingData.visualPrompt || wizardState.existingData.visual_prompt;
-            const rKey = localPlayer.currentRoom;
-            
-            apartmentMap[rKey].name = wizardState.pendingData.name;
-            apartmentMap[rKey].shortName = wizardState.pendingData.name.substring(0, 7).toUpperCase();
-            apartmentMap[rKey].description = wizardState.pendingData.description;
-            apartmentMap[rKey].visualPrompt = wizardState.pendingData.visualPrompt;
-            apartmentMap[rKey].pinnedView = null; // Clear old pin on edit
-            
-            if (isSyncEnabled) {
-                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
-                const path = isPrivate && user 
-                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
-                const mapRef = doc(db, path);
-                updateDoc(mapRef, {
-                    [`nodes.${rKey}.name`]: wizardState.pendingData.name,
-                    [`nodes.${rKey}.shortName`]: apartmentMap[rKey].shortName,
-                    [`nodes.${rKey}.description`]: wizardState.pendingData.description,
-                    [`nodes.${rKey}.visualPrompt`]: wizardState.pendingData.visualPrompt,
-                    [`nodes.${rKey}.pinnedView`]: null // Clear old pin in DB
-                });
-            }
-            
-            UI.addLog(`[SYSTEM]: Sector successfully re-rendered. Old pins discarded.`, "var(--term-green)");
-            UI.printRoomDescription(apartmentMap[rKey], localPlayer.stratum === 'faen', apartmentMap);
-            triggerVisualUpdate(apartmentMap[rKey].visualPrompt, localPlayer, apartmentMap, user); // Force regeneration with new prompt
-            
-            refreshStatusUI();
-            UI.renderMapHUD(apartmentMap, rKey, localPlayer.stratum);
-            refreshCommandPrompt();
-            resetWizard();
-        }
-    } 
-    else if (wizardState.type === 'expand') {
-        if (wizardState.step === 1) {
-            wizardState.pendingData.name = val || "New Area";
-            UI.addLog(`[WIZARD]: Room Name set. Enter the narrative description:`, "var(--term-amber)");
-            wizardState.step++;
-        } else if (wizardState.step === 2) {
-            wizardState.pendingData.description = val || 'An indistinct area.';
-            UI.addLog(`[WIZARD]: Description saved. Enter a visual prompt for the image generator:`, "var(--term-amber)");
-            wizardState.step++;
-        } else if (wizardState.step === 3) {
-            wizardState.pendingData.visualPrompt = val || 'A glitchy, undefined space.';
-            const newRoomId = 'node_' + Date.now();
-            const currentRoomKey = localPlayer.currentRoom;
-            const dir = wizardState.pendingData.direction; 
-            const reverseDir = { 'north':'south', 'south':'north', 'east':'west', 'west':'east' }[dir];
-            
-            const newNode = {
-                name: wizardState.pendingData.name,
-                shortName: wizardState.pendingData.name.substring(0, 7).toUpperCase(),
-                description: wizardState.pendingData.description,
-                visualPrompt: wizardState.pendingData.visualPrompt,
-                exits: { [reverseDir]: currentRoomKey },
-                pinnedView: null, items: [], marginalia: [], npcs: []
-            };
-            
-            apartmentMap[newRoomId] = newNode;
-            if (!apartmentMap[currentRoomKey].exits) apartmentMap[currentRoomKey].exits = {};
-            apartmentMap[currentRoomKey].exits[dir] = newRoomId;
-            
-            if (isSyncEnabled) {
-                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
-                const path = isPrivate && user 
-                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
-                const mapRef = doc(db, path);
-                updateDoc(mapRef, {
-                    [`nodes.${currentRoomKey}.exits.${dir}`]: newRoomId,
-                    [`nodes.${newRoomId}`]: newNode
-                });
-            }
-            
-            UI.addLog(`[SYSTEM]: Sector materialization complete. Path to the ${dir.toUpperCase()} is now open.`, "var(--term-green)");
-            refreshCommandPrompt();
-            UI.renderMapHUD(apartmentMap, localPlayer.currentRoom, localPlayer.stratum);
-            resetWizard();
-        }
+    const endWizard = () => {
+        resetWizard();
+        if (refreshAllUI) refreshAllUI();
+    };
+
+    // 1. LOGIN WIZARD
+    if (wizardState.type === 'login') {
+        const email = currentVal;
+        UI.addLog(`[SYSTEM]: Transmitting anchoring frequency to ${email}...`, "var(--term-amber)");
+        const actionCodeSettings = { url: window.location.href.split('?')[0], handleCodeInApp: true };
+        try {
+            await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+            window.localStorage.setItem('emailForSignIn', email);
+            UI.addLog("[TANDY]: Pulse sent. Check your inbox to fuse your signature.", "#b084e8");
+        } catch(e) { UI.addLog(`[ERROR]: ${e.message}`, "var(--term-red)"); }
+        endWizard();
+        return;
     }
-    else if (wizardState.type === 'auto_expand') {
-        if (wizardState.step === 1) {
-            const seedPhrase = val || "An undefined anomaly.";
-            const dir = wizardState.pendingData.direction;
-            const currentRoomKey = localPlayer.currentRoom;
-            const currentRoom = apartmentMap[currentRoomKey];
-            
-            setIsProcessing(true);
-            resetWizard();
-            refreshCommandPrompt();
-            
-            if (dir === 'here') {
-                UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">RE-WEAVING LOCAL REALITY BASED ON SEED: "${seedPhrase}"...</span>`);
-            } else {
-                UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">WEAVING ADJACENT REALITY BASED ON SEED: "${seedPhrase}"...</span>`);
-            }
-            
-            (async () => {
-                try {
-                    const sysPrompt = dir === 'here' ? 
-                        `You are the Architect of Terra Agnostum. 
-                        Redesign the current room based on the user's seed idea.
-                        Current Stratum: ${localPlayer.stratum.toUpperCase()}.
-                        Old Room Context: ${currentRoom.name} - ${currentRoom.description}.
-                        User's Seed Idea for Room: "${seedPhrase}".
-                        Expand on this seed idea to create a rich, atmospheric room.
-                        Respond STRICTLY in JSON:
-                        {
-                          "name": "Evocative Name",
-                          "description": "Atmospheric narrative description",
-                          "visual_prompt": "Detailed prompt for image generation"
-                        }` :
-                        `You are the Architect of Terra Agnostum. 
-                        Generate a thematic new room located to the ${dir.toUpperCase()} of the current room.
-                        Current Stratum: ${localPlayer.stratum.toUpperCase()}.
-                        Current Room Context: ${currentRoom.name} - ${currentRoom.description}.
-                        User's Seed Idea for New Room: "${seedPhrase}".
-                        Expand on this seed idea to create a rich, atmospheric room.
-                        Respond STRICTLY in JSON:
-                        {
-                          "name": "Evocative Name",
-                          "description": "Atmospheric narrative description",
-                          "visual_prompt": "Detailed prompt for image generation"
-                        }`;
 
-                    const res = await callGemini("Generate an adjacent room from seed.", sysPrompt);
-                    
-                    if (res && res.name && res.description) {
-                        if (dir === 'here') {
-                            apartmentMap[currentRoomKey].name = res.name;
-                            apartmentMap[currentRoomKey].shortName = res.name.substring(0, 7).toUpperCase();
-                            apartmentMap[currentRoomKey].description = res.description;
-                            apartmentMap[currentRoomKey].visualPrompt = res.visual_prompt || res.visualPrompt;
-                            apartmentMap[currentRoomKey].pinnedView = null; // Clear old pin
-                            
-                            if (isSyncEnabled) {
-                                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
-                                const path = isPrivate && user 
-                                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-                                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
-                                const mapRef = doc(db, path);
-                                await updateDoc(mapRef, {
-                                    [`nodes.${currentRoomKey}.name`]: res.name,
-                                    [`nodes.${currentRoomKey}.shortName`]: apartmentMap[currentRoomKey].shortName,
-                                    [`nodes.${currentRoomKey}.description`]: res.description,
-                                    [`nodes.${currentRoomKey}.visualPrompt`]: res.visual_prompt || res.visualPrompt,
-                                    [`nodes.${currentRoomKey}.pinnedView`]: null
-                                });
-                            }
-                            
-                            UI.addLog(`[SYSTEM]: Sector successfully re-woven based on seed.`, "var(--term-green)");
-                            UI.printRoomDescription(apartmentMap[currentRoomKey], localPlayer.stratum === 'faen', apartmentMap);
-                            triggerVisualUpdate(apartmentMap[currentRoomKey].visualPrompt, localPlayer, apartmentMap, user);
-                            refreshStatusUI();
-                            UI.renderMapHUD(apartmentMap, localPlayer.currentRoom, localPlayer.stratum);
-                        } else {
-                            const newRoomId = 'node_' + Date.now();
-                            const reverseDir = { 'north':'south', 'south':'north', 'east':'west', 'west':'east' }[dir];
-                            
-                            const newNode = {
-                                name: res.name,
-                                shortName: res.name.substring(0, 7).toUpperCase(),
-                                description: res.description,
-                                visualPrompt: res.visual_prompt || res.visualPrompt,
-                                exits: { [reverseDir]: currentRoomKey },
-                                pinnedView: null, items: [], marginalia: [], npcs: []
-                            };
-                            
-                            apartmentMap[newRoomId] = newNode;
-                            if (!apartmentMap[currentRoomKey].exits) apartmentMap[currentRoomKey].exits = {};
-                            apartmentMap[currentRoomKey].exits[dir] = newRoomId;
-                            
-                            if (isSyncEnabled) {
-                                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
-                                const path = isPrivate && user 
-                                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-                                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
-                                const mapRef = doc(db, path);
-                                await updateDoc(mapRef, {
-                                    [`nodes.${currentRoomKey}.exits.${dir}`]: newRoomId,
-                                    [`nodes.${newRoomId}`]: newNode
-                                });
-                            }
-                            
-                            UI.addLog(`[SYSTEM]: Auto-sector materialization complete. Path to the ${dir.toUpperCase()} is now open to [${res.name}].`, "var(--term-green)");
-                            UI.renderMapHUD(apartmentMap, localPlayer.currentRoom, localPlayer.stratum);
-                        }
-                    }
-                } catch (err) {
-                    UI.addLog("[SYSTEM ERROR]: Reality weave failed.", "var(--term-red)");
-                } finally {
-                    document.getElementById('thinking-indicator')?.remove();
-                    setIsProcessing(false);
+    // 2. AVATAR WIZARD (With AI Assists & Compression)
+    if (wizardState.type === 'avatar') {
+        if (wizardState.step === 1) {
+            if (!currentVal) {
+                UI.addLog("[SYSTEM]: Querying Archive for designation...", "var(--term-amber)");
+                const aiRes = await callGemini("Generate 1 cool cyberpunk name. Name only.");
+                currentVal = aiRes.trim();
+            }
+            wizardState.pendingData.name = currentVal;
+            UI.addLog(`[WIZARD]: Name confirmed: '${currentVal}'. Enter Archetype or press ENTER:`, "var(--term-amber)");
+            wizardState.step++;
+        } 
+        else if (wizardState.step === 2) {
+            if (!currentVal) {
+                UI.addLog("[SYSTEM]: Querying Archive for archetype...", "var(--term-amber)");
+                const aiRes = await callGemini(`Suggest a 1-word cyberpunk archetype for ${wizardState.pendingData.name}.`);
+                currentVal = aiRes.replace(/["']/g, '').trim();
+            }
+            wizardState.pendingData.archetype = currentVal;
+            UI.addLog(`[WIZARD]: Archetype logged. Press ENTER for an AI visual imprint:`, "var(--term-amber)");
+            wizardState.step++;
+        } 
+        else if (wizardState.step === 3) {
+            if (!currentVal) {
+                UI.addLog("[SYSTEM]: Extrapolating visual imprint...", "var(--term-amber)");
+                currentVal = await callGemini(`1-sentence visual description of ${wizardState.pendingData.name}, a ${wizardState.pendingData.archetype} in a cyberpunk world.`);
+            }
+            wizardState.pendingData.visual_prompt = currentVal;
+            UI.addLog(`[SYSTEM]: Collapsing quantum state... Materializing vessel...`, "var(--gm-purple)");
+            
+            let finalImage = null;
+            try {
+                UI.addLog(`[SYSTEM]: Rendering vessel matrix...`, "var(--term-amber)");
+                const rawImage = await projectVisual(wizardState.pendingData.visual_prompt);
+                
+                // CRITICAL COMPRESSION FIX
+                if (rawImage && rawImage.startsWith('data:image')) {
+                    UI.addLog(`[SYSTEM]: Optimizing visual signature for stability...`, "var(--term-amber)");
+                    finalImage = await compressImage(rawImage, 512, 0.7);
                 }
-            })();
-        }
-    }
-    else if (wizardState.type === 'avatar') {
-        if (wizardState.step === 1) {
-            if (!val) { UI.addLog(`[WIZARD]: Name cannot be empty.`, "var(--term-red)"); return; }
-            wizardState.pendingData.name = val;
-            UI.addLog(`[WIZARD]: Identity confirmed as '${val}'. Enter your Archetype/Class (e.g., Cyber-Merc, Harmonic Bard, Faen Weaver):`, "var(--term-amber)");
-            wizardState.step++;
-        } else if (wizardState.step === 2) {
-            wizardState.pendingData.archetype = val || 'Wanderer';
-            UI.addLog(`[WIZARD]: Archetype logged. Describe your vessel's physical appearance in detail:`, "var(--term-amber)");
-            wizardState.step++;
-        } else if (wizardState.step === 3) {
-            wizardState.pendingData.visual_prompt = val || 'A shadowed, undefined figure.';
-            const charData = {
+            } catch(e) { UI.addLog("[SYSTEM ERROR]: Render failed.", "var(--term-red)"); }
+
+            const finalData = {
                 name: wizardState.pendingData.name,
                 archetype: wizardState.pendingData.archetype,
                 visual_prompt: wizardState.pendingData.visual_prompt,
+                image: finalImage,
                 stats: { WILL: 20, CONS: 20, PHYS: 20 },
-                deceased: false, deployed: false
+                deceased: false, deployed: false, timestamp: Date.now()
             };
-            
-            UI.addLog(`[SYSTEM]: Extracting genetic imprint for your primary vessel [${charData.name}]...`, "var(--gm-purple)");
-            resetWizard();
-            refreshCommandPrompt();
 
-            (async () => {
-                let cardImageSrc = "";
-                let compressedImageSrc = "";
-                try {
-                    const b64 = await generatePortrait(charData.visual_prompt, localPlayer.stratum);
-                    if (b64) {
-                        cardImageSrc = `data:image/png;base64,${b64}`;
-                        compressedImageSrc = await compressImage(cardImageSrc);
-                    }
-                } catch (e) {
-                    console.error("Card Image Error", e);
-                }
-                
-                const fullCharData = { ...charData, image: compressedImageSrc || cardImageSrc, timestamp: Date.now() };
-                
-                if (user) {
-                    try {
-                        const charCol = collection(db, 'artifacts', appId, 'users', user.uid, 'characters');
-                        const docRef = await addDoc(charCol, fullCharData);
-                        fullCharData.id = docRef.id; 
-                        UI.addLog(`[SYSTEM]: Avatar Card [${charData.name}] permanently registered to your profile.`, "var(--term-green)");
-                    } catch (e) {
-                        UI.addLog(`[SYSTEM ERROR]: Could not save Avatar to the archive.`, "var(--term-red)");
-                    }
-                }
-                
-                UI.renderCharacterCard(fullCharData, compressedImageSrc || cardImageSrc);
-                addLocalCharacter(fullCharData);
-                setActiveAvatar(fullCharData); 
-                UI.updateAvatarUI(fullCharData); 
-                refreshCommandPrompt();
-            })();
-        }
-    }
-    else if (wizardState.type === 'deploy_npc') {
-        if (wizardState.step === 1) {
-            const personality = val || "Stands silently, observing the void.";
-            const roomKey = localPlayer.currentRoom;
-            const room = apartmentMap[roomKey];
-            if (!room.npcs) room.npcs = [];
-            
-            const newNPC = {
-                id: 'npc_' + Date.now(),
-                name: activeAvatar.name,
-                archetype: activeAvatar.archetype,
-                visual_prompt: activeAvatar.visual_prompt,
-                image: activeAvatar.image, 
-                personality: personality,
-                owner: user ? user.uid : 'guest'
-            };
-            
-            room.npcs.push(newNPC);
-            
-            if (isSyncEnabled) {
-                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
-                const path = isPrivate && user 
-                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
-                const mapRef = doc(db, path);
-                updateDoc(mapRef, { [`nodes.${roomKey}.npcs`]: arrayUnion(newNPC) });
+            const currentUser = user || auth.currentUser;
+            if (currentUser) {
+                addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, CHAR_COLLECTION), finalData).then(docRef => {
+                    finalData.id = docRef.id;
+                    if (setActiveAvatar) setActiveAvatar(finalData);
+                    if (addLocalCharacter) addLocalCharacter(finalData);
+                    UI.materializeEffect(); 
+                    UI.addLog(`[SYSTEM]: VESSEL COLLAPSE COMPLETE. YOU ARE REAL.`, "var(--term-green)");
+                    endWizard();
+                }).catch(e => {
+                    UI.addLog("[SYSTEM ERROR]: Failed to persist vessel.", "var(--term-red)");
+                    console.error(e);
+                    endWizard();
+                });
+            } else {
+                endWizard();
             }
-            
-            if (activeAvatar && user) {
-                try {
-                    const charRef = doc(db, 'artifacts', appId, 'users', user.uid, 'characters', activeAvatar.id);
-                    updateDoc(charRef, { deployed: true }); 
-                } catch (e) { console.error("Could not write deployment state.", e); }
-            }
-            
-            UI.addLog(`[SYSTEM]: Vessel [${newNPC.name}] detached and left on autonomous local loop.`, "var(--term-green)");
-            UI.addLog(`[SYSTEM]: You are once again an itinerant void. Find a mirror to forge a new form.`, "var(--term-amber)");
-            
-            setActiveAvatar(null);
-            UI.updateAvatarUI(null);
-            refreshCommandPrompt();
-            UI.updateRoomEntitiesUI(room.npcs);
-            resetWizard();
         }
+        return;
     }
-    else if (wizardState.type === 'create_npc') {
+
+    // === 3. RESTORED ARCHITECT COMMANDS ===
+    if (wizardState.type === 'item') {
+        if (!currentVal) return;
+        const room = apartmentMap[localPlayer.currentRoom];
+        if (!room.items) room.items = [];
+        room.items.push({ name: currentVal, type: "Constructed Object" });
+        UI.addLog(`[SYSTEM]: Materialized [${currentVal}].`, "var(--term-green)");
+        if (isSyncEnabled && updateMapListener) updateMapListener();
+        endWizard();
+        return;
+    }
+
+    if (wizardState.type === 'room') {
+        if (currentVal) {
+            apartmentMap[localPlayer.currentRoom].name = currentVal;
+            apartmentMap[localPlayer.currentRoom].shortName = currentVal.substring(0, 7).toUpperCase();
+            UI.addLog(`[SYSTEM]: Sector identity overwritten.`, "var(--term-green)");
+            if (isSyncEnabled && updateMapListener) updateMapListener();
+        }
+        endWizard();
+        return;
+    }
+
+    if (wizardState.type === 'lock_exit') {
+        if (!currentVal) return;
+        const dir = wizardState.pendingData.direction;
+        const room = apartmentMap[localPlayer.currentRoom];
+        const target = typeof room.exits[dir] === 'string' ? room.exits[dir] : room.exits[dir].target;
+        room.exits[dir] = { target: target, locked: true, lockMsg: currentVal };
+        UI.addLog(`[SYSTEM]: Exit ${dir.toUpperCase()} locked.`, "var(--term-amber)");
+        if (isSyncEnabled && updateMapListener) updateMapListener();
+        endWizard();
+        return;
+    }
+
+    if (wizardState.type === 'expand') {
+        if (!currentVal) return;
+        const dir = wizardState.pendingData.direction;
+        const newRoomId = 'room_' + crypto.randomUUID().split('-')[0];
+        const getOpposite = (d) => ({'north':'south','south':'north','east':'west','west':'east'})[d] || 'out';
+        
+        apartmentMap[newRoomId] = {
+            name: currentVal,
+            shortName: currentVal.substring(0, 7).toUpperCase(),
+            description: "A newly woven pocket of reality. It is waiting for definition.",
+            visualPrompt: "An empty, newly constructed cyberpunk room, wireframe elements solidifying into reality.",
+            exits: { [getOpposite(dir)]: localPlayer.currentRoom },
+            items: [], npcs: []
+        };
+        
+        apartmentMap[localPlayer.currentRoom].exits[dir] = newRoomId;
+        UI.addLog(`[SYSTEM]: Reality expanded ${dir.toUpperCase()}.`, "var(--term-green)");
+        if (isSyncEnabled && updateMapListener) updateMapListener();
+        endWizard();
+        return;
+    }
+
+    if (wizardState.type === 'auto_expand') {
+         if (!currentVal) return;
+         const dir = wizardState.pendingData.direction;
+         UI.addLog(`[SYSTEM]: Handing seed phrase to the AI Architect...`, "var(--gm-purple)");
+         try {
+             const prompt = `Generate a room definition based on this seed: "${currentVal}". Stratum: ${localPlayer.stratum}. Respond strictly in JSON: {"name":"...","description":"...","visual_prompt":"..."}`;
+             const res = await callGemini("Generate room", prompt);
+             if (res && res.name) {
+                 const newRoomId = 'room_' + crypto.randomUUID().split('-')[0];
+                 const getOpposite = (d) => ({'north':'south','south':'north','east':'west','west':'east'})[d] || 'out';
+                 
+                 apartmentMap[newRoomId] = {
+                     name: res.name,
+                     shortName: res.name.substring(0, 7).toUpperCase(),
+                     description: res.description,
+                     visualPrompt: res.visual_prompt,
+                     exits: { [getOpposite(dir)]: localPlayer.currentRoom },
+                     items: [], npcs: []
+                 };
+                 
+                 if (dir !== 'here') apartmentMap[localPlayer.currentRoom].exits[dir] = newRoomId;
+                 UI.addLog(`[SYSTEM]: Sector generated.`, "var(--term-green)");
+                 if (isSyncEnabled && updateMapListener) updateMapListener();
+             }
+         } catch(e) { UI.addLog("[SYSTEM ERROR]: Weave failed.", "var(--term-red)"); }
+         endWizard();
+         return;
+    }
+
+    if (wizardState.type === 'deploy_npc') {
+        if (!currentVal) return;
+        const room = apartmentMap[localPlayer.currentRoom];
+        if (!room.npcs) room.npcs = [];
+        
+        const newNpc = {
+            name: activeAvatar.name,
+            archetype: activeAvatar.archetype,
+            visualPrompt: activeAvatar.visual_prompt,
+            image: activeAvatar.image,
+            behavior: currentVal
+        };
+        room.npcs.push(newNpc);
+        UI.addLog(`[SYSTEM]: Vessel detached and autonomous protocol initialized.`, "var(--term-amber)");
+        if (isSyncEnabled && updateMapListener) updateMapListener();
+        if (setActiveAvatar) setActiveAvatar(null);
+        endWizard();
+        return;
+    }
+
+    if (wizardState.type === 'create_npc') {
         if (wizardState.step === 1) {
-            if (!val) { UI.addLog(`[WIZARD]: Name cannot be empty.`, "var(--term-red)"); return; }
-            wizardState.pendingData.name = val;
-            UI.addLog(`[WIZARD]: Name set to '${val}'. Enter Archetype/Role (e.g., Cafe Owner, Bouncer):`, "var(--term-amber)");
+            if (!currentVal) return;
+            wizardState.pendingData.name = currentVal;
+            UI.addLog(`[WIZARD]: Name logged. Enter Archetype (e.g., 'Vendor', 'Guard'):`, "var(--term-amber)");
             wizardState.step++;
         } else if (wizardState.step === 2) {
-            wizardState.pendingData.archetype = val || 'Entity';
-            UI.addLog(`[WIZARD]: Archetype set. Describe their physical appearance:`, "var(--term-amber)");
+            if (!currentVal) return;
+            wizardState.pendingData.archetype = currentVal;
+            UI.addLog(`[WIZARD]: Archetype logged. Enter Visual Description:`, "var(--term-amber)");
             wizardState.step++;
         } else if (wizardState.step === 3) {
-            wizardState.pendingData.visual_prompt = val || 'A shadowed figure.';
-            UI.addLog(`[WIZARD]: Appearance saved. Describe their autonomous personality/goals (e.g., "Protects the north door, suspicious of strangers"):`, "var(--term-amber)");
-            wizardState.step++;
-        } else if (wizardState.step === 4) {
-            wizardState.pendingData.personality = val || 'Stands silently.';
-            const roomKey = localPlayer.currentRoom;
-            const room = apartmentMap[roomKey];
-            if (!room.npcs) room.npcs = [];
+            if (!currentVal) return;
+            wizardState.pendingData.visualPrompt = currentVal;
+            UI.addLog(`[SYSTEM]: Compiling NPC...`, "var(--term-amber)");
             
-            const newNPC = {
-                id: 'npc_' + Date.now(),
+            let npcImg = null;
+            try {
+                const rawImg = await projectVisual(wizardState.pendingData.visualPrompt);
+                if (rawImg) npcImg = await compressImage(rawImg, 512, 0.7);
+            } catch(e) {}
+            
+            const newNpc = {
                 name: wizardState.pendingData.name,
                 archetype: wizardState.pendingData.archetype,
-                visual_prompt: wizardState.pendingData.visual_prompt,
-                image: null, 
-                personality: wizardState.pendingData.personality,
-                owner: user ? user.uid : 'system'
+                visualPrompt: wizardState.pendingData.visualPrompt,
+                image: npcImg,
+                behavior: "Standing idle."
             };
             
-            room.npcs.push(newNPC);
-            
-            if (isSyncEnabled) {
-                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
-                const path = isPrivate && user 
-                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
-                const mapRef = doc(db, path);
-                updateDoc(mapRef, { [`nodes.${roomKey}.npcs`]: arrayUnion(newNPC) });
-            }
-            
-            UI.addLog(`[SYSTEM]: Entity [${newNPC.name}] instantiated into the sector. Generating portrait...`, "var(--term-green)");
-            refreshCommandPrompt();
-            UI.updateRoomEntitiesUI(room.npcs);
-            resetWizard();
+            const room = apartmentMap[localPlayer.currentRoom];
+            if (!room.npcs) room.npcs = [];
+            room.npcs.push(newNpc);
+            UI.addLog(`[SYSTEM]: Entity [${newNpc.name}] spawned successfully.`, "var(--term-green)");
+            if (isSyncEnabled && updateMapListener) updateMapListener();
+            endWizard();
+        }
+        return;
+    }
 
-            // Generate portrait in background
-            (async () => {
-                try {
-                    const b64 = await generatePortrait(newNPC.visual_prompt, localPlayer.stratum);
-                    if (b64) {
-                        const cardImageSrc = `data:image/png;base64,${b64}`;
-                        const compressedImageSrc = await compressImage(cardImageSrc);
-                        
-                        const updatedRoom = apartmentMap[localPlayer.currentRoom];
-                        const npcIdx = updatedRoom.npcs.findIndex(n => n.id === newNPC.id);
-                        if (npcIdx > -1) {
-                            updatedRoom.npcs[npcIdx].image = compressedImageSrc;
-                            UI.updateRoomEntitiesUI(updatedRoom.npcs);
-                            if (isSyncEnabled) {
-                                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
-                                const path = isPrivate && user 
-                                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-                                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
-                                const mapRef = doc(db, path);
-                                updateDoc(mapRef, { [`nodes.${localPlayer.currentRoom}.npcs`]: updatedRoom.npcs });
-                            }
-                        }
-                    }
-                } catch (e) { console.error("NPC Image Gen Error", e); }
-            })();
-        }
-    }
-    else if (wizardState.type === 'lock_exit') {
-        if (wizardState.step === 1) {
-            wizardState.pendingData.lockMsg = val || 'The way is barred.';
-            const dir = wizardState.pendingData.direction;
-            const roomKey = localPlayer.currentRoom;
-            const room = apartmentMap[roomKey];
-            
-            let existingTarget = room.exits[dir];
-            let targetId = typeof existingTarget === 'string' ? existingTarget : existingTarget.target;
-            
-            room.exits[dir] = {
-                target: targetId,
-                locked: true,
-                lockMsg: wizardState.pendingData.lockMsg
-            };
-            
-            if (isSyncEnabled) {
-                const isPrivate = isArchiveRoom && isArchiveRoom(localPlayer.currentRoom);
-                const path = isPrivate && user 
-                    ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-                    : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
-                const mapRef = doc(db, path);
-                updateDoc(mapRef, { [`nodes.${roomKey}.exits.${dir}`]: room.exits[dir] });
-            }
-            
-            UI.addLog(`[SYSTEM]: Sector ${dir.toUpperCase()} is now LOCKED.`, "var(--term-amber)");
-            refreshCommandPrompt();
-            resetWizard();
-        }
-    }
+    // Fallback cancel
+    UI.addLog("[WIZARD]: Protocol terminated.", "var(--term-amber)");
+    endWizard();
 }
