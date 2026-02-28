@@ -32,14 +32,14 @@ export function applyStratumTheme(stratum, isTransitioningToFaen) {
         document.body.classList.remove('faen-mode');
     }
 
-    if (stratum === 'faen') {
-        root.style.setProperty('--term-green', '#fce788');
+    if (stratum === 'faen' || stratum === 'weave') {
+        root.style.setProperty('--term-green', '#e2b714');
         root.style.setProperty('--term-amber', '#ff9d00');
         root.style.setProperty('--term-red', '#e53935'); 
         root.style.setProperty('--term-bg', '#1c0f1a');
         root.style.setProperty('--crayola-blue', '#b084e8'); 
         root.style.setProperty('--gm-purple', '#ff77ff');
-        stratDisp.innerText = 'STRATA: FAEN';
+        stratDisp.innerText = `STRATA: ${stratum.toUpperCase()}`;
         stratDisp.style.color = 'var(--crayola-blue)';
     } else if (stratum === 'technate') {
         root.style.setProperty('--term-green', '#e0f7fa');

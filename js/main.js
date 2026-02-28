@@ -433,7 +433,13 @@ if (input) {
                 wizardState.type = 'login';
                 wizardState.step = 1;
                 wizardState.pendingData = {};
-                UI.addLog("[TANDY]: To anchor this vessel permanently, the Technate requires a frequency signature. An email address will do.", "#b084e8");
+
+                if (!activeAvatar) {
+                    UI.addLog("[TANDY]: I sense a returning signature. Enter your email to pull your vessel from the Archive.", "#b084e8");
+                } else {
+                    UI.addLog("[TANDY]: To anchor this vessel permanently, the Technate requires a frequency signature. An email address will do.", "#b084e8");
+                }
+
                 UI.setWizardPrompt("TANDEM@LOGIN:~$");
                 refreshAllUI();
                 return;
