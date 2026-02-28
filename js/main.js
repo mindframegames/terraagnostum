@@ -12,6 +12,7 @@ import { app, auth, db, storage, isSyncEnabled, appId } from './firebaseConfig.j
 
 // Initialize with seed data
 let apartmentMap = { ...initialMap };
+let activeTerminal = false;
 
 // Player State
 let localPlayer = { 
@@ -20,7 +21,8 @@ let localPlayer = {
     stratum: "mundane",
     posture: "standing",
     inventory: [],
-    hasGenerator: false
+    hasGenerator: false,
+    isArchitect: false
 };
 
 let localCharacters = []; 
@@ -35,8 +37,8 @@ const isArchiveRoom = (roomId) => ARCHIVE_NODES.includes(roomId);
 
 function getUserTier() {
     if (!activeAvatar) return "VOID";
+    if (localPlayer.isArchitect || (user && user.email === 'matthewcarltyson@gmail.com')) return "ARCHITECT";
     if (user && user.isAnonymous) return "GUEST";
-    if (user && user.email === 'matthewcarltyson@gmail.com') return "ARCHITECT";
     return "RESONANT";
 }
 
@@ -50,7 +52,7 @@ function shiftStratum(targetStratum) {
 
 function refreshCommandPrompt() {
     const roomShort = apartmentMap[localPlayer.currentRoom]?.shortName || localPlayer.currentRoom.toUpperCase();
-    UI.updateCommandPrompt(user, activeAvatar, roomShort);
+    UI.updateCommandPrompt(user, activeAvatar, roomShort, activeTerminal);
 }
 
 function refreshStatusUI() {
@@ -345,6 +347,60 @@ if (input) {
             }
         
         const cmd = val.toLowerCase();
+
+        if (cmd === 'architect') {
+            localPlayer.isArchitect = !localPlayer.isArchitect;
+            UI.addLog(`[SYSTEM]: Architect mode ${localPlayer.isArchitect ? 'ENABLED' : 'DISABLED'}.`, "var(--term-amber)");
+            refreshAllUI();
+            return;
+        }
+
+        if (cmd.startsWith('"') || cmd.startsWith("'") || cmd.startsWith("say ")) {
+            const speech = val.replace(/^say\s+/i, '').replace(/^["']|["']$/g, '');
+            UI.addLog(`[YOU SAY]: "${speech}"`, "#ffffff");
+            // Later we will route this to NPC AI. For now, just echo.
+            return;
+        }
+
+        if (cmd === 'use terminal' || cmd === 'terminal') {
+            if (localPlayer.currentRoom === 'lore1') {
+                activeTerminal = true;
+                UI.addLog("[SYSTEM]: TANDEM INTERFACE ACTIVE. TYPE 'resonate' TO BIND SIGNATURE OR 'exit' TO DISCONNECT.", "var(--term-green)");
+                refreshAllUI();
+                return;
+            }
+        }
+
+        if (activeTerminal) {
+            if (cmd === 'exit' || cmd === 'leave' || cmd === 'disconnect') {
+                activeTerminal = false;
+                UI.addLog("[SYSTEM]: TANDEM INTERFACE DISCONNECTED.", "var(--term-amber)");
+                refreshAllUI();
+                return;
+            }
+            if (cmd === 'resonate') {
+                if (!localPlayer.hasGenerator) {
+                    UI.addLog("[TANDY]: You need the Schumman Resonance Generator to sync. Did you check the closet?", "#b084e8");
+                    return;
+                }
+                UI.addLog("[SYSTEM]: COMMENCING RESONANCE PROTOCOL...", "var(--term-amber)");
+                // Placeholder for actual Firebase Auth trigger
+                UI.addLog("[SYSTEM]: (Firebase Auth Placeholder) BINDING COMPLETE.", "var(--term-green)");
+                activeTerminal = false;
+                refreshAllUI();
+                return;
+            }
+
+            // Catch all other commands while in terminal
+            UI.addLog("[TANDEM]: Unknown command. Type 'resonate' or 'exit'.", "var(--term-amber)");
+            return;
+        }
+
+        // Catch raw resonate if they aren't logged into the terminal
+        if (cmd === 'resonate') {
+            UI.addLog("[SYSTEM]: You must access the Tandem Terminal to resonate.");
+            return;
+        }
 
         // --- AUTH & IDENTITY COMMANDS ---
         if (cmd === 'whoami') {
@@ -657,11 +713,6 @@ if (input) {
             return;
         } else if (cmd === 'help') {
             UI.addLog("HELP // Commands: LOOK, N/S/E/W, WHOAMI, LOGIN [EMAIL], CREATE AVATAR, LEAVE VESSEL, ASSUME [NPC], CREATE NPC, LOCK [DIR], CREATE ITEM, EDIT ROOM, BUILD [DIR] [--AUTO], GENERATE ROOM, PIN, UNPIN, INV, MAP, STAT, INVESTIGATE.", "var(--term-amber)");
-            return;
-        }
-
-        if ((cmd === 'use terminal' || cmd === 'use tandem terminal') && localPlayer.currentRoom === 'lore1') {
-            UI.addLog("[SYSTEM]: The Tandem Terminal hums, waiting for a frequency. To bind your signature to the Technate, type 'resonate'.");
             return;
         }
 

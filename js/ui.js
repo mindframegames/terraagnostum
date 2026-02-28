@@ -7,6 +7,7 @@ const style = document.createElement('style');
 style.innerHTML = `
 .void-mode img { filter: grayscale(1) brightness(0.6) contrast(1.3) !important; }
 .void-mode #log div { color: var(--gm-purple) !important; }
+.void-mode #log div[style*="color: #fff"] { color: #fff !important; }
 .materialize-flash { position: fixed; inset: 0; background: white; z-index: 9999; pointer-events: none; animation: flash-out 1.2s ease-out forwards; }
 @keyframes flash-out { from { opacity: 1; } to { opacity: 0; } }
 #right-sidebar { overflow-y: auto; overflow-x: hidden; }
@@ -61,8 +62,9 @@ export function applyStratumTheme(stratum, isTransitioningToFaen) {
     }
 }
 
-export function updateCommandPrompt(user, activeAvatar, roomShort) {
+export function updateCommandPrompt(user, activeAvatar, roomShort, activeTerminal = false) {
     const prefixEl = document.getElementById('prompt-prefix');
+    if (activeTerminal) { prefixEl.innerHTML = '<span class="text-emerald-400 font-bold tracking-widest">TANDEM:~$</span>&nbsp;'; return; }
     if (!activeAvatar) {
         prefixEl.innerHTML = `<span class="text-gray-500 font-bold">VOID@${roomShort}:~$</span>&nbsp;`;
         return;
