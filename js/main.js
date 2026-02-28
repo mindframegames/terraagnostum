@@ -333,19 +333,23 @@ if (input) {
             if (!val && !wizardState.active) return;
             if (isProcessing) return;
             if (val) UI.addLog(val, "#ffffff");
+            
+            // Route to the REAL wizardSystem.js!
             if (wizardState.active) { 
-                async function handleWizardInput(val) {
-                    let currentVal = val.trim();
-                
-                    // HANDLE LOGIN WIZARD
-                    if (wizardState.type === 'login') {
-                        const email = currentVal;
-                        if (!email.includes('@')) {
-                            UI.addLog("[SYSTEM]: Invalid signature format. Login aborted.", "var(--term-red)");
-                            wizardState = { active: false, type: null, step: 0, pendingData: {} };
-                            refreshAllUI();
-                            return;
-                        }
+                handleWizardInput(
+                    val, 
+                    { apartmentMap, localPlayer, user, activeAvatar },
+                    { 
+                        refreshCommandPrompt, 
+                        refreshStatusUI, 
+                        setActiveAvatar: (v) => { activeAvatar = v; },
+                        addLocalCharacter: (c) => { localCharacters.push(c); },
+                        setIsProcessing: (p) => { isProcessing = p; },
+                        isArchiveRoom
+                    }
+                );
+                return; 
+            }
                         
                         UI.addLog(`[SYSTEM]: Transmitting anchoring frequency to ${email}...`, "var(--term-amber)");
                         const actionCodeSettings = { url: window.location.href, handleCodeInApp: true };
