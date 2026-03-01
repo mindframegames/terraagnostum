@@ -1,4 +1,4 @@
-> TANDEM OS // TERRA AGNOSTUM TERMINAL // AIGM (AI Game Master)
+# TANDEM OS // TERRA AGNOSTUM TERMINAL // AIGM (AI Game Master)
 
 *Developed By: [MINDFRAME GAMES ⬡](https://www.mindframegames.com)*
 
