@@ -35,10 +35,9 @@ Live Topology HUD: A real-time, interactive graph maps the local sector as playe
 Generative Visual Projections: The terminal doesn't just describe reality; it projects it. Every sector transition triggers an AI-generated lo-fi glitch art visual reflecting the room's narrative and the aesthetic of the current Stratum.
 
 <img width="2816" height="1504" alt="Gemini_Generated_Image_4hnl8t4hnl8t4hnl" src="https://github.com/user-attachments/assets/bb308d23-632b-4ec6-9fcc-33139f7e983a" />
-*The Torlight at Corovon*
+_The Torlight at Corovon_
 
-
-[ SYSTEM CAPABILITIES ]
+##[ SYSTEM CAPABILITIES ]
 
 AI-Mediated Reality (TANDEM aka Tandy): A dynamic, LLM-powered Game Master persona that evaluates user intent, generates real-time narrative responses, and enforces the physical and metaphysical laws of the render.
 
@@ -48,7 +47,7 @@ Multi-Vector Sync: Real-time, multiplayer state synchronization. When you alter 
 
 Somatic Glitch Engine: Push too much "Amn" (meaning) into the render, and the system will push back. High-stakes actions run the risk of desaturating the user's environment or triggering localized narrative loops.
 
-[ ARCHITECTURE ]
+##[ ARCHITECTURE ]
 
 The terminal is built to be lightweight, resilient, and highly decentralized to avoid detection by the Technate.
 
@@ -60,7 +59,7 @@ State Sync (The "Amniosis Fluids"): Firebase (Firestore & Auth)
 
 Cognitive Engine (The "Ghost Filter"): Gemini 2.5 Flash Lite (Narrative) & Gemini 2.0 Flash Exp (Visuals)
 
-[ INITIALIZING THE NODE ]
+##[ INITIALIZING THE NODE ]
 
 To establish a local instance of the Terminal, execute the following directives in your command line:
 
@@ -84,7 +83,7 @@ vercel dev
 
 The Node will materialize at http://localhost:3000.
 
-[ PHILOSOPHICAL FOUNDATIONS ]
+##[ PHILOSOPHICAL FOUNDATIONS ]
 
 "O Rama, whatever you do, know that it is nothing but pure consciousness."
 
@@ -95,7 +94,7 @@ The Node will materialize at http://localhost:3000.
 
 Of all the founding fathers of quantum science, Schrödinger is perhaps the most broad-minded. He embraced both hard physics and Vedanta. It is one thing to appreciate the products of a man's mind, but another level entirely to meet them where they are. Erwin makes one wonder, indeed: where is he?
 
-Or as Ramana Maharshi asked: who am I?
+Or as Ramana Maharshi asked: who am I? (Nan Yar)
 
 <img width="201" alt="image" src="https://github.com/user-attachments/assets/0df181dc-5719-4223-8067-4a8e54080d0c" />
 
@@ -105,6 +104,13 @@ Or is it: what is the nature of reality?
 
 In either case, it is consciousness which persists, and consciousness which must be addressed, directly.
 
+Or, to put it another way:
+
+> “Listen, there is infinite space which is full of pure consciousness. In it are countless worlds floating like so many atoms.  In that there arose a cosmic person endowed with self-awareness.  That person experiences his own light as you see an object in a dream.  From those experiences arise the various senses and their respective organs which together form the body.”
+
+<img width="576" height="455" alt="image" src="https://github.com/user-attachments/assets/f85275ad-43dc-458b-98c5-0dd55f6116f2" />
+
+But lest we wander too far, let us just say that the absolute reality and the relative experience are simply the two poles of one thing.  Terra Agnostum is the land of uncertainty in between.
 
 <img width="621" height="333" alt="image" src="https://github.com/user-attachments/assets/40c11d11-d804-46b6-962e-10fcaff29de0" />
 
