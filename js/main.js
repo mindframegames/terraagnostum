@@ -117,6 +117,15 @@ if (isSyncEnabled) {
             refreshAllUI();
             
             triggerVisualUpdate(null, localPlayer, apartmentMap, user);
+            
+            // Check for new user hint flag after successful login
+            if (!user.isAnonymous && localStorage.getItem('awaitingNewUserHint') === 'true') {
+                localStorage.removeItem('awaitingNewUserHint');
+                // Give a slight delay so it appears after the room description
+                setTimeout(() => {
+                    UI.addLog(`[TANDY]: Your signature is anchored. Good. Now, go investigate the resonator in the closet.`, "#b084e8");
+                }, 1500);
+            }
         }
     });
 }
@@ -234,12 +243,44 @@ async function executeMovement(targetDir) {
     if (currentRoom.exits && currentRoom.exits[targetDir]) {
         const exitData = currentRoom.exits[targetDir];
 
-        if (localPlayer.currentRoom === 'closet' && localPlayer.closetDoorClosed) {
-            if (targetDir === 'out') {
-                localPlayer.closetDoorClosed = false;
-                UI.addLog("[NARRATOR]: You push the heavy reinforced door open and step out.", "#888");
-            } else {
-                UI.addLog("[SYSTEM]: The door is closed. You cannot move.", "var(--term-amber)");
+        if (localPlayer.currentRoom === 'closet') {
+            if (cmd === 'investigate') {
+                UI.addLog("[NARRATOR]: A heavy, metallic Schumann Generator sits in the center of the room. It is currently unplugged, its quantum field destabilized.", "#888");
+                if (!localPlayer.generatorPlugged) {
+                    UI.addLog("[TANDY]: It needs power. You'll need to 'plug in generator' to isolate the quantum field.", "#b084e8");
+                }
+                return;
+            }
+
+            if (cmd === 'plug in generator' || cmd === 'plug in machine') {
+                // Check if they are a Void!
+                if (!activeAvatar) {
+                    UI.addLog("[SYSTEM]: Your phantom hands pass right through the heavy power cable. You lack the physical cohesion to move it.", "var(--term-red)");
+                    return;
+                }
+
+                localPlayer.generatorPlugged = true;
+                UI.addLog("[NARRATOR]: You heave the heavy power cable into the floor receptacle. The generator whirs to life, vibrating the floorboards.", "#888");
+                UI.addLog("[TANDY]: Good. The field is isolated. Now, 'tune generator to faen' to bridge the strata.", "#b084e8");
+                savePlayerState();
+                return;
+            }
+
+            if (cmd === 'tune generator to faen' || cmd === 'tune generator') {
+                if (!localPlayer.generatorPlugged) {
+                    UI.addLog("[SYSTEM]: The machine is dead. It must be plugged in first.", "var(--term-amber)");
+                    return;
+                }
+
+                UI.addLog("[SYSTEM]: FREQUENCY LOCKED. QUANTUM STATE COLLAPSING...", "var(--term-green)");
+
+                // Shift the world!
+                shiftStratum('faen');
+
+                const currentRoom = apartmentMap[localPlayer.currentRoom];
+                UI.addLog("[NARRATOR]: The walls of the closet dissolve into raw, static data. You are pulled into the Ethereal Plane.", "#888");
+                UI.printRoomDescription(currentRoom, true, apartmentMap, activeAvatar);
+                refreshAllUI();
                 return;
             }
         }

@@ -130,6 +130,12 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                     UI.materializeEffect(); 
                     UI.addLog(`[SYSTEM]: VESSEL COLLAPSE COMPLETE. YOU ARE REAL.`, "var(--term-green)");
                     UI.addLog(`[TANDY]: You have a shape now. Good. But your signature is fragile... a stiff breeze could scatter you. Go to the Lore Archive and use the Tandem Terminal to 'login'. Anchor yourself.`, "#b084e8");
+                    
+                    // Set flag for new user hint after login
+                    if (!currentUser || currentUser.isAnonymous) {
+                        localStorage.setItem('awaitingNewUserHint', 'true');
+                    }
+                    
                     endWizard();
                 }).catch(e => {
                     UI.addLog("[SYSTEM ERROR]: Failed to persist vessel.", "var(--term-red)");
@@ -182,7 +188,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         if (!currentVal) return;
         const dir = wizardState.pendingData.direction;
         const newRoomId = 'room_' + crypto.randomUUID().split('-')[0];
-        const getOpposite = (d) => ({'north':'south','south':'north','east':'west','west':'east'})[d] || 'out';
+        const getOpposite = (d) => ({'north':'south','north':'north','east':'west','west':'east'})[d] || 'out';
         
         apartmentMap[newRoomId] = {
             name: currentVal,
@@ -290,6 +296,56 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
             UI.addLog(`[SYSTEM]: Entity [${newNpc.name}] spawned successfully.`, "var(--term-green)");
             if (isSyncEnabled && updateMapListener) updateMapListener();
             endWizard();
+        }
+        return;
+    }
+
+    // === 4. TUTORIAL CYOA WIZARD ===
+    if (wizardState.type === 'tutorial_cyoa') {
+        if (wizardState.step === 1) {
+            if (!currentVal) return;
+            UI.addLog(`[SYSTEM]: Processing your action in the Ethereal Plane...`, "var(--gm-purple)");
+            const prompt = `The player is in the Ethereal Plane (Faen stratum) in a cyberpunk world. They are facing a fragmented memory-entity. They decided to: "${currentVal}". Describe the atmospheric outcome in 2-3 sentences, and present ONE final obstacle or choice before they can stabilize their connection. Respond in plain text.`;
+            try {
+                const response = await callGemini("Process CYOA turn 1", prompt);
+                UI.addLog(`[NARRATOR]: ${response}`, "#888");
+                UI.addLog(`[WIZARD]: How do you proceed?`, "var(--term-amber)");
+                wizardState.step++;
+            } catch (e) {
+                UI.addLog(`[SYSTEM ERROR]: The connection destabilized. Try your action again.`, "var(--term-red)");
+            }
+        } else if (wizardState.step === 2) {
+            if (!currentVal) return;
+            UI.addLog(`[SYSTEM]: Resolving final quantum state...`, "var(--gm-purple)");
+            const prompt = `The player is completing a cyberpunk ethereal plane tutorial. Their final action is: "${currentVal}". Determine if they succeed. Respond STRICTLY in JSON: { "narrative": "A 2-sentence atmospheric conclusion.", "success": true or false }`;
+            try {
+                const responseStr = await callGemini("Process CYOA turn 2", prompt);
+                
+                // Gemini might return markdown JSON blocks, so we clean it up
+                const cleanJson = responseStr.replace(/```json/g, '').replace(/```/g, '').trim();
+                const response = JSON.parse(cleanJson);
+                
+                UI.addLog(`[NARRATOR]: ${response.narrative}`, "#888");
+                
+                if (response.success) {
+                    UI.addLog(`[SYSTEM]: ANOMALY RESOLVED. REWARD DISTRIBUTED.`, "var(--term-green)");
+                    localPlayer.inventory.push({ 
+                        name: "Resonance Key", 
+                        type: "Key Item", 
+                        description: "A fractal shard of crystallized Meaning. It hums with the frequency of the front door." 
+                    });
+                    UI.addLog(`[TANDY]: You did it. You synthesized a Resonance Key. Now get to the kitchen and use it to open the front door.`, "#b084e8");
+                } else {
+                    UI.addLog(`[SYSTEM]: ANOMALY UNRESOLVED. YOU WERE EJECTED FROM THE ETHER.`, "var(--term-red)");
+                    UI.addLog(`[TANDY]: That was close. The field collapsed. You'll need to tune the generator and try again when you're ready.`, "#b084e8");
+                }
+                
+                // Update the inventory UI
+                if (refreshAllUI) refreshAllUI();
+                endWizard();
+            } catch (e) {
+                UI.addLog(`[SYSTEM ERROR]: The connection destabilized. Try your action again.`, "var(--term-red)");
+            }
         }
         return;
     }
