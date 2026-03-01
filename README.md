@@ -106,7 +106,7 @@ In either case, it is consciousness which persists, and consciousness which must
 
 Or, to put it another way:
 
-"Listen, there is infinite space which is full of pure consciousness. In it are countless worlds floating like so many atoms. In that there arose a cosmic person endowed with self-awareness. That person experiences his own light as you see an object in a dream. From those experiences arise the various senses and their respective organs which together form the body."
+> "Listen, there is infinite space which is full of pure consciousness. In it are countless worlds floating like so many atoms. In that there arose a cosmic person endowed with self-awareness. That person experiences his own light as you see an object in a dream. From those experiences arise the various senses and their respective organs which together form the body."
 
 <img width="576" height="455" alt="image" src="https://github.com/user-attachments/assets/d32ca04b-2e21-4a85-878a-ee3fe579cdd4" />
 
