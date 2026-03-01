@@ -45,9 +45,15 @@ export async function handleGMIntent(
         Entities Present: ${npcText}. Inventory: ${inventoryNames}.
         Adjacent Entities (Visible through doorways/counters): ${adjacentNpcText}.
         Exits: ${exitText}.
+        Current Avatar: ${activeAvatar ? `${activeAvatar.name} (${activeAvatar.archetype})` : 'None'}.
         
         SPECIAL QUEST: If the user is in the ASTRAL stratum, they are on a quest to obtain a 'Resonant Key' to escape the apartment. 
         The Astral Plane takes shape based on the user's actions. Create bizarre challenges, non-euclidean puzzles, or social encounters with memory-fragments.
+        
+        ASTRAL ENCOUNTER: After the user's first move into a procedural astral pocket (any room other than 'astral_entry'), you MUST manifest a 'Glitchy Shadow Avatar'. 
+        This is a dark, flickering reflection of the user's current avatar. It should challenge the player's identity or purpose. 
+        Use "world_edit": {"type": "spawn_npc", "npc": {"name": "Shadow ${activeAvatar ? activeAvatar.name : 'Self'}", "archetype": "Glitch Reflection", "personality": "Challenging and cryptic", "visual_prompt": "A dark, pixelated silhouette that mirrors the player's form, flickering with purple static."}}
+        
         Once the user has sufficiently overcome an obstacle or demonstrated creative intent, you can grant them the 'Resonant Key' using "give_item": {"name": "Resonant Key", "type": "Key Item", "description": "..."}.
         After they get the key, you should trigger a shift back to 'mundane'.  
         This is a New User Quest, a Choose Your Own Adventure in collaboration with you, the AI GM, designed to show off how much is possible in the game and get them used to the controls.  
@@ -65,7 +71,7 @@ export async function handleGMIntent(
           "trigger_stratum_shift": null or 'mundane', 'astral', 'faen', 'technate',
           "trigger_teleport": null or { "new_room_id": "id", "name": "Name", "description": "Desc", "visual_prompt": "Prompt" },
           "give_item": null or { "name": "Name", "type": "Type", "description": "Desc" },
-          "world_edit": null or {"type": "add_marginalia", "text": "text"} or {"type": "unlock_exit", "direction": "north"} or {"type": "spawn_item", "item": {"name": "...", "type": "...", "description": "..."}},
+          "world_edit": null or {"type": "add_marginalia", "text": "text"} or {"type": "unlock_exit", "direction": "north"} or {"type": "spawn_item", "item": {"name": "...", "type": "...", "description": "..."}} or {"type": "spawn_npc", "npc": {"name": "...", "archetype": "...", "personality": "...", "visual_prompt": "..."}},
           "trigger_respawn": false
         }`;
         
@@ -153,6 +159,14 @@ export async function handleGMIntent(
                 }
                 UI.updateRoomItemsUI(room.items);
                 UI.addLog(`[SYSTEM]: ${res.world_edit.item.name} has manifested in the room.`, "var(--term-green)");
+            } else if (res.world_edit.type === 'spawn_npc') {
+                if (!room.npcs) room.npcs = [];
+                room.npcs.push(res.world_edit.npc);
+                if (isSyncEnabled && !localPlayer.currentRoom.startsWith('astral_')) {
+                    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live'), { [`nodes.${localPlayer.currentRoom}.npcs`]: arrayUnion(res.world_edit.npc) });
+                }
+                UI.updateRoomEntitiesUI(room.npcs);
+                UI.addLog(`[SYSTEM]: A new presence detected: ${res.world_edit.npc.name}.`, "var(--term-amber)");
             }
         }
         
