@@ -4,7 +4,7 @@
 <img width="2816" height="1536" alt="Gemini_Generated_Image_6zd2x76zd2x76zd2" src="https://github.com/user-attachments/assets/d2aa13fe-15ec-4112-9b73-f7276fb60d5a" />
 
 
-*Developed By: [MINDFRAME GAMES ⬡](https://www.mindframegames.com)*
+*[MINDFRAME GAMES ⬡](https://www.mindframegames.com)*
 
 <img width="1174" height="925" alt="unnamed" src="https://github.com/user-attachments/assets/333163ec-23a2-4e92-9262-3e06ebb0deb5" />
 
@@ -22,7 +22,7 @@ The UI is a pure function of state. Reality is not a fixed construct you merely 
 
 "Whatever the consciousness conceives of as the order of nature (niyati) in that universe, that comes to be established there."
 
-[ THE UNIVERSE & CORE FEATURES ]
+## [ THE UNIVERSE & CORE FEATURES ]
 
 Vast, Extensible Lore: Explore a tri-layered reality. Navigate the sterile, transhumanist utopia of The Technate, the ethereal and infinite magic plane of Faen, and the grounding anchor of the Mundane. The lore is deep, but the borders are undefined—waiting for you to render them.
 
@@ -35,7 +35,7 @@ Live Topology HUD: A real-time, interactive graph maps the local sector as playe
 Generative Visual Projections: The terminal doesn't just describe reality; it projects it. Every sector transition triggers an AI-generated lo-fi glitch art visual reflecting the room's narrative and the aesthetic of the current Stratum.
 
 <img width="2816" height="1504" alt="Gemini_Generated_Image_4hnl8t4hnl8t4hnl" src="https://github.com/user-attachments/assets/bb308d23-632b-4ec6-9fcc-33139f7e983a" />
-* The Torlight at Corovon
+*The Torlight at Corovon*
 
 
 [ SYSTEM CAPABILITIES ]
