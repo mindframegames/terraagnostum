@@ -1,6 +1,6 @@
 # TANDEM OS // TERRA AGNOSTUM TERMINAL // AIGM (AI Game Master)
 
-<img width="2816" height="1536" alt="Gemini_Generated_Image_6zd2x76zd2x76zd2" src="https://www.google.com/search?q=https://github.com/user-attachments/assets/d2aa13fe-15ec-4112-9b73-f7276fb60d5a" />
+<img width="2816" height="1536" alt="Gemini_Generated_Image_6zd2x76zd2x76zd2" src="https://github.com/user-attachments/assets/258777fc-b9d1-4f35-9caf-3b36b5d2a359" />
 
 *[MINDFRAME GAMES ⬡](https://www.mindframegames.com)*
 
