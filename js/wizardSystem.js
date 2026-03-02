@@ -45,7 +45,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
     let currentVal = val.trim();
     
     // Unpack the state passed from main.js
-    const { apartmentMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId } = context;
+    const { activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId } = context;
     const { 
         refreshAllUI, 
         updateMapListener, 
@@ -161,7 +161,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
     // === 3. RESTORED ARCHITECT COMMANDS ===
     if (wizardState.type === 'item') {
         if (!currentVal) return;
-        const room = apartmentMap[localPlayer.currentRoom];
+        const room = activeMap[localPlayer.currentRoom];
         if (!room.items) room.items = [];
         room.items.push({ name: currentVal, type: "Constructed Object" });
         UI.addLog(`[SYSTEM]: Materialized [${currentVal}].`, "var(--term-green)");
@@ -172,8 +172,8 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
 
     if (wizardState.type === 'room') {
         if (currentVal) {
-            apartmentMap[localPlayer.currentRoom].name = currentVal;
-            apartmentMap[localPlayer.currentRoom].shortName = currentVal.substring(0, 7).toUpperCase();
+            activeMap[localPlayer.currentRoom].name = currentVal;
+            activeMap[localPlayer.currentRoom].shortName = currentVal.substring(0, 7).toUpperCase();
             UI.addLog(`[SYSTEM]: Sector identity overwritten.`, "var(--term-green)");
             if (isSyncEnabled && updateMapListener) updateMapListener();
         }
@@ -184,7 +184,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
     if (wizardState.type === 'lock_exit') {
         if (!currentVal) return;
         const dir = wizardState.pendingData.direction;
-        const room = apartmentMap[localPlayer.currentRoom];
+        const room = activeMap[localPlayer.currentRoom];
         const target = typeof room.exits[dir] === 'string' ? room.exits[dir] : room.exits[dir].target;
         room.exits[dir] = { target: target, locked: true, lockMsg: currentVal };
         UI.addLog(`[SYSTEM]: Exit ${dir.toUpperCase()} locked.`, "var(--term-amber)");
@@ -199,7 +199,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         const newRoomId = 'room_' + crypto.randomUUID().split('-')[0];
         const getOpposite = (d) => ({'north':'south','north':'north','east':'west','west':'east'})[d] || 'out';
         
-        apartmentMap[newRoomId] = {
+        activeMap[newRoomId] = {
             name: currentVal,
             shortName: currentVal.substring(0, 7).toUpperCase(),
             description: "A newly woven pocket of reality. It is waiting for definition.",
@@ -208,7 +208,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
             items: [], npcs: []
         };
         
-        apartmentMap[localPlayer.currentRoom].exits[dir] = newRoomId;
+        activeMap[localPlayer.currentRoom].exits[dir] = newRoomId;
         UI.addLog(`[SYSTEM]: Reality expanded ${dir.toUpperCase()}.`, "var(--term-green)");
         if (isSyncEnabled && updateMapListener) updateMapListener();
         endWizard();
@@ -226,7 +226,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                  const newRoomId = 'room_' + crypto.randomUUID().split('-')[0];
                  const getOpposite = (d) => ({'north':'south','south':'north','east':'west','west':'east'})[d] || 'out';
                  
-                 apartmentMap[newRoomId] = {
+                 activeMap[newRoomId] = {
                      name: res.name,
                      shortName: res.name.substring(0, 7).toUpperCase(),
                      description: res.description,
@@ -235,7 +235,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                      items: [], npcs: []
                  };
                  
-                 if (dir !== 'here') apartmentMap[localPlayer.currentRoom].exits[dir] = newRoomId;
+                 if (dir !== 'here') activeMap[localPlayer.currentRoom].exits[dir] = newRoomId;
                  UI.addLog(`[SYSTEM]: Sector generated.`, "var(--term-green)");
                  if (isSyncEnabled && updateMapListener) updateMapListener();
              }
@@ -246,7 +246,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
 
     if (wizardState.type === 'deploy_npc') {
         if (!currentVal) return;
-        const room = apartmentMap[localPlayer.currentRoom];
+        const room = activeMap[localPlayer.currentRoom];
         if (!room.npcs) room.npcs = [];
         
         const newNpc = {
@@ -299,7 +299,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                 behavior: "Standing idle."
             };
             
-            const room = apartmentMap[localPlayer.currentRoom];
+            const room = activeMap[localPlayer.currentRoom];
             if (!room.npcs) room.npcs = [];
             room.npcs.push(newNpc);
             UI.addLog(`[SYSTEM]: Entity [${newNpc.name}] spawned successfully.`, "var(--term-green)");
@@ -309,7 +309,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         return;
     }
 
-    // === 4. TUTORIAL CYOA WIZARD ===
+    // === 4. TUTORIAL CYOA WIZARD | NOT CURRENTLY USED: KEEP THE CODE! ===
     if (wizardState.type === 'tutorial_cyoa') {
         if (wizardState.step === 1) {
             if (!currentVal) return;
@@ -380,7 +380,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                 const newRoomId = 'astral_' + Date.now();
                 const getOpposite = (d) => ({'north':'south','south':'north','east':'west','west':'east'})[d] || 'out';
                 
-                apartmentMap[newRoomId] = {
+                activeMap[newRoomId] = {
                     name: res.name,
                     shortName: res.name.substring(0, 7).toUpperCase(),
                     description: res.description,
@@ -389,16 +389,16 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                     items: [], marginalia: [], npcs: []
                 };
                 
-                apartmentMap[fromId].exits = apartmentMap[fromId].exits || {};
-                apartmentMap[fromId].exits[dir] = newRoomId;
+                activeMap[fromId].exits = activeMap[fromId].exits || {};
+                activeMap[fromId].exits[dir] = newRoomId;
 
                 localPlayer.currentRoom = newRoomId;
                 UI.addLog(`[SYSTEM]: Sector successfully manifested.`, "var(--term-green)");
-                UI.printRoomDescription(apartmentMap[newRoomId], true, apartmentMap, activeAvatar);
+                UI.printRoomDescription(activeMap[newRoomId], true, activeMap, activeAvatar);
                 
                 // Trigger visual update
                 const { triggerVisualUpdate } = await import('./visualSystem.js');
-                triggerVisualUpdate(res.visual_prompt, localPlayer, apartmentMap, user);
+                triggerVisualUpdate(res.visual_prompt, localPlayer, activeMap, user);
 
                 // Force the AI GM to react to the player entering the new pocket
                 if (handleGMIntent) {

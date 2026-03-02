@@ -12,9 +12,8 @@
     <div class="terminal-container">
         <!-- HEADER HUD -->
         <div id="header-bar" class="p-2 mb-4 text-[10px] flex justify-between uppercase tracking-widest border-b border-green-900 opacity-70 flex-shrink-0">
-            <span>Node: <span id="room-display">LORE1</span></span>
             <span id="stratum-display" class="text-gray-500 font-bold">STRATA: MUNDANE</span>
-            <span id="player-status" class="text-amber-500">POS: STND</span>
+            <span>Node: <span id="room-display">LORE1</span></span>
             <span id="sync-status">SYNC: INITIALIZING</span>
             <span id="time-display">T+00:00:00</span>
         </div>
@@ -47,6 +46,9 @@
                         <p>> Type <span class="text-blue-400">'HELP'</span> for system functions, or simply describe your actions.</p>
                     </div>
                 </div>
+
+                <!-- CONTEXTUAL COMMANDS -->
+                <div id="context-bar" class="flex flex-wrap gap-2 mb-2 mt-4 overflow-x-auto scroll-hide"></div>
 
                 <!-- INPUT AREA -->
                 <div class="input-area">

@@ -6,9 +6,9 @@ import * as UI from './ui.js';
 
 let currentBase64 = null;
 
-export async function triggerVisualUpdate(overridePrompt, localPlayer, apartmentMap, user) {
+export async function triggerVisualUpdate(overridePrompt, localPlayer, activeMap, user) {
     const roomId = localPlayer.currentRoom;
-    const room = apartmentMap[roomId] || {};
+    const room = activeMap[roomId] || {};
     
     currentBase64 = null;
     
@@ -46,24 +46,24 @@ export async function triggerVisualUpdate(overridePrompt, localPlayer, apartment
 
 // TEST git
 
-export async function togglePinView(localPlayer, apartmentMap, user) {
+export async function togglePinView(localPlayer, activeMap, user) {
     if (!user || user.isAnonymous) { 
         UI.addLog("[SYSTEM]: Identity verification required for reality anchoring.", "var(--term-red)");
         return;
     }
     
     const roomId = localPlayer.currentRoom;
-    const room = apartmentMap[roomId] || {};
+    const room = activeMap[roomId] || {};
 
     if (room.pinnedView) {
         UI.togglePinButton(true, "UNPINNING...", "uploading");
         try {
             const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
             await updateDoc(mapRef, { [`nodes.${roomId}.pinnedView`]: null });
-            apartmentMap[roomId].pinnedView = null;
+            activeMap[roomId].pinnedView = null;
             
             UI.addLog(`[SYSTEM]: Consensus reality anchor lifted. Space is fluid again.`, "var(--term-amber)");
-            triggerVisualUpdate(null, localPlayer, apartmentMap, user); 
+            triggerVisualUpdate(null, localPlayer, activeMap, user); 
         } catch (e) {
             console.error("Unpinning error:", e);
             UI.togglePinButton(true, "ERROR", "normal");
@@ -84,10 +84,10 @@ export async function togglePinView(localPlayer, apartmentMap, user) {
             
             const mapRef = doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
             await updateDoc(mapRef, { [`nodes.${roomId}.pinnedView`]: downloadUrl });
-            apartmentMap[roomId].pinnedView = downloadUrl;
+            activeMap[roomId].pinnedView = downloadUrl;
             
             UI.togglePinButton(true, "PINNED!", "pinned");
-            UI.addLog(`[SYSTEM]: Consensus reality locked. The visual projection of ${apartmentMap[roomId].name || 'this sector'} is now canonical.`, "var(--gm-purple)");
+            UI.addLog(`[SYSTEM]: Consensus reality locked. The visual projection of ${activeMap[roomId].name || 'this sector'} is now canonical.`, "var(--gm-purple)");
             
             setTimeout(() => { UI.togglePinButton(true, "UNPIN VIEW", "normal"); }, 2000);
         } catch (e) {

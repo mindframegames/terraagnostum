@@ -8,13 +8,13 @@ export async function handleGMIntent(
     state,
     actions
 ) {
-    const { apartmentMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId } = state;
-    const { shiftStratum, savePlayerState, refreshStatusUI, renderMapHUD, setActiveAvatar } = actions;
+    const { activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId } = state;
+    const { shiftStratum, savePlayerState, refreshStatusUI, renderMapHUD, setActiveAvatar, syncAvatarStats } = actions;
 
     UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">EVALUATING INTENT...</span>`);
     
     try {
-        const currentRoomData = apartmentMap[localPlayer.currentRoom];
+        const currentRoomData = activeMap[localPlayer.currentRoom];
         if (!currentRoomData) {
             console.error("Room not found in map:", localPlayer.currentRoom);
             UI.addLog(`[SYSTEM ERROR]: Location data corrupted for ${localPlayer.currentRoom}.`, "var(--term-red)");
@@ -35,7 +35,7 @@ export async function handleGMIntent(
             }
             
             // Peek into the adjacent room for visible entities
-            const targetRoom = apartmentMap[targetId];
+            const targetRoom = activeMap[targetId];
             if (targetRoom && targetRoom.npcs && targetRoom.npcs.length > 0) {
                 targetRoom.npcs.forEach(n => {
                     adjacentNpcs.push(`[NPC to the ${dir.toUpperCase()}] ${n.name} - Personality: ${n.personality}`);
@@ -51,6 +51,8 @@ export async function handleGMIntent(
         Adjacent Entities (Visible through doorways/counters): ${adjacentNpcText}.
         Exits: ${exitText}.
         Current Avatar: ${activeAvatar ? `${activeAvatar.name} (${activeAvatar.archetype})` : 'None'}.
+        Combat Status: ${localPlayer.combat.active ? `ACTIVE with ${localPlayer.combat.opponent}` : 'INACTIVE'}.
+        Player Stats: ${activeAvatar ? `WILL: ${activeAvatar.stats.WILL}, CONS: ${activeAvatar.stats.CONS}, PHYS: ${activeAvatar.stats.PHYS}` : 'N/A'}.
         
         SPECIAL QUEST: If the user is in the ASTRAL stratum, they are on a quest to obtain a 'Resonant Key' to escape the apartment. 
         The Astral Plane takes shape based on the user's actions. Create bizarre challenges, non-euclidean puzzles, or social encounters with memory-fragments.
@@ -60,9 +62,17 @@ export async function handleGMIntent(
         Create a 'visual_prompt' for it that is a dark, glitchy, debased, sci-fi/fantasy bad guy version of the player character's description.
         Required Action if NPC missing: "world_edit": {"type": "spawn_npc", "npc": {"name": "Shadow ${activeAvatar ? activeAvatar.name : 'Self'}", "archetype": "Glitch Reflection", "personality": "Challenging and cryptic", "visual_prompt": "A dark, glitching shadow silhouette of the player character, digital corruption artifacts, eerie astral plane background, glowing eyes, highly detailed."}}
         
+        BATTLE OF WILLS: If the Shadow Avatar is present, it will eventually attack the player. 
+        - When combat is active, the player will attempt narrative actions. 
+        - You must resolve the player's action and then describe the Shadow's counter-attack.
+        - The Shadow's attack ALWAYS deals 1 WILL damage to the player if it hits.
+        - You decide if the Shadow hits or if the player successfully resists/dodges based on their narrative.
+        - If the player's WILL hits 0, they are defeated.
+        - Set "combat_active": true to start or continue combat.
+        - Set "damage_to_player": 1 if the Shadow successfully strikes the player's Will.
+
         Once the user has sufficiently overcome an obstacle or demonstrated creative intent, you can grant them the 'Resonant Key' using "give_item": {"name": "Resonant Key", "type": "Key Item", "description": "..."}.
         After they get the key, you should trigger a shift back to 'mundane'.  
-        This is a New User Quest, a Choose Your Own Adventure in collaboration with you, the AI GM, designed to show off how much is possible in the game and get them used to the controls.  
 
         IMPORTANT: An 'astral_jump' can ONLY happen if the user is in 'Schrödinger's Closet' (CLOSET) or explicitly uses specific 'Aethal' code.
         IMPORTANT: If a user attempts to interact with an Adjacent Entity across a counter or doorway, you may roleplay their response based on their personality.
@@ -78,17 +88,55 @@ export async function handleGMIntent(
           "trigger_teleport": null or { "new_room_id": "id", "name": "Name", "description": "Desc", "visual_prompt": "Prompt" },
           "give_item": null or { "name": "Name", "type": "Type", "description": "Desc" },
           "world_edit": null or {"type": "add_marginalia", "text": "text"} or {"type": "unlock_exit", "direction": "north"} or {"type": "spawn_item", "item": {"name": "...", "type": "...", "description": "..."}} or {"type": "spawn_npc", "npc": {"name": "...", "archetype": "...", "personality": "...", "visual_prompt": "..."}},
-          "trigger_respawn": false
+          "trigger_respawn": false,
+          "combat_active": boolean,
+          "damage_to_player": number or null
         }`;
         
         const res = await callGemini(`User: ${val}`, sysPrompt);
         let stateChanged = false;
+
+        // Handle Combat State from AI
+        if (res.combat_active !== undefined) {
+            if (res.combat_active && !localPlayer.combat.active) {
+                localPlayer.combat.active = true;
+                localPlayer.combat.opponent = res.speaker || "Shadow";
+                UI.addLog(`[SYSTEM]: COMBAT INITIALIZED. BATTLE OF WILLS ENGAGED.`, "var(--term-red)");
+            } else if (!res.combat_active && localPlayer.combat.active) {
+                localPlayer.combat.active = false;
+                localPlayer.combat.opponent = null;
+                UI.addLog(`[SYSTEM]: Combat resolved.`, "var(--term-green)");
+            }
+            stateChanged = true;
+        }
+
+        // Handle Damage to Player
+        if (res.damage_to_player && activeAvatar) {
+            activeAvatar.stats.WILL = Math.max(0, (activeAvatar.stats.WILL || 20) - res.damage_to_player);
+            UI.addLog(`[COMBAT]: You took ${res.damage_to_player} WILL damage!`, "var(--term-red)");
+            UI.updateAvatarUI(activeAvatar);
+            if (syncAvatarStats) syncAvatarStats();
+
+            if (activeAvatar.stats.WILL <= 0) {
+                UI.addLog(`[SYSTEM]: Your Will has withered. Your vessel collapses...`, "var(--term-red)");
+                // Defeat Sequence: Teleport to bedroom, restore WILL
+                activeAvatar.stats.WILL = 20; // Restore
+                if (syncAvatarStats) syncAvatarStats();
+                localPlayer.currentRoom = "bedroom";
+                localPlayer.stratum = "mundane";
+                localPlayer.combat.active = false;
+                localPlayer.combat.opponent = null;
+                shiftStratum('mundane');
+                stateChanged = true;
+                UI.addLog(`[NARRATOR]: You gasp as you wake up in your bedroom, the astral nightmare fading into a cold sweat.`, "#888");
+            }
+        }
         
         if (res.astral_jump && localPlayer.stratum !== 'astral') {
             if (localPlayer.currentRoom === 'closet' || val.toLowerCase().includes('aethal')) {
                 shiftStratum('astral');
                 localPlayer.currentRoom = 'astral_entry';
-                apartmentMap['astral_entry'] = {
+                activeMap['astral_entry'] = {
                     name: "Astral Nexus", shortName: "NEXUS",
                     description: "The entry point to the astral plane. Space is fluid and glowing.",
                     visualPrompt: "Glowing astral nexus portal.",
@@ -126,9 +174,9 @@ export async function handleGMIntent(
         
         if (res.trigger_teleport && !res.trigger_respawn) {
             const t = res.trigger_teleport;
-            if (!apartmentMap[t.new_room_id]) {
-                apartmentMap[t.new_room_id] = { ...t, shortName: t.name.substring(0, 7).toUpperCase(), exits: {}, pinnedView: null, items: [], marginalia: [], npcs: [] };
-                if (isSyncEnabled) updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live'), { [`nodes.${t.new_room_id}`]: apartmentMap[t.new_room_id] });
+            if (!activeMap[t.new_room_id]) {
+                activeMap[t.new_room_id] = { ...t, shortName: t.name.substring(0, 7).toUpperCase(), exits: {}, pinnedView: null, items: [], marginalia: [], npcs: [] };
+                if (isSyncEnabled) updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live'), { [`nodes.${t.new_room_id}`]: activeMap[t.new_room_id] });
             }
             localPlayer.currentRoom = t.new_room_id; 
             stateChanged = true; 
@@ -138,7 +186,7 @@ export async function handleGMIntent(
         if (stateChanged) { 
             refreshStatusUI(); 
             savePlayerState(); 
-            renderMapHUD(apartmentMap, localPlayer.currentRoom, localPlayer.stratum); 
+            renderMapHUD(activeMap, localPlayer.currentRoom, localPlayer.stratum); 
         }
         
         const speakerPrefix = (res.speaker === 'SYSTEM' || res.speaker === 'NARRATOR') ? `[${res.speaker}]` : `${res.speaker.toUpperCase()}`;
@@ -146,7 +194,7 @@ export async function handleGMIntent(
         
         if (res.world_edit) {
             stateChanged = true;
-            const room = apartmentMap[localPlayer.currentRoom];
+            const room = activeMap[localPlayer.currentRoom];
             if (res.world_edit.type === 'add_marginalia') {
                 if (!room.marginalia) room.marginalia = [];
                 room.marginalia.push(res.world_edit.text);
@@ -223,9 +271,9 @@ export async function handleGMIntent(
         }
         
         if (res.trigger_visual && !res.trigger_respawn && !res.trigger_teleport) {
-            triggerVisualUpdate(res.trigger_visual, localPlayer, apartmentMap, user);
+            triggerVisualUpdate(res.trigger_visual, localPlayer, activeMap, user);
         } else if (res.trigger_stratum_shift || res.trigger_teleport || res.astral_jump || (res.world_edit && res.world_edit.type === 'spawn_npc') || isLooking) {
-            triggerVisualUpdate(null, localPlayer, apartmentMap, user);
+            triggerVisualUpdate(null, localPlayer, activeMap, user);
         }
     } catch (err) { 
         console.error(err);

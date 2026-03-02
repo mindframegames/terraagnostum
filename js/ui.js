@@ -63,7 +63,7 @@ export function applyStratumTheme(stratum, isTransitioningToFaen) {
     }
 }
 
-export function updateCommandPrompt(tier, roomShort, activeTerminal = false, wizardPlaceholder = null, activeAvatar = null) {
+export function updateCommandPrompt(tier, roomShort, activeTerminal = false, wizardPlaceholder = null, activeAvatar = null, combatSuffix = null) {
     const prefixEl = document.getElementById('prompt-prefix');
     const inputEl = document.getElementById('cmd-input');
     if (!prefixEl || !inputEl) return;
@@ -76,6 +76,9 @@ export function updateCommandPrompt(tier, roomShort, activeTerminal = false, wiz
     } else if (activeTerminal) {
         inputEl.placeholder = "TANDEM_OS // Awaiting command ('exit' to disconnect)...";
         inputEl.classList.add("border-b", "border-emerald-500");
+    } else if (combatSuffix) {
+        inputEl.placeholder = "BATTLE OF WILLS // Describe your resistance...";
+        inputEl.classList.add("border-b", "border-red-500");
     } else {
         inputEl.placeholder = "Enter command...";
     }
@@ -91,7 +94,9 @@ export function updateCommandPrompt(tier, roomShort, activeTerminal = false, wiz
     if (tier === 'GUEST') colorClass = "text-gray-500";
     if (tier === 'ARCHITECT') colorClass = "text-blue-400";
 
-    prefixEl.innerHTML = `<span class="${colorClass} font-bold">${displayName}@${roomShort}:~$</span>&nbsp;`;
+    const combatDisplay = combatSuffix ? `<span class="text-red-500 anim-pulse ml-1">${combatSuffix}</span>` : "";
+
+    prefixEl.innerHTML = `<span class="${colorClass} font-bold">${displayName}@${roomShort}:~$</span>${combatDisplay}&nbsp;`;
 }
 
 export function setWizardPrompt(promptText) {
@@ -224,7 +229,7 @@ export function printRoomDescription(room, isFaen, fullMap = null, activeAvatar 
     }
 }
 
-export function renderMapHUD(apartmentMap, currentRoomKey, stratum) {
+export function renderMapHUD(activeMap, currentRoomKey, stratum) {
     const canvasContainer = document.getElementById('map-canvas-container');
     const canvas = document.getElementById('map-canvas');
     if (!canvas || !canvasContainer) return;
@@ -273,7 +278,7 @@ export function renderMapHUD(apartmentMap, currentRoomKey, stratum) {
         let curr = queue.shift();
         if (processed.has(curr.key)) continue;
         processed.add(curr.key);
-        let node = apartmentMap[curr.key];
+        let node = activeMap[curr.key];
         if(!node) continue;
         if (node.exits) {
             const nId = typeof node.exits.north === 'object' ? node.exits.north.target : node.exits.north;
@@ -306,7 +311,7 @@ export function renderMapHUD(apartmentMap, currentRoomKey, stratum) {
     ctx.lineWidth = 1.5;
     ctx.globalAlpha = 0.4; 
     processed.forEach(key => {
-        let node = apartmentMap[key];
+        let node = activeMap[key];
         let p1 = coords[key];
         if(!node || !p1) return;
         const drawEdge = (targetData, colorOverride) => {
@@ -334,7 +339,7 @@ export function renderMapHUD(apartmentMap, currentRoomKey, stratum) {
     ctx.textBaseline = "middle";
     ctx.font = "bold 9px monospace";
     processed.forEach(key => {
-        let node = apartmentMap[key];
+        let node = activeMap[key];
         let p = coords[key];
         if(!node || !p) return;
         let x = centerX + p.x * spacing;
@@ -390,9 +395,7 @@ export function addLog(text, color = 'var(--term-green)') {
     document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
 }
 
-export function updateStatusUI(posture, roomShort) {
-    const posShort = posture === 'standing' ? 'STND' : (posture === 'sitting' ? 'SIT' : 'LAY');
-    document.getElementById('player-status').innerText = `POS: ${posShort}`;
+export function updateStatusUI(roomShort) {
     document.getElementById('room-display').innerText = roomShort;
 }
 

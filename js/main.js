@@ -22,10 +22,10 @@ let localPlayer = {
     hp: 20, 
     currentRoom: "bedroom", 
     stratum: "mundane",
-    posture: "standing",
     inventory: [],
     closetDoorClosed: false,
-    isArchitect: false
+    isArchitect: false,
+    combat: { active: false, opponent: null }
 };
 
 let localCharacters = []; 
@@ -61,13 +61,19 @@ function refreshCommandPrompt() {
     const activeMap = getActiveMap();
     const roomShort = activeMap[localPlayer.currentRoom]?.shortName || localPlayer.currentRoom.toUpperCase();
     const wizardPlaceholder = wizardState.active ? (wizardState.type === 'login' ? '[ AWAITING EMAIL... ]' : '[ AWAITING INPUT... ]') : null;
-    UI.updateCommandPrompt(getUserTier(), roomShort, typeof activeTerminal !== 'undefined' ? activeTerminal : false, wizardPlaceholder, activeAvatar);
+    
+    let combatSuffix = null;
+    if (localPlayer.combat.active) {
+        combatSuffix = `[COMBAT vs ${localPlayer.combat.opponent}]`;
+    }
+    
+    UI.updateCommandPrompt(getUserTier(), roomShort, typeof activeTerminal !== 'undefined' ? activeTerminal : false, wizardPlaceholder, activeAvatar, combatSuffix);
 }
 
 function refreshStatusUI() {
     const activeMap = getActiveMap();
     const roomShort = activeMap[localPlayer.currentRoom]?.shortName || localPlayer.currentRoom.toUpperCase();
-    UI.updateStatusUI(localPlayer.posture, roomShort);
+    UI.updateStatusUI(roomShort);
 }
 
 function refreshAllUI() {
@@ -193,6 +199,14 @@ async function loadPlayerState() {
     } catch (e) { console.error("Failed to load player state:", e); }
 }
 
+async function syncAvatarStats() {
+    if (!db || !user || !activeAvatar) return;
+    try {
+        const charRef = doc(db, 'artifacts', appId, 'users', user.uid, CHAR_COLLECTION, activeAvatar.id);
+        await updateDoc(charRef, { stats: activeAvatar.stats });
+    } catch (e) { console.error("Failed to sync avatar stats:", e); }
+}
+
 async function savePlayerState() {
     if (!db || !user) return;
     try {
@@ -230,6 +244,10 @@ if (pinBtnEl) {
 
 // --- NARRATIVE MOVEMENT ENGINE ---
 async function executeMovement(targetDir) {
+    if (localPlayer.combat.active) {
+        UI.addLog(`[SYSTEM]: You cannot disengage while in combat with ${localPlayer.combat.opponent}!`, "var(--term-red)");
+        return;
+    }
     const activeMap = getActiveMap();
     const currentRoom = activeMap[localPlayer.currentRoom];
     if (!currentRoom) { console.warn('Movement: Current room not found'); return; }
@@ -470,8 +488,8 @@ async function handleCommand(val) {
 
             // Let the AI take initiative
             await handleGMIntent("Describe the strange astral nexus and present an initial challenge to gain the Resonant Key.", 
-                { apartmentMap: astralMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId },
-                { shiftStratum, savePlayerState, refreshStatusUI, renderMapHUD: UI.renderMapHUD, setActiveAvatar: (v) => { activeAvatar = v; } }
+                { activeMap: astralMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId },
+                { shiftStratum, savePlayerState, refreshStatusUI, renderMapHUD: UI.renderMapHUD, setActiveAvatar: (v) => { activeAvatar = v; }, syncAvatarStats }
             );
             return;
         }
@@ -769,13 +787,14 @@ async function handleCommand(val) {
     try {
         await handleGMIntent(
             val,
-            { apartmentMap: activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId },
+            { activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId },
             { 
                 shiftStratum, 
                 savePlayerState, 
                 refreshStatusUI, 
                 renderMapHUD: UI.renderMapHUD,
-                setActiveAvatar: (v) => { activeAvatar = v; }
+                setActiveAvatar: (v) => { activeAvatar = v; },
+                syncAvatarStats
             }
         );
         refreshAllUI();
@@ -816,7 +835,7 @@ if (input) {
             if (wizardState.active) { 
                 const activeMap = getActiveMap();
                 await handleWizardInput(val, 
-                    { apartmentMap: activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId },
+                    { activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId },
                     { 
                         refreshAllUI, 
                         updateMapListener, 
