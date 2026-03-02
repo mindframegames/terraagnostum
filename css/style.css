@@ -248,6 +248,10 @@
         #context-bar {
             scrollbar-width: none;
             -ms-overflow-style: none;
+            min-height: 40px;
+            padding-bottom: 20px;
+            margin-top: 15px;
+            z-index: 50;
         }
         #context-bar::-webkit-scrollbar {
             display: none;
