@@ -459,13 +459,13 @@ async function handleCommand(val) {
                 exits: {}, pinnedView: null, items: [], marginalia: [], npcs: []
             };
             localPlayer.currentRoom = entryId;
+            const activeMap = getActiveMap();
 
             UI.addLog("[NARRATOR]: The walls of the closet dissolve into raw, static data. You are pulled into the Astral Plane.", "#888");
             UI.addLog("[TANDY]: You're in. The Astral Plane is a reflection of your intent. To escape the apartment, you must find a way to synthesize a Resonant Key here.", "#b084e8");
             
-            const activeMap = getActiveMap();
             UI.printRoomDescription(activeMap[entryId], true, activeMap, activeAvatar);
-            triggerVisualUpdate(activeMap[entryId].visualPrompt, localPlayer, activeMap, user);
+            await triggerVisualUpdate(activeMap[entryId].visualPrompt, localPlayer, activeMap, user);
             refreshAllUI();
 
             // Let the AI take initiative
