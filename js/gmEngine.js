@@ -63,7 +63,9 @@ export async function handleGMIntent(
         GUIDELINES FOR SUGGESTIONS:
         - If the player's Auth Tier is GUEST or VOID, and there is a computer console, terminal, or Tandem device mentioned in the room description, you MUST strongly suggest "Login".
         - If the player is a VOID (no avatar) and in a room that mentions character sheets, archives of forms, or vessel forging, strongly suggest "Create Avatar".
-        - If the room description mentions a Closet or Generator, suggest "Investigate", "Close Door", or "Use Generator" (if door is shut and they are materialized).
+        - In Schrödinger's Closet (or any room with the Resonance Generator):
+            - If the 'closetDoorClosed' flag is FALSE, you MUST suggest "Close Door".
+            - If the 'closetDoorClosed' flag is TRUE, you MUST suggest "Use Resonator".
         - If NPCs are present and the player is a VOID, suggest "Assume [NPC Name]".
         - If NPCs are present and the player is MATERIALIZED, suggest "Talk to [NPC Name]".
         
