@@ -107,11 +107,14 @@ function updateContextualSuggestions(aigmSuggestions = []) {
     const safeAigm = Array.isArray(aigmSuggestions) ? aigmSuggestions : [];
     suggestions = [...suggestions, ...safeAigm];
 
-    // 4. CORE SYSTEM DEFAULTS (if list is small)
+    // 4. CORE SYSTEM DEFAULTS
     if (suggestions.length < 4) {
         suggestions.push("Look");
         suggestions.push("Inventory");
     }
+
+    // 5. THE AI SUGGESTION ENGINE (Always available)
+    suggestions.push("💡 Suggest");
 
     // Deduplicate and Render
     const uniqueSuggestions = [...new Set(suggestions)];
@@ -377,6 +380,32 @@ async function executeMovement(targetDir) {
 // --- COMMAND PARSER ---
 async function handleCommand(val) {
     const cmd = val.toLowerCase();
+
+    // INTERCEPT AI SUGGESTION REQUEST
+    if (cmd === '💡 suggest' || cmd === 'suggest') {
+        UI.renderContextualCommands(['Thinking...']);
+        try {
+            const activeMap = getActiveMap();
+            const suggestions = await handleGMIntent(
+                "Provide context-sensitive suggestions.",
+                { activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId, userTier: getUserTier() },
+                { 
+                    shiftStratum, 
+                    savePlayerState, 
+                    refreshStatusUI, 
+                    renderMapHUD: UI.renderMapHUD,
+                    setActiveAvatar: (v) => { activeAvatar = v; },
+                    syncAvatarStats
+                },
+                true // IS SILENT
+            );
+            updateContextualSuggestions(suggestions);
+        } catch (e) {
+            console.error("AI Suggestion failed:", e);
+            updateContextualSuggestions([]);
+        }
+        return;
+    }
 
     if (cmd === 'logout') {
         UI.addLog("[SYSTEM]: Severing connection to the Technate...", "var(--term-amber)");
@@ -830,7 +859,7 @@ async function handleCommand(val) {
     try {
         const suggestions = await handleGMIntent(
             val,
-            { activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId },
+            { activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId, userTier: getUserTier() },
             { 
                 shiftStratum, 
                 savePlayerState, 

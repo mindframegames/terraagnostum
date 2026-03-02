@@ -6,18 +6,21 @@ import * as UI from './ui.js';
 export async function handleGMIntent(
     val,
     state,
-    actions
+    actions,
+    isSilent = false
 ) {
-    const { activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId } = state;
+    const { activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId, userTier } = state;
     const { shiftStratum, savePlayerState, refreshStatusUI, renderMapHUD, setActiveAvatar, syncAvatarStats } = actions;
 
-    UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">EVALUATING INTENT...</span>`);
+    if (!isSilent) {
+        UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">EVALUATING INTENT...</span>`);
+    }
     
     try {
         const currentRoomData = activeMap[localPlayer.currentRoom];
         if (!currentRoomData) {
             console.error("Room not found in map:", localPlayer.currentRoom);
-            UI.addLog(`[SYSTEM ERROR]: Location data corrupted for ${localPlayer.currentRoom}.`, "var(--term-red)");
+            if (!isSilent) UI.addLog(`[SYSTEM ERROR]: Location data corrupted for ${localPlayer.currentRoom}.`, "var(--term-red)");
             return [];
         }
         const inventoryNames = localPlayer.inventory.map(i => i.name).join(', ');
@@ -51,6 +54,9 @@ export async function handleGMIntent(
         Adjacent Entities (Visible through doorways/counters): ${adjacentNpcText}.
         Exits: ${exitText}.
         Current Avatar: ${activeAvatar ? `${activeAvatar.name} (${activeAvatar.archetype})` : 'None'}.
+        Player Cohesion: ${activeAvatar ? 'MATERIALIZED' : 'VOID (Disembodied)'}.
+        Player Auth Tier: ${userTier || 'GUEST'}.
+        Environment Flags: { closetDoorClosed: ${localPlayer.closetDoorClosed || false} }.
         Combat Status: ${localPlayer.combat.active ? `ACTIVE with ${localPlayer.combat.opponent}` : 'INACTIVE'}.
         Player Stats: ${activeAvatar ? `WILL: ${activeAvatar.stats.WILL}, CONS: ${activeAvatar.stats.CONS}, PHYS: ${activeAvatar.stats.PHYS}` : 'N/A'}.
         
@@ -92,7 +98,8 @@ export async function handleGMIntent(
           "combat_active": boolean,
           "damage_to_player": number or null,
           "suggested_actions": ["Action string 1", "Action string 2"]
-        }`;
+        }
+        ${isSilent ? 'IMPORTANT: This is a silent context-check. Focus primarily on providing 3-5 high-quality, relevant "suggested_actions". Keep "narrative" brief as it will not be displayed.' : ''}`;
         
         const res = await callGemini(`User: ${val}`, sysPrompt);
         let stateChanged = false;
@@ -102,11 +109,11 @@ export async function handleGMIntent(
             if (res.combat_active && !localPlayer.combat.active) {
                 localPlayer.combat.active = true;
                 localPlayer.combat.opponent = res.speaker || "Shadow";
-                UI.addLog(`[SYSTEM]: COMBAT INITIALIZED. BATTLE OF WILLS ENGAGED.`, "var(--term-red)");
+                if (!isSilent) UI.addLog(`[SYSTEM]: COMBAT INITIALIZED. BATTLE OF WILLS ENGAGED.`, "var(--term-red)");
             } else if (!res.combat_active && localPlayer.combat.active) {
                 localPlayer.combat.active = false;
                 localPlayer.combat.opponent = null;
-                UI.addLog(`[SYSTEM]: Combat resolved.`, "var(--term-green)");
+                if (!isSilent) UI.addLog(`[SYSTEM]: Combat resolved.`, "var(--term-green)");
             }
             stateChanged = true;
         }
@@ -114,12 +121,12 @@ export async function handleGMIntent(
         // Handle Damage to Player
         if (res.damage_to_player && activeAvatar) {
             activeAvatar.stats.WILL = Math.max(0, (activeAvatar.stats.WILL || 20) - res.damage_to_player);
-            UI.addLog(`[COMBAT]: You took ${res.damage_to_player} WILL damage!`, "var(--term-red)");
+            if (!isSilent) UI.addLog(`[COMBAT]: You took ${res.damage_to_player} WILL damage!`, "var(--term-red)");
             UI.updateAvatarUI(activeAvatar);
             if (syncAvatarStats) syncAvatarStats();
 
             if (activeAvatar.stats.WILL <= 0) {
-                UI.addLog(`[SYSTEM]: Your Will has withered. Your vessel collapses...`, "var(--term-red)");
+                if (!isSilent) UI.addLog(`[SYSTEM]: Your Will has withered. Your vessel collapses...`, "var(--term-red)");
                 // Defeat Sequence: Teleport to bedroom, restore WILL
                 activeAvatar.stats.WILL = 20; // Restore
                 if (syncAvatarStats) syncAvatarStats();
@@ -129,7 +136,7 @@ export async function handleGMIntent(
                 localPlayer.combat.opponent = null;
                 shiftStratum('mundane');
                 stateChanged = true;
-                UI.addLog(`[NARRATOR]: You gasp as you wake up in your bedroom, the astral nightmare fading into a cold sweat.`, "#888");
+                if (!isSilent) UI.addLog(`[NARRATOR]: You gasp as you wake up in your bedroom, the astral nightmare fading into a cold sweat.`, "#888");
             }
         }
         
@@ -144,9 +151,9 @@ export async function handleGMIntent(
                     exits: {}, pinnedView: null, items: [], marginalia: [], npcs: []
                 };
                 stateChanged = true;
-                UI.addLog(`[SYSTEM]: Conventional geometry discarded. Welcome to the Astral Plane.`, "var(--faen-pink)");
+                if (!isSilent) UI.addLog(`[SYSTEM]: Conventional geometry discarded. Welcome to the Astral Plane.`, "var(--faen-pink)");
             } else {
-                UI.addLog("[SYSTEM]: Dimensional shift failed. Anchors too strong in this node.", "var(--term-red)");
+                if (!isSilent) UI.addLog("[SYSTEM]: Dimensional shift failed. Anchors too strong in this node.", "var(--term-red)");
             }
         } else if (res.trigger_stratum_shift) {
             const target = res.trigger_stratum_shift.toLowerCase();
@@ -158,7 +165,7 @@ export async function handleGMIntent(
         
         if (res.give_item) {
             localPlayer.inventory.push(res.give_item);
-            UI.addLog(`[REWARD]: You have obtained [${res.give_item.name}].`, "var(--term-green)");
+            if (!isSilent) UI.addLog(`[REWARD]: You have obtained [${res.give_item.name}].`, "var(--term-green)");
             UI.updateInventoryUI(localPlayer.inventory);
             stateChanged = true;
         }
@@ -169,7 +176,7 @@ export async function handleGMIntent(
             localPlayer.currentRoom = "spare_room"; 
             localPlayer.stratum = "mundane";
             stateChanged = true; 
-            UI.addLog(`Vessel destroyed. Connection severed.`, "var(--term-red)"); 
+            if (!isSilent) UI.addLog(`Vessel destroyed. Connection severed.`, "var(--term-red)"); 
             shiftStratum('mundane');
         }
         
@@ -181,7 +188,7 @@ export async function handleGMIntent(
             }
             localPlayer.currentRoom = t.new_room_id; 
             stateChanged = true; 
-            UI.addLog(`Reality warp successful.`, "var(--gm-purple)");
+            if (!isSilent) UI.addLog(`Reality warp successful.`, "var(--gm-purple)");
         }
         
         if (stateChanged) { 
@@ -190,8 +197,10 @@ export async function handleGMIntent(
             renderMapHUD(activeMap, localPlayer.currentRoom, localPlayer.stratum); 
         }
         
-        const speakerPrefix = (res.speaker === 'SYSTEM' || res.speaker === 'NARRATOR') ? `[${res.speaker}]` : `${res.speaker.toUpperCase()}`;
-        UI.addLog(`${speakerPrefix}: ${res.narrative}`, res.color);
+        if (!isSilent) {
+            const speakerPrefix = (res.speaker === 'SYSTEM' || res.speaker === 'NARRATOR') ? `[${res.speaker}]` : `${res.speaker.toUpperCase()}`;
+            UI.addLog(`${speakerPrefix}: ${res.narrative}`, res.color);
+        }
         
         if (res.world_edit) {
             stateChanged = true;
@@ -205,7 +214,7 @@ export async function handleGMIntent(
                 if (room.exits[unlockDir] && typeof room.exits[unlockDir] === 'object') {
                     room.exits[unlockDir].locked = false;
                     if (isSyncEnabled) updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live'), { [`nodes.${localPlayer.currentRoom}.exits.${unlockDir}.locked`]: false });
-                    UI.addLog(`[SYSTEM]: The path ${unlockDir.toUpperCase()} has been opened.`, "var(--term-green)");
+                    if (!isSilent) UI.addLog(`[SYSTEM]: The path ${unlockDir.toUpperCase()} has been opened.`, "var(--term-green)");
                 }
             } else if (res.world_edit.type === 'spawn_item') {
                 if (!room.items) room.items = [];
@@ -214,25 +223,25 @@ export async function handleGMIntent(
                     updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live'), { [`nodes.${localPlayer.currentRoom}.items`]: arrayUnion(res.world_edit.item) });
                 }
                 UI.updateRoomItemsUI(room.items);
-                UI.addLog(`[SYSTEM]: ${res.world_edit.item.name} has manifested in the room.`, "var(--term-green)");
+                if (!isSilent) UI.addLog(`[SYSTEM]: ${res.world_edit.item.name} has manifested in the room.`, "var(--term-green)");
             } else if (res.world_edit.type === 'spawn_npc') {
                 const npcData = res.world_edit.npc;
                 
                 // Generate portrait for NPC if visual_prompt provided and no image
                 if (npcData.visual_prompt && !npcData.image) {
-                    UI.addLog(`[SYSTEM]: Manifesting visual imprint for ${npcData.name}...`, "var(--term-amber)");
+                    if (!isSilent) UI.addLog(`[SYSTEM]: Manifesting visual imprint for ${npcData.name}...`, "var(--term-amber)");
                     try {
                         const b64 = await generatePortrait(npcData.visual_prompt, localPlayer.stratum);
                         if (b64) {
                             const dataUrl = `data:image/png;base64,${b64}`;
                             npcData.image = await compressImage(dataUrl, 400, 0.7);
-                            UI.addLog(`[SYSTEM]: Visual imprint successful for ${npcData.name}.`, "var(--term-green)");
+                            if (!isSilent) UI.addLog(`[SYSTEM]: Visual imprint successful for ${npcData.name}.`, "var(--term-green)");
                         } else {
-                            UI.addLog(`[SYSTEM]: Visual manifestation failed for ${npcData.name}.`, "var(--term-red)");
+                            if (!isSilent) UI.addLog(`[SYSTEM]: Visual manifestation failed for ${npcData.name}.`, "var(--term-red)");
                         }
                     } catch (e) {
                         console.error("NPC Portrait generation error:", e);
-                        UI.addLog(`[SYSTEM ERROR]: Portrait generation failed.`, "var(--term-red)");
+                        if (!isSilent) UI.addLog(`[SYSTEM ERROR]: Portrait generation failed.`, "var(--term-red)");
                     }
                 }
 
@@ -251,7 +260,7 @@ export async function handleGMIntent(
                     updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live'), { [`nodes.${localPlayer.currentRoom}.npcs`]: room.npcs });
                 }
                 UI.updateRoomEntitiesUI(room.npcs);
-                UI.addLog(`[SYSTEM]: A new presence detected: ${npcData.name}.`, "var(--term-amber)");
+                if (!isSilent) UI.addLog(`[SYSTEM]: A new presence detected: ${npcData.name}.`, "var(--term-amber)");
             }
         }
         
@@ -261,7 +270,7 @@ export async function handleGMIntent(
         if (isLooking && currentRoomData.npcs) {
             for (let npc of currentRoomData.npcs) {
                 if (npc.visual_prompt && !npc.image) {
-                    UI.addLog(`[REPAIR]: Re-weaving visual imprint for ${npc.name}...`, "var(--term-amber)");
+                    if (!isSilent) UI.addLog(`[REPAIR]: Re-weaving visual imprint for ${npc.name}...`, "var(--term-amber)");
                     const b64 = await generatePortrait(npc.visual_prompt, localPlayer.stratum);
                     if (b64) {
                         npc.image = await compressImage(`data:image/png;base64,${b64}`, 400, 0.7);
@@ -280,9 +289,9 @@ export async function handleGMIntent(
         return res.suggested_actions || [];
     } catch (err) { 
         console.error(err);
-        UI.addLog("SYSTEM EVALUATION FAILED!", "var(--term-red)"); 
+        if (!isSilent) UI.addLog("SYSTEM EVALUATION FAILED!", "var(--term-red)"); 
         return [];
     } finally { 
-        document.getElementById('thinking-indicator')?.remove(); 
+        if (!isSilent) document.getElementById('thinking-indicator')?.remove(); 
     }
 }
