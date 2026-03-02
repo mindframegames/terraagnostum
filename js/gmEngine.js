@@ -60,6 +60,13 @@ export async function handleGMIntent(
         Combat Status: ${localPlayer.combat.active ? `ACTIVE with ${localPlayer.combat.opponent}` : 'INACTIVE'}.
         Player Stats: ${activeAvatar ? `WILL: ${activeAvatar.stats.WILL}, CONS: ${activeAvatar.stats.CONS}, PHYS: ${activeAvatar.stats.PHYS}` : 'N/A'}.
         
+        GUIDELINES FOR SUGGESTIONS:
+        - If the player's Auth Tier is GUEST or VOID, and there is a computer console, terminal, or Tandem device mentioned in the room description, you MUST strongly suggest "Login".
+        - If the player is a VOID (no avatar) and in a room that mentions character sheets, archives of forms, or vessel forging, strongly suggest "Create Avatar".
+        - If the room description mentions a Closet or Generator, suggest "Investigate", "Close Door", or "Use Generator" (if door is shut and they are materialized).
+        - If NPCs are present and the player is a VOID, suggest "Assume [NPC Name]".
+        - If NPCs are present and the player is MATERIALIZED, suggest "Talk to [NPC Name]".
+        
         SPECIAL QUEST: If the user is in the ASTRAL stratum, they are on a quest to obtain a 'Resonant Key' to escape the apartment. 
         The Astral Plane takes shape based on the user's actions. Create bizarre challenges, non-euclidean puzzles, or social encounters with memory-fragments.
         
