@@ -121,3 +121,50 @@ export async function generatePortrait(prompt, stratum) {
     }
     return null;
 }
+
+// STRIPE - FIREBASE INTEGRATION FOR ARCHITECT MODE ACTIVATION
+// --- TERRA AGNOSTUM - STRIPE + FIREBASE MONETIZATION LOGIC ---
+
+// 1. We require Firebase Auth to access the UID.
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+
+const auth = getAuth();
+
+// --- THE VITAL CONFIGURATION ---
+// PASTE THE REAL, LIVE STRIPE BUY LINK YOU JUST FOUND.
+// It MUST look like https://buy.stripe.com/Sk_live... 
+// NOT buy.stripe.com/test_... !
+const LIVE_STRIPE_PAYMENT_LINK = "https://buy.stripe.com/Sk_live_PASTE_THE_KEY_YOU_FOUND"; 
+
+// --- The Listener: The moment the user logs in, we rewrite the world ---
+onAuthStateChanged(auth, (user) => {
+  
+  // Find the HTML link we created in Step 1.
+  const becomeArchitectLink = document.getElementById("become-architect-link");
+  const hudStatus = document.getElementById("hud-status");
+
+  if (user) {
+    // A. User is signed in. Grab their UNIQUE Firebase UID.
+    const firebaseUid = user.uid;
+    console.log(`[HUD] Authorized User Detected. UID: ${firebaseUid}`);
+
+    // B. The Magic: Construct the personalized Payment URL.
+    // We add 'client_reference_id' as a query parameter.
+    // This is what Stripe sends back to our Vercel function to automate activation.
+    const personalizedPaymentUrl = `${LIVE_STRIPE_PAYMENT_LINK}?client_reference_id=${firebaseUid}`;
+
+    // C. The Payoff: Update and show the "[ BECOME_ARCHITECT ]" link.
+    becomeArchitectLink.setAttribute("href", personalizedPaymentUrl); // Set the URL
+    becomeArchitectLink.textContent = "[ BECOME_ARCHITECT ]"; // Set text (if it was different)
+    becomeArchitectLink.style.display = "inline"; // Show the button!
+    
+    // Update the status console.
+    hudStatus.textContent = `// USER://_VOID/${firebaseUid.substring(0,6)} // AUTHENTICATED //`;
+
+  } else {
+    // User is signed out. (The [ BECOME_ARCHITECT ] link stays hidden).
+    // The HUD should probably just show 'AUTHENTICATION_REQUIRED'.
+    becomeArchitectLink.style.display = "none";
+    hudStatus.textContent = "// UNKNOWN_ENTITY // LOGIN_REQUIRED //";
+  }
+});
