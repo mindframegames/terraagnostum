@@ -46,6 +46,8 @@ Multi-Vector Sync: Real-time, multiplayer state synchronization. When you alter 
 
 Somatic Glitch Engine: Push too much "Amn" (meaning) into the render, and the system will push back. High-stakes actions run the risk of desaturating the user's environment or triggering localized narrative loops.
 
+<img width="1381" height="331" alt="image (21)" src="https://github.com/user-attachments/assets/db0f477b-2bd8-41a5-9671-c3b04133e7e9" />
+
 ## [ ARCHITECTURE ]
 
 The terminal is built to be lightweight, resilient, and highly decentralized to avoid detection by the Technate.
