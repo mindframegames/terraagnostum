@@ -8,7 +8,12 @@ let currentBase64 = null;
 
 export async function triggerVisualUpdate(overridePrompt, localPlayer, activeMap, user) {
     const roomId = localPlayer.currentRoom;
-    const room = activeMap[roomId] || {};
+    const room = activeMap[roomId];
+    
+    if (!room) {
+        console.warn(`Visual Update: Room ${roomId} not found in map reference. Skipping projection.`);
+        return;
+    }
     
     currentBase64 = null;
     

@@ -266,8 +266,22 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
 
     const nodeSize = 30;
     const spacing = 60;
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
+    const centerX = (canvas.width || 230) / 2;
+    const centerY = (canvas.height || 150) / 2;
+
+    if (!activeMap || Object.keys(activeMap).length === 0) {
+        console.warn("renderMapHUD: activeMap is empty or undefined.");
+        ctx.fillStyle = "#ff0000";
+        ctx.fillText("MAP DATA ERROR", centerX, centerY);
+        return;
+    }
+
+    if (!currentRoomKey || !activeMap[currentRoomKey]) {
+        console.warn(`renderMapHUD: currentRoomKey '${currentRoomKey}' not found in map.`);
+        ctx.fillStyle = "#ffff00";
+        ctx.fillText("NODE NOT FOUND", centerX, centerY);
+        return;
+    }
 
     let coords = {}; 
     let queue = [{key: currentRoomKey, logicalX: 0, logicalY: 0}];
@@ -281,25 +295,27 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
         let node = activeMap[curr.key];
         if(!node) continue;
         if (node.exits) {
-            const nId = typeof node.exits.north === 'object' ? node.exits.north.target : node.exits.north;
+            const getTarget = (val) => (val && typeof val === 'object') ? val.target : val;
+            
+            const nId = getTarget(node.exits.north);
             if (nId && !coords[nId]) {
                 coords[nId] = {x: curr.logicalX, y: curr.logicalY - 1};
                 queue.push({key: nId, logicalX: curr.logicalX, logicalY: curr.logicalY - 1});
             }
             
-            const sId = typeof node.exits.south === 'object' ? node.exits.south.target : node.exits.south;
+            const sId = getTarget(node.exits.south);
             if (sId && !coords[sId]) {
                 coords[sId] = {x: curr.logicalX, y: curr.logicalY + 1};
                 queue.push({key: sId, logicalX: curr.logicalX, logicalY: curr.logicalY + 1});
             }
             
-            const eId = typeof node.exits.east === 'object' ? node.exits.east.target : node.exits.east;
+            const eId = getTarget(node.exits.east);
             if (eId && !coords[eId]) {
                 coords[eId] = {x: curr.logicalX + 1, y: curr.logicalY};
                 queue.push({key: eId, logicalX: curr.logicalX + 1, logicalY: curr.logicalY});
             }
             
-            const wId = typeof node.exits.west === 'object' ? node.exits.west.target : node.exits.west;
+            const wId = getTarget(node.exits.west);
             if (wId && !coords[wId]) {
                 coords[wId] = {x: curr.logicalX - 1, y: curr.logicalY};
                 queue.push({key: wId, logicalX: curr.logicalX - 1, logicalY: curr.logicalY});
@@ -314,9 +330,12 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
         let node = activeMap[key];
         let p1 = coords[key];
         if(!node || !p1) return;
-        const drawEdge = (targetData, colorOverride) => {
-            const targetKey = typeof targetData === 'object' ? targetData.target : targetData;
-            const isLocked = typeof targetData === 'object' && targetData.locked;
+        const drawEdge = (targetData) => {
+            if (!targetData) return;
+            const targetKey = (typeof targetData === 'object') ? targetData.target : targetData;
+            const isLocked = (typeof targetData === 'object' && targetData.locked);
+            if (!targetKey) return;
+            
             let p2 = coords[targetKey];
             if(p2) {
                 ctx.beginPath();

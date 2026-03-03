@@ -47,7 +47,11 @@ function getUserTier() {
 
 // --- HELPER WRAPPERS ---
 function getActiveMap() {
-    return (localPlayer.currentRoom && localPlayer.currentRoom.startsWith('astral_')) ? astralMap : apartmentMap;
+    // If the room starts with astral_, or we are explicitly in the astral stratum
+    if (localPlayer.currentRoom?.startsWith('astral_') || localPlayer.stratum === 'astral') {
+        return astralMap;
+    }
+    return apartmentMap;
 }
 
 function shiftStratum(targetStratum) {
@@ -139,8 +143,10 @@ function refreshAllUI() {
     refreshStatusUI();
     UI.updateAvatarUI(activeAvatar);
     UI.updateInventoryUI(localPlayer.inventory);
-    UI.updateRoomItemsUI(activeMap[localPlayer.currentRoom]?.items);
-    UI.updateRoomEntitiesUI(activeMap[localPlayer.currentRoom]?.npcs);
+    
+    const room = activeMap[localPlayer.currentRoom];
+    UI.updateRoomItemsUI(room?.items);
+    UI.updateRoomEntitiesUI(room?.npcs);
     UI.renderMapHUD(activeMap, localPlayer.currentRoom, localPlayer.stratum);
     updateContextualSuggestions();
 }
@@ -181,6 +187,23 @@ if (isSyncEnabled) {
             shiftStratum(localPlayer.stratum);
             
             const activeMap = getActiveMap();
+            
+            // Audit Closet Description: Reset if it's the old "heavily reinforced" version or has the old visual prompt
+            if (apartmentMap['closet'] && (apartmentMap['closet'].description.includes('heavily reinforced') || apartmentMap['closet'].visualPrompt?.includes('steel door'))) {
+                apartmentMap['closet'].description = initialMap['closet'].description;
+                apartmentMap['closet'].visualPrompt = initialMap['closet'].visualPrompt;
+                if (isSyncEnabled) {
+                    const mapRef = isArchiveRoom('closet') && user 
+                        ? doc(db, 'artifacts', appId, 'users', user.uid, 'instance', 'apartment_nodes')
+                        : doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live');
+                    
+                    updateDoc(mapRef, { 
+                        'nodes.closet.description': initialMap['closet'].description,
+                        'nodes.closet.visualPrompt': initialMap['closet'].visualPrompt
+                    });
+                }
+            }
+
             const currentRoom = activeMap[localPlayer.currentRoom] || activeMap["lore1"];
             UI.printRoomDescription(currentRoom, localPlayer.stratum === 'faen', activeMap, activeAvatar);
             refreshAllUI();
@@ -208,8 +231,29 @@ function setupWorldListener() {
 }
 
 function mergeAndRefreshMap(fetchedNodes = {}) {
-    apartmentMap = { ...initialMap, ...fetchedNodes };
+    if (!fetchedNodes || Object.keys(fetchedNodes).length === 0) {
+        apartmentMap = { ...initialMap };
+    } else {
+        apartmentMap = { ...initialMap, ...fetchedNodes };
+    }
     
+    // Audit Closet Description: Force reset if it's the old "heavily reinforced" version or has old visual prompt
+    if (apartmentMap['closet'] && (apartmentMap['closet'].description.includes('heavily reinforced') || apartmentMap['closet'].visualPrompt?.includes('steel door'))) {
+        apartmentMap['closet'].description = initialMap['closet'].description;
+        apartmentMap['closet'].visualPrompt = initialMap['closet'].visualPrompt;
+        if (isSyncEnabled && user) {
+            const isPrivate = isArchiveRoom('closet');
+            const mapPath = isPrivate 
+                ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
+                : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+            const mapRef = doc(db, mapPath);
+            updateDoc(mapRef, { 
+                'nodes.closet.description': initialMap['closet'].description,
+                'nodes.closet.visualPrompt': initialMap['closet'].visualPrompt
+            });
+        }
+    }
+
     // Check if the current room is in either the apartment map or the astral map
     const isInApartmentMap = !!apartmentMap[localPlayer.currentRoom];
     const isInAstralMap = !!astralMap[localPlayer.currentRoom];
@@ -434,7 +478,8 @@ async function handleCommand(val) {
                     refreshStatusUI, 
                     renderMapHUD: UI.renderMapHUD,
                     setActiveAvatar: (v) => { activeAvatar = v; },
-                    syncAvatarStats
+                    syncAvatarStats,
+                    updateMapListener
                 },
                 true // IS SILENT
             );
@@ -894,18 +939,21 @@ async function handleCommand(val) {
 
     // --- THE UNIVERSAL GM INTENT ENGINE ---
     isProcessing = true;
-    const activeMap = getActiveMap();
     try {
         const suggestions = await handleGMIntent(
             val,
-            { activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId, userTier: getUserTier() },
+            { 
+                get activeMap() { return getActiveMap(); }, 
+                localPlayer, user, activeAvatar, isSyncEnabled, db, appId, userTier: getUserTier() 
+            },
             { 
                 shiftStratum, 
                 savePlayerState, 
                 refreshStatusUI, 
                 renderMapHUD: UI.renderMapHUD,
                 setActiveAvatar: (v) => { activeAvatar = v; },
-                syncAvatarStats
+                syncAvatarStats,
+                updateMapListener
             }
         );
         refreshAllUI();

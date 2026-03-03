@@ -9,7 +9,7 @@ export async function handleGMIntent(
     actions,
     isSilent = false
 ) {
-    const { activeMap, localPlayer, user, activeAvatar, isSyncEnabled, db, appId, userTier } = state;
+    const { localPlayer, user, activeAvatar, isSyncEnabled, db, appId, userTier } = state;
     const { shiftStratum, savePlayerState, refreshStatusUI, renderMapHUD, setActiveAvatar, syncAvatarStats } = actions;
 
     if (!isSilent) {
@@ -17,14 +17,18 @@ export async function handleGMIntent(
     }
     
     try {
-        const currentRoomData = activeMap[localPlayer.currentRoom];
+        const currentRoomData = state.activeMap[localPlayer.currentRoom];
         if (!currentRoomData) {
             console.error("Room not found in map:", localPlayer.currentRoom);
             if (!isSilent) UI.addLog(`[SYSTEM ERROR]: Location data corrupted for ${localPlayer.currentRoom}.`, "var(--term-red)");
             return [];
         }
         const inventoryNames = localPlayer.inventory.map(i => i.name).join(', ');
-        const npcText = (currentRoomData.npcs || []).map(n => `[NPC] ${n.name} - Personality: ${n.personality}`).join('\n') || "None";
+        const npcText = (currentRoomData.npcs || []).map(n => {
+            let statsStr = "";
+            if (n.stats) statsStr = ` (WILL: ${n.stats.WILL}, CONS: ${n.stats.CONS}, PHYS: ${n.stats.PHYS})`;
+            return `[NPC] ${n.name}${statsStr} - Personality: ${n.personality}`;
+        }).join('\n') || "None";
         
         // Build string representing current exits and their lock status
         const exitStrs = [];
@@ -38,7 +42,7 @@ export async function handleGMIntent(
             }
             
             // Peek into the adjacent room for visible entities
-            const targetRoom = activeMap[targetId];
+            const targetRoom = state.activeMap[targetId];
             if (targetRoom && targetRoom.npcs && targetRoom.npcs.length > 0) {
                 targetRoom.npcs.forEach(n => {
                     adjacentNpcs.push(`[NPC to the ${dir.toUpperCase()}] ${n.name} - Personality: ${n.personality}`);
@@ -75,7 +79,7 @@ export async function handleGMIntent(
         ASTRAL ENCOUNTER: If the user is in the ASTRAL stratum and there is NO 'Shadow Avatar' (or a shadow reflection NPC) currently present in the 'Entities Present' list, you MUST immediately manifest one using "spawn_npc". 
         The Shadow Avatar is a dark, flickering reflection of the user's current avatar. It should challenge the player's identity or purpose. 
         Create a 'visual_prompt' for it that is a dark, glitchy, debased, sci-fi/fantasy bad guy version of the player character's description.
-        Required Action if NPC missing: "world_edit": {"type": "spawn_npc", "npc": {"name": "Shadow ${activeAvatar ? activeAvatar.name : 'Self'}", "archetype": "Glitch Reflection", "personality": "Challenging and cryptic", "stats": {"WILL": 5}, "visual_prompt": "A dark, glitching shadow silhouette of the player character, digital corruption artifacts, eerie astral plane background, glowing eyes, highly detailed."}}
+        Required Action if NPC missing: "world_edit": {"type": "spawn_npc", "npc": {"name": "Shadow ${activeAvatar ? activeAvatar.name : 'Self'}", "archetype": "Glitch Reflection", "personality": "Challenging and cryptic", "stats": {"WILL": 2}, "visual_prompt": "A dark, glitching shadow silhouette of the player character, digital corruption artifacts, eerie astral plane background, glowing eyes, highly detailed."}}
         
         BATTLE OF WILLS: If the Shadow Avatar is present, it will eventually attack the player. 
         - When combat is active, the player will attempt narrative actions. 
@@ -84,6 +88,7 @@ export async function handleGMIntent(
         - IMPORTANT: If combat is active, you MUST set "damage_to_player": 1 in your JSON response whenever the Shadow strikes (which should be almost every turn once combat starts).
         - IMPORTANT: Describe the Shadow's attack in the narrative so the player knows they are being hit.
         - The player's attacks (like 'ATTACK WITH WILL FORCE') deal damage to the Shadow's WILL.
+        - IMPORTANT: In your narrative, you MUST indicate the Shadow's remaining health/Will (e.g., "The Shadow flickers, its Will down to 3").
         - You decide if the Shadow hits or if the player successfully resists/dodges based on their narrative.
         - If the player's WILL hits 0, they are defeated.
         - If the Shadow's WILL hits 0, it is defeated and vanishes.
@@ -157,12 +162,19 @@ export async function handleGMIntent(
 
         // Handle Damage to NPC (Battle of Wills)
         if (res.damage_to_npc && localPlayer.combat.active) {
-            const room = activeMap[localPlayer.currentRoom];
-            const npc = room.npcs?.find(n => n.name === localPlayer.combat.opponent);
+            const room = state.activeMap[localPlayer.currentRoom];
+            const opponentName = localPlayer.combat.opponent.toLowerCase();
+            // Fuzzy match for NPC name
+            const npc = room.npcs?.find(n => 
+                n.name.toLowerCase() === opponentName || 
+                n.name.toLowerCase().includes(opponentName) ||
+                opponentName.includes(n.name.toLowerCase())
+            );
+            
             if (npc) {
                 if (!npc.stats) npc.stats = { WILL: 5, CONS: 20, PHYS: 20 };
                 npc.stats.WILL = Math.max(0, (npc.stats.WILL || 5) - res.damage_to_npc);
-                if (!isSilent) UI.addLog(`[COMBAT]: ${npc.name} took ${res.damage_to_npc} WILL damage!`, "var(--term-amber)");
+                if (!isSilent) UI.addLog(`[COMBAT]: ${npc.name} took ${res.damage_to_npc} WILL damage! (Remaining WILL: ${npc.stats.WILL})`, "var(--term-amber)");
                 
                 if (npc.stats.WILL <= 0) {
                     if (!isSilent) UI.addLog(`[SYSTEM]: ${npc.name} has been dissipated. Victory!`, "var(--term-green)");
@@ -191,9 +203,17 @@ export async function handleGMIntent(
                         if (localPlayer.stratum !== 'mundane') {
                             localPlayer.currentRoom = 'closet';
                             shiftStratum('mundane');
+                            if (typeof actions.updateMapListener === 'function') actions.updateMapListener();
                             if (!isSilent) UI.addLog(`[SYSTEM]: Harmonic resonance achieved. Shifting back to mundane stratum...`, "var(--term-green)");
-                            // Trigger visual update for the closet
-                            triggerVisualUpdate(null, localPlayer, activeMap, user);
+                            
+                            // Re-fetch current room data from the now-correct apartmentMap
+                            const mundaneRoomData = state.activeMap[localPlayer.currentRoom];
+                            // Trigger visual update for the closet using mundane data
+                            triggerVisualUpdate(mundaneRoomData?.visualPrompt, localPlayer, state.activeMap, user);
+                            
+                            // Force immediate UI refresh to clear chips
+                            if (typeof refreshStatusUI === 'function') refreshStatusUI();
+                            UI.updateRoomEntitiesUI(mundaneRoomData?.npcs || []);
                         }
                     }
                 }
@@ -204,7 +224,7 @@ export async function handleGMIntent(
             if (localPlayer.currentRoom === 'closet' || val.toLowerCase().includes('aethal')) {
                 shiftStratum('astral');
                 localPlayer.currentRoom = 'astral_entry';
-                activeMap['astral_entry'] = {
+                state.activeMap['astral_entry'] = {
                     name: "Astral Nexus", shortName: "NEXUS",
                     description: "The entry point to the astral plane. Space is fluid and glowing.",
                     visualPrompt: "Glowing astral nexus portal.",
@@ -242,14 +262,14 @@ export async function handleGMIntent(
         
             if (res.trigger_teleport && !res.trigger_respawn) {
                 const t = res.trigger_teleport;
-                if (!activeMap[t.new_room_id]) {
-                    activeMap[t.new_room_id] = { ...t, shortName: t.name.substring(0, 7).toUpperCase(), exits: {}, pinnedView: null, items: [], marginalia: [], npcs: [] };
+                if (!state.activeMap[t.new_room_id]) {
+                    state.activeMap[t.new_room_id] = { ...t, shortName: t.name.substring(0, 7).toUpperCase(), exits: {}, pinnedView: null, items: [], marginalia: [], npcs: [] };
                     if (isSyncEnabled) {
                         if (t.new_room_id.startsWith('astral_')) {
                             const astralRef = doc(db, 'artifacts', appId, 'users', user.uid, 'instance', 'astral_nodes');
-                            updateDoc(astralRef, { [`nodes.${t.new_room_id}`]: activeMap[t.new_room_id] });
+                            updateDoc(astralRef, { [`nodes.${t.new_room_id}`]: state.activeMap[t.new_room_id] });
                         } else {
-                            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live'), { [`nodes.${t.new_room_id}`]: activeMap[t.new_room_id] });
+                            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'maps', 'apartment_graph_live'), { [`nodes.${t.new_room_id}`]: state.activeMap[t.new_room_id] });
                         }
                     }
                 }
@@ -261,7 +281,7 @@ export async function handleGMIntent(
         if (stateChanged) { 
             refreshStatusUI(); 
             savePlayerState(); 
-            renderMapHUD(activeMap, localPlayer.currentRoom, localPlayer.stratum); 
+            renderMapHUD(state.activeMap, localPlayer.currentRoom, localPlayer.stratum); 
         }
         
         if (!isSilent) {
@@ -271,7 +291,7 @@ export async function handleGMIntent(
         
         if (res.world_edit) {
             stateChanged = true;
-            const room = activeMap[localPlayer.currentRoom];
+            const room = state.activeMap[localPlayer.currentRoom];
             if (res.world_edit.type === 'add_marginalia') {
                 if (!room.marginalia) room.marginalia = [];
                 room.marginalia.push(res.world_edit.text);
@@ -373,9 +393,9 @@ export async function handleGMIntent(
         }
         
         if (res.trigger_visual && !res.trigger_respawn && !res.trigger_teleport) {
-            triggerVisualUpdate(res.trigger_visual, localPlayer, activeMap, user);
+            triggerVisualUpdate(res.trigger_visual, localPlayer, state.activeMap, user);
         } else if (res.trigger_stratum_shift || res.trigger_teleport || res.astral_jump || (res.world_edit && res.world_edit.type === 'spawn_npc') || isLooking) {
-            triggerVisualUpdate(null, localPlayer, activeMap, user);
+            triggerVisualUpdate(null, localPlayer, state.activeMap, user);
         }
 
         return res.suggested_actions || [];

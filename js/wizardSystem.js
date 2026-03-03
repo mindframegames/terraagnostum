@@ -411,7 +411,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                     handleGMIntent(
                         "The player has just manifested and entered this new astral sector. Check your directives for the Glitchy Shadow Avatar and present a challenge.", 
                         context, 
-                        callbacks
+                        { ...callbacks, updateMapListener }
                     );
                 }
             }
