@@ -103,8 +103,50 @@
         </div>
     </div>
 
+    <div id="system-hud" style="
+    position: fixed; 
+    bottom: 0; 
+    left: 0;
+    width: 100%; 
+    background: rgba(0, 5, 15, 0.95); 
+    border-top: 1px solid #003366; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    padding: 10px 30px; 
+    font-family: 'Courier New', monospace; 
+    font-size: 11px; 
+    z-index: 9999;
+    box-sizing: border-box;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    box-shadow: 0 -5px 20px rgba(0, 51, 102, 0.3);">
+    
+    <div style="color: #004488;">
+        SYSTEM_STATUS: <span id="hud-status" style="color: #00ccff; animation: pulse 2.5s infinite;">// AUTHENTICATING... //</span>
+    </div>
+
+    <div style="display: flex; gap: 35px;">
+        <a href="https://github.com/mindframegames/terraagnostum" target="_blank" style="color: #666; text-decoration: none; transition: 0.3s;" onmouseover="this.style.color='#fff'; this.style.textShadow='0 0 5px #fff'" onmouseout="this.style.color='#666'; this.style.textShadow='none'">[ VIEW_SOURCE ]</a>
+        <a href="https://discord.com/channels/1478441091513581628/1478441095468945551" target="_blank" style="color: #00ccff; text-decoration: none; transition: 0.3s;" onmouseover="this.style.textShadow='0 0 10px #00ccff'" onmouseout="this.style.color='#00ccff'; this.style.textShadow='none'">[ JOIN_COMMS ]</a>
+        
+        <a id="become-architect-link" 
+           href="https://buy.stripe.com/dRmfZh0Cq0Jm5v31wpg3600" 
+           target="_blank" 
+           style="color: #ffcc00; text-decoration: none; font-weight: bold; transition: 0.3s; display: none;" 
+           onmouseover="this.style.textShadow='0 0 10px #ffcc00'" 
+           onmouseout="this.style.textShadow='none'">
+           [ BECOME_ARCHITECT ]
+        </a>
+    </div>
+</div>
+
+<style>
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+</style>
+
     <!-- BOOT SEQUENCE -->
     <script type="module" src="./js/main.js"></script>
-
+  
 </body>
 </html>
