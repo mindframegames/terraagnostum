@@ -3,6 +3,7 @@ import { triggerVisualUpdate } from './visualSystem.js';
 import * as UI from './ui.js';
 import * as stateManager from './stateManager.js';
 import * as syncEngine from './syncEngine.js';
+import { isArchiveRoom } from './mapData.js';
 
 export async function handleGMIntent(
     val,
@@ -194,7 +195,8 @@ export async function handleGMIntent(
                     
                     // Remove NPC from room
                     const newNpcs = room.npcs.filter(n => n.name !== npc.name);
-                    stateManager.updateMapNode(currentState.localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment', currentState.localPlayer.currentRoom, { npcs: newNpcs });
+                    const mapType = currentState.localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment';
+                    stateManager.updateMapNode(mapType, currentState.localPlayer.currentRoom, { npcs: newNpcs });
                     syncEngine.updateMapNode(currentState.localPlayer.currentRoom, { npcs: newNpcs });
 
                     // Reset Combat State
@@ -295,7 +297,8 @@ export async function handleGMIntent(
                     npcs: [] 
                 };
                 
-                stateManager.updateMapNode(t.new_room_id.startsWith('astral_') ? 'astral' : 'apartment', t.new_room_id, newRoom);
+                const mapType = t.new_room_id.startsWith('astral_') ? 'astral' : 'apartment';
+                stateManager.updateMapNode(mapType, t.new_room_id, newRoom);
                 syncEngine.updateMapNode(t.new_room_id, newRoom);
             }
             stateManager.updatePlayer({ currentRoom: t.new_room_id }); 
@@ -319,20 +322,23 @@ export async function handleGMIntent(
             
             if (res.world_edit.type === 'add_marginalia') {
                 const marginalia = [...(room.marginalia || []), res.world_edit.text];
-                stateManager.updateMapNode(currentState.localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment', currentState.localPlayer.currentRoom, { marginalia });
+                const mapType = currentState.localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment';
+                stateManager.updateMapNode(mapType, currentState.localPlayer.currentRoom, { marginalia });
                 syncEngine.addArrayElementToNode(currentState.localPlayer.currentRoom, 'marginalia', res.world_edit.text);
             } else if (res.world_edit.type === 'unlock_exit') {
                 const unlockDir = res.world_edit.direction.toLowerCase();
                 if (room.exits[unlockDir] && typeof room.exits[unlockDir] === 'object') {
                     const exits = { ...room.exits };
                     exits[unlockDir] = { ...exits[unlockDir], locked: false };
-                    stateManager.updateMapNode(currentState.localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment', currentState.localPlayer.currentRoom, { exits });
+                    const mapType = currentState.localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment';
+                    stateManager.updateMapNode(mapType, currentState.localPlayer.currentRoom, { exits });
                     syncEngine.updateMapNode(currentState.localPlayer.currentRoom, { [`exits.${unlockDir}.locked`]: false });
                     if (!isSilent) UI.addLog(`[SYSTEM]: The path ${unlockDir.toUpperCase()} has been opened.`, "var(--term-green)");
                 }
             } else if (res.world_edit.type === 'spawn_item') {
                 const items = [...(room.items || []), res.world_edit.item];
-                stateManager.updateMapNode(currentState.localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment', currentState.localPlayer.currentRoom, { items });
+                const mapType = currentState.localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment';
+                stateManager.updateMapNode(mapType, currentState.localPlayer.currentRoom, { items });
                 syncEngine.addArrayElementToNode(currentState.localPlayer.currentRoom, 'items', res.world_edit.item);
                 if (!isSilent) UI.addLog(`[SYSTEM]: ${res.world_edit.item.name} has manifested in the room.`, "var(--term-green)");
             } else if (res.world_edit.type === 'spawn_npc') {
@@ -367,7 +373,8 @@ export async function handleGMIntent(
                 } else {
                     npcs.push(npcData);
                 }
-                stateManager.updateMapNode(currentState.localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment', currentState.localPlayer.currentRoom, { npcs });
+                const mapType = currentState.localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment';
+                stateManager.updateMapNode(mapType, currentState.localPlayer.currentRoom, { npcs });
                 syncEngine.updateMapNode(currentState.localPlayer.currentRoom, { npcs });
                 if (!isSilent) UI.addLog(`[SYSTEM]: A new presence detected: ${npcData.name}.`, "var(--term-amber)");
             }
@@ -383,7 +390,8 @@ export async function handleGMIntent(
                     const b64 = await generatePortrait(npc.visual_prompt, stateManager.getState().localPlayer.stratum);
                     if (b64) {
                         npc.image = await compressImage(`data:image/png;base64,${b64}`, 400, 0.7);
-                        stateManager.updateMapNode(stateManager.getState().localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment', stateManager.getState().localPlayer.currentRoom, { npcs: currentRoomData.npcs });
+                        const mapType = stateManager.getState().localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment';
+                        stateManager.updateMapNode(mapType, stateManager.getState().localPlayer.currentRoom, { npcs: currentRoomData.npcs });
                         syncEngine.updateMapNode(stateManager.getState().localPlayer.currentRoom, { npcs: currentRoomData.npcs });
                     }
                 }

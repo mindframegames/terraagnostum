@@ -5,41 +5,73 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { db, appId, isSyncEnabled } from './firebaseConfig.js';
 import * as stateManager from './stateManager.js';
+import { isArchiveRoom } from './mapData.js';
 
 let mapUnsubscribe = null;
 let currentMapPath = null;
 const CHAR_COLLECTION = 'v3_characters';
 
 /**
- * Initializes the background synchronization for the current user session.
+ * Sets up the world manifestation listener.
  */
-export async function initializeSession(user) {
-    if (!db || !user || !isSyncEnabled) return;
-
-    // 1. Setup World Manifestation Listener
+export function setupWorldListener() {
+    if (!db || !appId) return;
     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', 'archive_apartment');
     onSnapshot(roomRef, (snap) => {
         if (!snap.exists()) setDoc(roomRef, { created: serverTimestamp(), manifestations: [] });
     });
+}
 
-    // 2. Load Player State
-    await loadPlayerState(user);
+/**
+ * Orchestrates the boot sequence by peeking at state before applying it.
+ */
+export async function bootSyncEngine(mergeAndRefreshCallback) {
+    const { user } = stateManager.getState();
+    if (!db || !user || !isSyncEnabled) return;
 
-    // 3. Load Astral Map
+    // 1. PEEK at Player State (Do not update stateManager yet!)
+    let startRoom = 'bedroom'; // default
+    let playerData = null;
+    try {
+        const stateRef = doc(db, 'artifacts', appId, 'users', user.uid, 'state', 'player');
+        const snap = await getDoc(stateRef);
+        if (snap.exists()) {
+            playerData = snap.data();
+            startRoom = playerData.currentRoom === 'main_room' ? 'lore1' : playerData.currentRoom;
+        }
+    } catch(e) { console.error("SyncEngine: Failed to peek player state:", e); }
+
+    // 2. Load Maps based on the peeked startRoom
     await loadAstralMap(user);
+    await updateMapListener(startRoom, mergeAndRefreshCallback);
 
-    // 4. Load User Characters
+    // 3. NOW commit the player state (Maps are ready, validation will pass!)
+    if (playerData) {
+        stateManager.updatePlayer({
+            ...playerData,
+            currentRoom: startRoom,
+            inventory: playerData.inventory || [],
+            stratum: playerData.stratum || "mundane"
+        });
+    }
+    
+    // 4. Load remaining user data
     await loadUserCharacters(user);
 
-    // 5. Initial Map Listener
-    updateMapListener(user);
-    
-    // 6. Subscribe to room changes to update the map listener
+    // 5. Subscribe to future room changes to update the map listener
     stateManager.subscribe((state) => {
         if (state.user) {
-            updateMapListener(state.user);
+            updateMapListener(state.localPlayer.currentRoom);
         }
     });
+}
+
+/**
+ * Legacy initializer (now forwards to bootSyncEngine for compatibility if needed)
+ */
+export async function initializeSession(user) {
+    setupWorldListener();
+    return bootSyncEngine();
 }
 
 async function loadPlayerState(user) {
@@ -93,31 +125,59 @@ async function loadUserCharacters(user) {
     } catch (e) { console.error("SyncEngine: Failed to load characters:", e); }
 }
 
-export function updateMapListener(user) {
-    if (!db || !user) return;
-    const { localPlayer } = stateManager.getState();
-    const isPrivate = stateManager.isArchiveRoom(localPlayer.currentRoom);
-    const newPath = isPrivate 
-        ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-        : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+/**
+ * Determines the correct Firestore path for a given room ID.
+ * Seals the leak between private and public world data.
+ */
+function getMapPath(roomId, userId) {
+    if (roomId.startsWith('astral_')) {
+        return `artifacts/${appId}/users/${userId}/instance/astral_nodes`;
+    } else if (isArchiveRoom(roomId)) {
+        return `artifacts/${appId}/users/${userId}/instance/apartment_nodes`;
+    } else {
+        return `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+    }
+}
 
-    if (currentMapPath === newPath) return; 
+export async function updateMapListener(startRoom, mergeAndRefreshCallback) {
+    const { user } = stateManager.getState();
+    if (!db || !user) return;
+
+    // Resolve room: prioritize passed startRoom, fallback to state
+    const roomToUse = startRoom || stateManager.getState().localPlayer.currentRoom;
+    const newPath = getMapPath(roomToUse, user.uid);
+
+    if (currentMapPath === newPath) return Promise.resolve(); 
     if (mapUnsubscribe) mapUnsubscribe(); 
 
     currentMapPath = newPath;
     const pathParts = newPath.split('/');
     const mapRef = doc(db, pathParts.slice(0, -1).join('/'), pathParts.pop());
     
-    mapUnsubscribe = onSnapshot(mapRef, (snap) => {
-        if (!snap.exists()) {
-            const { apartmentMap } = stateManager.getState();
-            setDoc(mapRef, { nodes: apartmentMap, lastUpdated: serverTimestamp() });
-        } else {
-            const data = snap.data();
-            if (data.nodes) {
-                stateManager.setApartmentMap(data.nodes);
+    return new Promise((resolve) => {
+        let resolved = false;
+        mapUnsubscribe = onSnapshot(mapRef, (snap) => {
+            if (!snap.exists()) {
+                const { apartmentMap } = stateManager.getState();
+                setDoc(mapRef, { nodes: apartmentMap, lastUpdated: serverTimestamp() });
+            } else {
+                const data = snap.data();
+                if (data.nodes) {
+                    if (mergeAndRefreshCallback) {
+                        mergeAndRefreshCallback(data.nodes);
+                    } else {
+                        stateManager.setApartmentMap(data.nodes);
+                    }
+                }
             }
-        }
+            if (!resolved) {
+                resolved = true;
+                resolve();
+            }
+        }, (err) => {
+            console.error("SyncEngine: Map listener error:", err);
+            if (!resolved) { resolved = true; resolve(); }
+        });
     });
 }
 
@@ -152,11 +212,7 @@ export async function updateMapNode(roomId, updates) {
     const { user } = stateManager.getState();
     if (!db || !user || !isSyncEnabled) return;
     
-    const isPrivate = stateManager.isArchiveRoom(roomId);
-    const mapPath = isPrivate 
-        ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-        : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
-    
+    const mapPath = getMapPath(roomId, user.uid);
     const mapRef = doc(db, mapPath);
     const firestoreUpdates = {};
     for (let [key, val] of Object.entries(updates)) {
@@ -188,10 +244,7 @@ export async function removeArrayElementFromNode(roomId, arrayPath, element) {
     const { user } = stateManager.getState();
     if (!db || !user || !isSyncEnabled) return;
     
-    const isPrivate = stateManager.isArchiveRoom(roomId);
-    const mapPath = isPrivate 
-        ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-        : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+    const mapPath = getMapPath(roomId, user.uid);
         
     try {
         const mapRef = doc(db, mapPath);
@@ -203,10 +256,7 @@ export async function addArrayElementToNode(roomId, arrayPath, element) {
     const { user } = stateManager.getState();
     if (!db || !user || !isSyncEnabled) return;
     
-    const isPrivate = stateManager.isArchiveRoom(roomId);
-    const mapPath = isPrivate 
-        ? `artifacts/${appId}/users/${user.uid}/instance/apartment_nodes`
-        : `artifacts/${appId}/public/data/maps/apartment_graph_live`;
+    const mapPath = getMapPath(roomId, user.uid);
         
     try {
         const mapRef = doc(db, mapPath);

@@ -2,6 +2,7 @@ import { callGemini, generatePortrait } from './apiService.js';
 import * as UI from './ui.js';
 import * as stateManager from './stateManager.js';
 import * as syncEngine from './syncEngine.js';
+import { isArchiveRoom } from './mapData.js';
 
 // State is now managed by stateManager.js
 export function startWizard(type, initialData = {}) {
@@ -162,7 +163,8 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         const room = activeMap[localPlayer.currentRoom];
         const newItem = { name: currentVal, type: "Constructed Object" };
         const items = [...(room.items || []), newItem];
-        stateManager.updateMapNode(localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment', localPlayer.currentRoom, { items });
+        const mapType = localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment';
+        stateManager.updateMapNode(mapType, localPlayer.currentRoom, { items });
         syncEngine.addArrayElementToNode(localPlayer.currentRoom, 'items', newItem);
         UI.addLog(`[SYSTEM]: Materialized [${currentVal}].`, "var(--term-green)");
         endWizard();
@@ -175,7 +177,8 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                 name: currentVal,
                 shortName: currentVal.substring(0, 7).toUpperCase()
             };
-            stateManager.updateMapNode(localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment', localPlayer.currentRoom, updates);
+            const mapType = localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment';
+            stateManager.updateMapNode(mapType, localPlayer.currentRoom, updates);
             syncEngine.updateMapNode(localPlayer.currentRoom, updates);
             UI.addLog(`[SYSTEM]: Sector identity overwritten.`, "var(--term-green)");
         }
@@ -190,7 +193,8 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         const target = typeof room.exits[dir] === 'string' ? room.exits[dir] : room.exits[dir].target;
         const exitUpdate = { target: target, locked: true, lockMsg: currentVal };
         const exits = { ...room.exits, [dir]: exitUpdate };
-        stateManager.updateMapNode(localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment', localPlayer.currentRoom, { exits });
+        const mapType = localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment';
+        stateManager.updateMapNode(mapType, localPlayer.currentRoom, { exits });
         syncEngine.updateMapNode(localPlayer.currentRoom, { [`exits.${dir}`]: exitUpdate });
         UI.addLog(`[SYSTEM]: Exit ${dir.toUpperCase()} locked.`, "var(--term-amber)");
         endWizard();
@@ -212,11 +216,13 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
             items: [], npcs: []
         };
         
-        stateManager.updateMapNode(newRoomId.startsWith('astral_') ? 'astral' : 'apartment', newRoomId, newRoom);
+        const mapTypeNew = newRoomId.startsWith('astral_') ? 'astral' : 'apartment';
+        stateManager.updateMapNode(mapTypeNew, newRoomId, newRoom);
         syncEngine.updateMapNode(newRoomId, newRoom);
 
         const currentExits = { ...activeMap[localPlayer.currentRoom].exits, [dir]: newRoomId };
-        stateManager.updateMapNode(localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment', localPlayer.currentRoom, { exits: currentExits });
+        const mapTypeCurrent = localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment';
+        stateManager.updateMapNode(mapTypeCurrent, localPlayer.currentRoom, { exits: currentExits });
         syncEngine.updateMapNode(localPlayer.currentRoom, { [`exits.${dir}`]: newRoomId });
 
         UI.addLog(`[SYSTEM]: Reality expanded ${dir.toUpperCase()}.`, "var(--term-green)");
@@ -244,12 +250,14 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                      items: [], npcs: []
                  };
                  
-                 stateManager.updateMapNode(newRoomId.startsWith('astral_') ? 'astral' : 'apartment', newRoomId, newRoom);
+                 const mapTypeNew = newRoomId.startsWith('astral_') ? 'astral' : 'apartment';
+                 stateManager.updateMapNode(mapTypeNew, newRoomId, newRoom);
                  syncEngine.updateMapNode(newRoomId, newRoom);
 
                  if (dir !== 'here') {
                     const currentExits = { ...activeMap[localPlayer.currentRoom].exits, [dir]: newRoomId };
-                    stateManager.updateMapNode(localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment', localPlayer.currentRoom, { exits: currentExits });
+                    const mapTypeCurrent = localPlayer.currentRoom.startsWith('astral_') ? 'astral' : 'apartment';
+                    stateManager.updateMapNode(mapTypeCurrent, localPlayer.currentRoom, { exits: currentExits });
                     syncEngine.updateMapNode(localPlayer.currentRoom, { [`exits.${dir}`]: newRoomId });
                  }
                  UI.addLog(`[SYSTEM]: Sector generated.`, "var(--term-green)");

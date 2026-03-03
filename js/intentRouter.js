@@ -8,9 +8,9 @@ import { handleGMIntent } from './gmEngine.js';
 import { startWizard } from './wizardSystem.js';
 import { triggerVisualUpdate, togglePinView } from './visualSystem.js';
 import { callGemini } from './apiService.js';
+import { isArchiveRoom } from './mapData.js';
 
 // --- HELPER WRAPPERS (Local to Router) ---
-const isArchiveRoom = stateManager.isArchiveRoom;
 
 function getActiveMap() {
     return stateManager.getActiveMap();

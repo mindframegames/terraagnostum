@@ -1,9 +1,5 @@
 // js/stateManager.js
-import { apartmentMap as initialMap } from './mapData.js';
-
-// --- CONFIG & CONSTANTS ---
-export const ARCHIVE_NODES = ['lore1', 'lore2', 'kitchen', 'spare_room', 'bedroom', 'closet', 'character_room', 'hallway_archive'];
-export const isArchiveRoom = (roomId) => ARCHIVE_NODES.includes(roomId);
+import { apartmentMap as initialMap, ARCHIVE_NODES, isArchiveRoom } from './mapData.js';
 
 // --- INITIAL STATE ---
 let state = {

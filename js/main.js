@@ -48,13 +48,18 @@ if (isSyncEnabled) {
             const userType = user.isAnonymous ? "GUEST" : "ARCHITECT";
             UI.addLog(`${userType} LINKED: ${user.uid.substring(0,8)}`, "var(--crayola-blue)");
             
-            await syncEngine.initializeSession(user);
+            syncEngine.setupWorldListener();
+            await syncEngine.bootSyncEngine((nodes) => {
+                const currentMap = stateManager.getState().apartmentMap;
+                stateManager.setApartmentMap({ ...currentMap, ...nodes });
+            });
             
             const updatedState = stateManager.getState();
             shiftStratum(updatedState.localPlayer.stratum);
             
             const activeMap = stateManager.getActiveMap();
             
+            const { apartmentMap } = stateManager.getState();
             // Audit Closet Description
             if (apartmentMap['closet'].description.includes('heavily reinforced') || apartmentMap['closet'].visualPrompt?.includes('steel door')) {
                 const newDesc = initialMap['closet'].description;

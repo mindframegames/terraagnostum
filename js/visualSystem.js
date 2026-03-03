@@ -4,6 +4,7 @@ import { projectVisual } from './apiService.js';
 import * as UI from './ui.js';
 import * as stateManager from './stateManager.js';
 import * as syncEngine from './syncEngine.js';
+import { isArchiveRoom } from './mapData.js';
 
 let currentBase64 = null;
 let lastRoomId = null;
@@ -78,7 +79,8 @@ export async function togglePinView(localPlayer, activeMap, user) {
         UI.togglePinButton(true, "UNPINNING...", "uploading");
         try {
             await syncEngine.updateMapNode(roomId, { pinnedView: null });
-            stateManager.updateMapNode(roomId.startsWith('astral_') ? 'astral' : 'apartment', roomId, { pinnedView: null });
+            const mapType = roomId.startsWith('astral_') ? 'astral' : 'apartment';
+            stateManager.updateMapNode(mapType, roomId, { pinnedView: null });
             
             UI.addLog(`[SYSTEM]: Consensus reality anchor lifted. Space is fluid again.`, "var(--term-amber)");
             triggerVisualUpdate(null, localPlayer, activeMap, user); 
@@ -101,7 +103,8 @@ export async function togglePinView(localPlayer, activeMap, user) {
             const downloadUrl = await getDownloadURL(fileRef);
             
             await syncEngine.updateMapNode(roomId, { pinnedView: downloadUrl });
-            stateManager.updateMapNode(roomId.startsWith('astral_') ? 'astral' : 'apartment', roomId, { pinnedView: downloadUrl });
+            const mapType = roomId.startsWith('astral_') ? 'astral' : 'apartment';
+            stateManager.updateMapNode(mapType, roomId, { pinnedView: downloadUrl });
             
             UI.togglePinButton(true, "PINNED!", "pinned");
             UI.addLog(`[SYSTEM]: Consensus reality locked. The visual projection of ${activeMap[roomId].name || 'this sector'} is now canonical.`, "var(--gm-purple)");
