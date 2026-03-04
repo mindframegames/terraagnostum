@@ -45,15 +45,8 @@ export async function bootSyncEngine(mergeAndRefreshCallback) {
     await loadAstralMap(user);
     await updateMapListener(startRoom, mergeAndRefreshCallback);
 
-    // 3. NOW commit the player state (Maps are ready, validation will pass!)
-    if (playerData) {
-        stateManager.updatePlayer({
-            ...playerData,
-            currentRoom: startRoom,
-            inventory: playerData.inventory || [],
-            stratum: playerData.stratum || "mundane"
-        });
-    }
+    // 3. Start real-time player state listener
+    await loadPlayerState(user);
     
     // 4. Load remaining user data
     await loadUserCharacters(user);
@@ -74,23 +67,34 @@ export async function initializeSession(user) {
     return bootSyncEngine();
 }
 
-async function loadPlayerState(user) {
+/**
+ * Loads player state and maintains a real-time listener for updates (e.g. Stripe checkout).
+ */
+export async function loadPlayerState(user) {
     try {
         const stateRef = doc(db, 'artifacts', appId, 'users', user.uid, 'state', 'player');
-        const snap = await getDoc(stateRef);
-        if (snap.exists()) {
-            const data = snap.data();
-            let newRoom = data.currentRoom;
-            if (newRoom === 'main_room') newRoom = 'lore1';
-            
-            stateManager.updatePlayer({ 
-                ...data, 
-                currentRoom: newRoom,
-                inventory: data.inventory || [], 
-                stratum: data.stratum || "mundane" 
-            });
-        }
-    } catch (e) { console.error("SyncEngine: Failed to load player state:", e); }
+        
+        // Listen for real-time updates (like Stripe webhooks)
+        onSnapshot(stateRef, (snap) => {
+            if (snap.exists()) {
+                const data = snap.data();
+                let newRoom = data.currentRoom;
+                if (newRoom === 'main_room') newRoom = 'lore1';
+                
+                // This keeps the browser state in sync with the database instantly
+                stateManager.updatePlayer({ 
+                    ...data, 
+                    currentRoom: newRoom,
+                    inventory: data.inventory || [], 
+                    stratum: data.stratum || "mundane" 
+                });
+                
+                if (data.isArchitect) {
+                    console.log("[SYSTEM]: Architect status verified via uplink.");
+                }
+            }
+        });
+    } catch (e) { console.error("SyncEngine: Failed to sync player state:", e); }
 }
 
 async function loadAstralMap(user) {
@@ -181,6 +185,7 @@ export async function updateMapListener(startRoom, mergeAndRefreshCallback) {
     });
 }
 
+// 2. Modify savePlayerState to use { merge: true }
 export async function savePlayerState() {
     const { user, localPlayer, activeAvatar, astralMap } = stateManager.getState();
     if (!db || !user || !isSyncEnabled) return;
@@ -190,11 +195,13 @@ export async function savePlayerState() {
             ...localPlayer, 
             activeAvatarId: activeAvatar ? activeAvatar.id : null 
         };
-        await setDoc(stateRef, stateToSave);
+        
+        // CRITICAL: Use merge: true so local 'false' doesn't kill server 'true'
+        await setDoc(stateRef, stateToSave, { merge: true });
         
         if (Object.keys(astralMap).length > 0) {
             const astralRef = doc(db, 'artifacts', appId, 'users', user.uid, 'instance', 'astral_nodes');
-            await setDoc(astralRef, { nodes: astralMap, lastUpdated: serverTimestamp() });
+            await setDoc(astralRef, { nodes: astralMap, lastUpdated: serverTimestamp() }, { merge: true });
         }
     } catch (e) { console.error("SyncEngine: Failed to save player state:", e); }
 }

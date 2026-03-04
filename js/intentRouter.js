@@ -150,8 +150,40 @@ export async function handleCommand(val) {
     }
 
     if (cmd === 'architect') {
+        // Toggle local state
         stateManager.updatePlayer({ isArchitect: !localPlayer.isArchitect });
+        
+        // PERSIST the change to Firestore immediately
+        syncEngine.savePlayerState(); 
+        
         UI.addLog(`[SYSTEM]: Architect flag: ${stateManager.getState().localPlayer.isArchitect ? 'ENABLED' : 'DISABLED'}`, "var(--term-amber)");
+        return;
+    }
+
+    if (cmd === 'become architect' || cmd === 'upgrade') {
+        if (!user || user.isAnonymous) {
+            UI.addLog("[SYSTEM]: You must 'login' with a verified frequency (email) before acquiring an Architect license.", "var(--term-red)");
+            return;
+        }
+        if (localPlayer.isArchitect) {
+            UI.addLog("[SYSTEM]: You are already bound as an ARCHITECT.", "var(--term-amber)");
+            return;
+        }
+        // PROD STRIPE:
+        //const paymentLink = `https://buy.stripe.com/dRmfZh0Cq0Jm5v31wpg3600?client_reference_id=${user.uid}`;
+        // TEST STRIPE:
+        //const paymentLink = `https://buy.stripe.com/test_7sY4gA5DC6U09JL7dd6kg00?client_reference_id=${user.uid}`;
+        // A simple way to swap links based on where the game is running
+    const isLocal = window.location.hostname === 'localhost';
+    const liveLink = "https://buy.stripe.com/YOUR_LIVE_LINK_ID";
+    const testLink = "https://buy.stripe.com/test_7sY4gA5DC6U09JL7dd6kg00";
+
+    const paymentLink = `${isLocal ? testLink : liveLink}?client_reference_id=${user.uid}`;
+        
+        
+        window.open(paymentLink, '_blank');
+        UI.addLog(`[SYSTEM]: Architect uplink opened in a new tab. Awaiting transaction...`, "var(--term-green)");
+        UI.addLog(`[SYSTEM]: Do not close this terminal. Your status will update automatically upon verification.`, "#888");
         return;
     }
 
@@ -304,7 +336,8 @@ export async function handleCommand(val) {
         const tier = getUserTier();
         const cohesion = !activeAvatar ? 'Fading Ripple' : 'Materialized Signature';
         const uid = user ? user.uid.substring(0,8) : 'UNKNOWN';
-        UI.addLog(`[SYSTEM]: Identity: ${tier} | UID: ${uid}`, "var(--term-green)");
+        const emailLine = (user && user.email) ? ` | Frequency: ${user.email}` : '';
+        UI.addLog(`[SYSTEM]: Identity: ${tier}${emailLine} | UID: ${uid}`, "var(--term-green)");
         UI.addLog(`[SYSTEM]: Cohesion State: ${cohesion}`, "var(--term-green)");
         return;
     }

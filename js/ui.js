@@ -38,7 +38,36 @@ stateManager.subscribe((state) => {
     updateRoomEntitiesUI(room?.npcs);
     renderMapHUD(activeMap, localPlayer.currentRoom, localPlayer.stratum);
     updateContextualSuggestions(state.suggestions);
+    updateArchitectHUD(localPlayer.isArchitect, state.user);
 });
+
+/**
+ * Updates the Architect link and User Status in the bottom HUD.
+ */
+export function updateArchitectHUD(isArchitect, user) {
+    const link = document.getElementById('become-architect-link');
+    const hudStatus = document.getElementById('hud-status');
+    if (!link || !hudStatus) return;
+
+    if (isArchitect) {
+        link.textContent = "[ ARCHITECT_LEVEL_LICENSE ]";
+        link.style.color = "var(--crayola-blue)";
+        link.style.cursor = 'default';
+        link.style.display = "inline";
+    } else {
+        link.textContent = "[ BECOME_ARCHITECT ]";
+        link.style.color = "#ffcc00";
+        link.style.cursor = 'pointer';
+        link.style.display = "inline";
+    }
+
+    if (user) {
+        const type = user.isAnonymous ? 'GUEST' : 'RESONANT';
+        hudStatus.textContent = `// USER://_${type}/${user.uid.substring(0,6)} // AUTHENTICATED //`;
+    } else {
+        hudStatus.textContent = "// UNKNOWN_ENTITY // LOGIN_REQUIRED //";
+    }
+}
 
 export function updateContextualSuggestions(aigmSuggestions = []) {
     const { wizardState, localPlayer } = stateManager.getState();

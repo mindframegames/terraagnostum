@@ -83,6 +83,22 @@ if (isSyncEnabled) {
     });
 }
 
+// --- HUD LINK LISTENERS ---
+const becomeArchitectLink = document.getElementById('become-architect-link');
+if (becomeArchitectLink) {
+    becomeArchitectLink.addEventListener('click', (e) => {
+        const { user, localPlayer } = stateManager.getState();
+        if (localPlayer.isArchitect) return;
+
+        if (!user || user.isAnonymous) {
+            UI.addLog("[SYSTEM]: Identity verification required before acquiring an Architect license.", "var(--term-red)");
+            handleCommand('login'); 
+        } else {
+            handleCommand('become architect');
+        }
+    });
+}
+
 const pinBtnEl = document.getElementById('pin-view-btn');
 if (pinBtnEl) {
     pinBtnEl.addEventListener('click', () => {
