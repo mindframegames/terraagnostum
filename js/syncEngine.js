@@ -150,6 +150,7 @@ export async function updateMapListener(startRoom, mergeAndRefreshCallback) {
     // Resolve room: prioritize passed startRoom, fallback to state
     const roomToUse = startRoom || stateManager.getState().localPlayer.currentRoom;
     const newPath = getMapPath(roomToUse, user.uid);
+    const isMundane = !roomToUse.startsWith('astral_') && !isArchiveRoom(roomToUse);
 
     if (currentMapPath === newPath) return Promise.resolve(); 
     if (mapUnsubscribe) mapUnsubscribe(); 
@@ -169,6 +170,8 @@ export async function updateMapListener(startRoom, mergeAndRefreshCallback) {
                 if (data.nodes) {
                     if (mergeAndRefreshCallback) {
                         mergeAndRefreshCallback(data.nodes);
+                    } else if (isMundane) {
+                        stateManager.setMundaneMap(data.nodes); // Use the new setter!
                     } else {
                         stateManager.setApartmentMap(data.nodes);
                     }

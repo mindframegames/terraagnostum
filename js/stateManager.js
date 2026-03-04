@@ -14,6 +14,7 @@ let state = {
         activeAvatarId: null
     },
     apartmentMap: { ...initialMap },
+    mundaneMap: {}, // Add this!
     astralMap: {},
     localCharacters: [], 
     activeAvatar: null,  
@@ -57,11 +58,16 @@ export function getUserTier() {
 }
 
 export function getActiveMap() {
-    // If the room starts with astral_, or we are explicitly in the astral stratum
-    if (state.localPlayer.currentRoom?.startsWith('astral_') || state.localPlayer.stratum === 'astral') {
+    const { currentRoom, stratum } = state.localPlayer;
+    if (currentRoom?.startsWith('astral_') || stratum === 'astral') {
         return state.astralMap;
     }
-    return state.apartmentMap;
+    // Check if the room belongs to the archive/apartment
+    if (isArchiveRoom(currentRoom)) {
+        return state.apartmentMap;
+    }
+    // Fall back to mundane map for everything else
+    return state.mundaneMap;
 }
 
 // --- SETTERS & VALIDATION ---
@@ -94,6 +100,11 @@ export function updatePlayer(updates) {
 export function setApartmentMap(nodes) {
     state.apartmentMap = { ...initialMap, ...nodes };
     validateLocation();
+    notify();
+}
+
+export function setMundaneMap(nodes) {
+    state.mundaneMap = nodes || {};
     notify();
 }
 

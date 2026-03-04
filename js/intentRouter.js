@@ -76,17 +76,33 @@ export async function executeMovement(targetDir) {
         
         // --- QUEST LOCK: FRONT DOOR ---
         if (localPlayer.currentRoom === 'hallway' && targetDir === 'south' && nextRoomKey === 'outside') {
-            const keyIdx = localPlayer.inventory.findIndex(i => i.name === "Resonant Key");
-            if (keyIdx === -1) {
-                UI.addLog("[BLOCKED]: The front door is locked with a quantum seal. It requires a 'Resonant Key' to open.", "var(--term-amber)");
-                UI.addLog("[TANDY]: You'll need to go to the closet and tune the generator to the Astral Plane to synthesize a key.", "#b084e8");
-                return;
+            const currentRoomData = activeMap[localPlayer.currentRoom];
+            
+            // Check if it's already unlocked (allowing for string or object exit types)
+            const isLocked = typeof currentRoomData.exits.south === 'object' && currentRoomData.exits.south.locked;
+            
+            if (!isLocked) {
+                // Already open, proceed normally
             } else {
-                UI.addLog("[SUCCESS]: You press the Resonant Key against the seal. It vibrates, then dissolves into light as the door unlatches.", "var(--term-green)");
-                const newInv = [...localPlayer.inventory];
-                newInv.splice(keyIdx, 1);
-                stateManager.updatePlayer({ inventory: newInv });
-                syncEngine.savePlayerState();
+                const keyIdx = localPlayer.inventory.findIndex(i => i.name === "Resonant Key");
+                if (keyIdx === -1) {
+                    UI.addLog("[BLOCKED]: The front door is locked with a quantum seal. It requires a 'Resonant Key' to open.", "var(--term-amber)");
+                    UI.addLog("[TANDY]: You'll need to go to the closet and tune the generator to the Astral Plane to synthesize a key.", "#b084e8");
+                    return;
+                } else {
+                    UI.addLog("[SUCCESS]: You press the Resonant Key against the seal. It vibrates, then dissolves into light as the door unlatches.", "var(--term-green)");
+                    
+                    // 1. Update Firestore so the door stays open for this user
+                    syncEngine.updateMapNode('hallway', { 
+                        exits: { ...currentRoomData.exits, south: { target: 'outside', locked: false } } 
+                    });
+
+                    // 2. Remove the key and save player state
+                    const newInv = [...localPlayer.inventory];
+                    newInv.splice(keyIdx, 1);
+                    stateManager.updatePlayer({ inventory: newInv });
+                    syncEngine.savePlayerState();
+                }
             }
         }
 
