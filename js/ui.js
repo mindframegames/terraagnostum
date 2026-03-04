@@ -326,7 +326,7 @@ export function updateRoomEntitiesUI(npcs) {
 }
 
 export function printRoomDescription(room, isFaen, fullMap = null, activeAvatar = null) {
-    if (!room) { console.error('UI: Room is undefined'); return; }
+    if (!room) return; // Guard against undefined room during transitions
     addLog(`[NARRATOR]: ${room.description}`, "#888");
     if (room.marginalia && room.marginalia.length > 0) {
         room.marginalia.forEach(note => {
@@ -375,6 +375,12 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
     const canvasContainer = document.getElementById('map-canvas-container');
     const canvas = document.getElementById('map-canvas');
     if (!canvas || !canvasContainer) return;
+
+    // Guard against empty map or missing room during transitions
+    if (!activeMap || Object.keys(activeMap).length === 0 || !currentRoomKey || !activeMap[currentRoomKey]) {
+        return;
+    }
+
     const ctx = canvas.getContext('2d');
     const existingZones = canvasContainer.querySelectorAll('.map-clickable-zone');
     existingZones.forEach(zone => zone.remove());
@@ -410,20 +416,6 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
     const spacing = 60;
     const centerX = (canvas.width || 230) / 2;
     const centerY = (canvas.height || 150) / 2;
-
-    if (!activeMap || Object.keys(activeMap).length === 0) {
-        console.warn("renderMapHUD: activeMap is empty or undefined.");
-        ctx.fillStyle = "#ff0000";
-        ctx.fillText("MAP DATA ERROR", centerX, centerY);
-        return;
-    }
-
-    if (!currentRoomKey || !activeMap[currentRoomKey]) {
-        console.warn(`renderMapHUD: currentRoomKey '${currentRoomKey}' not found in map.`);
-        ctx.fillStyle = "#ffff00";
-        ctx.fillText("NODE NOT FOUND", centerX, centerY);
-        return;
-    }
 
     let coords = {}; 
     let queue = [{key: currentRoomKey, logicalX: 0, logicalY: 0}];

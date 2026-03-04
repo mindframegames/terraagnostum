@@ -25,13 +25,13 @@ stateManager.subscribe((state) => {
 
 export async function triggerVisualUpdate(overridePrompt, localPlayer, activeMap, user) {
     const roomId = localPlayer.currentRoom;
-    const room = activeMap[roomId];
     
-    if (!room) {
-        console.warn(`Visual Update: Room ${roomId} not found in map reference. Skipping projection.`);
+    // Guard against empty map or missing room data during transitions
+    if (!activeMap || Object.keys(activeMap).length === 0 || !activeMap[roomId]) {
         return;
     }
-    
+
+    const room = activeMap[roomId];
     currentBase64 = null;
     
     const pinnedUrl = (!overridePrompt && room.pinnedView) ? room.pinnedView : null;
