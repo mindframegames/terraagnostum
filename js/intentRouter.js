@@ -175,7 +175,7 @@ export async function handleCommand(val) {
         //const paymentLink = `https://buy.stripe.com/test_7sY4gA5DC6U09JL7dd6kg00?client_reference_id=${user.uid}`;
         // A simple way to swap links based on where the game is running
     const isLocal = window.location.hostname === 'localhost';
-    const liveLink = "https://buy.stripe.com/YOUR_LIVE_LINK_ID";
+    const liveLink = "https://buy.stripe.com/dRmfZh0Cq0Jm5v31wpg3600";
     const testLink = "https://buy.stripe.com/test_7sY4gA5DC6U09JL7dd6kg00";
 
     const paymentLink = `${isLocal ? testLink : liveLink}?client_reference_id=${user.uid}`;
