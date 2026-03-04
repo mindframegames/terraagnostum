@@ -112,14 +112,18 @@ export async function executeMovement(targetDir) {
             return;
         }
 
-        const nextRoom = activeMap[nextRoomKey];
         stateManager.updatePlayer({ currentRoom: nextRoomKey });
         syncEngine.savePlayerState(); 
         
-        UI.addLog(`[SYSTEM]: You move ${targetDir.toUpperCase()}.`, "var(--term-green)");
-        UI.printRoomDescription(nextRoom, stateManager.getState().localPlayer.stratum === 'astral', activeMap, activeAvatar);
-        syncEngine.logManifestation(stateManager.getState().localPlayer.currentRoom, `User arrived from the ${targetDir}.`);
-        triggerVisualUpdate(null, stateManager.getState().localPlayer, activeMap, user);
+        // Give the syncEngine a moment to swap listeners and populate the new map
+        setTimeout(() => {
+            const updatedActiveMap = getActiveMap();
+            const nextRoom = updatedActiveMap[nextRoomKey];
+            UI.addLog(`[SYSTEM]: You move ${targetDir.toUpperCase()}.`, "var(--term-green)");
+            UI.printRoomDescription(nextRoom, stateManager.getState().localPlayer.stratum === 'astral', updatedActiveMap, activeAvatar);
+            syncEngine.logManifestation(stateManager.getState().localPlayer.currentRoom, `User arrived from the ${targetDir}.`);
+            triggerVisualUpdate(null, stateManager.getState().localPlayer, updatedActiveMap, user);
+        }, 100);
     } else {
         UI.addLog(`[SYSTEM]: You cannot go that way.`, "var(--term-amber)");
         triggerVisualUpdate(null, localPlayer, getActiveMap(), user);

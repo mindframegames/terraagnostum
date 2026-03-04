@@ -80,6 +80,11 @@ function validateLocation() {
     const activeMap = getActiveMap();
     const currentRoom = state.localPlayer.currentRoom;
 
+    // Leniency during transitions: if map is loading or we are transitioning via "outside"
+    if (Object.keys(activeMap).length === 0 || currentRoom === "outside") {
+        return false;
+    }
+
     // 1. Check if the current room exists in the active map
     if (!activeMap[currentRoom]) {
         console.warn(`[GLITCH]: Room '${currentRoom}' not found in active map. Intercepting and redirecting to bedroom.`);
