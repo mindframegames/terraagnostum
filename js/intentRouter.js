@@ -39,6 +39,11 @@ export async function executeMovement(targetDir) {
     const activeMap = getActiveMap();
     const currentRoom = activeMap[localPlayer.currentRoom];
     
+    if (!currentRoom) {
+        UI.addLog('[SYSTEM]: Dimensional synchronization in progress. Please wait for the sector to stabilize.', 'var(--term-amber)');
+        return;
+    }
+    
     if (localPlayer.stratum === 'astral') {
         const currentMap = (localPlayer.currentRoom.startsWith('astral_')) ? astralMap : apartmentMap;
         const currentRoomData = currentMap[localPlayer.currentRoom];
