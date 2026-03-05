@@ -34,11 +34,26 @@ export async function handleGMIntent(
         const systemPrompt = buildSystemPrompt(localPlayer, currentRoomData, inventoryNames, npcText);
 
         // 2. USER INTENT
-        const userPrompt = `PLAYER ACTION: "${val}"\n\nEvaluate this intent against the system rules and current room state. Respond ONLY in the requested JSON format.`;
+        let userPrompt = `PLAYER ACTION: "${val}"\n\nEvaluate this intent against the system rules and current room state. Respond ONLY in the requested JSON format.`;
+        
+        // ASTRAL COMBAT INJECTION: Remind AI of mechanics if in combat
+        if (localPlayer.stratum === 'astral' && (localPlayer.combat.active || val.toLowerCase().includes('attack') || val.toLowerCase().includes('will force'))) {
+            userPrompt += `\n\n[SYSTEM REMINDER]: The player is in ASTRAL COMBAT (Battle of Wills). Attacks like "WILL FORCE" or "ASTRAL WEAPON" MUST deal 5-10 "damage_to_npc". Ensure "combat_active" stays true until the NPC's WILL is 0. Do NOT resolve combat just because the player looks around or examines things.`;
+        }
 
         // 3. API CALL
         const res = await callGemini(userPrompt, systemPrompt);
         let stateChanged = false;
+
+        // Manual Damage Override: Ensure keywords do damage if AI is being stingy
+        // Check both current state and the AI's intended state
+        const isActuallyCombat = localPlayer.combat.active || res.combat_active;
+        if (state.localPlayer.stratum === 'astral' && isActuallyCombat && !res.damage_to_npc) {
+            const v = val.toLowerCase();
+            if (v.includes('will force') || v.includes('astral weapon') || v.includes('attack')) {
+                res.damage_to_npc = 10; // Increased damage to 10 for better pace
+            }
+        }
 
         // Handle Combat State from AI
         if (res.combat_active !== undefined) {
@@ -83,11 +98,16 @@ export async function handleGMIntent(
         }
 
         // Handle Damage to NPC (Battle of Wills)
-        if (res.damage_to_npc && stateManager.getState().localPlayer.combat.active) {
+        const isCombatTurn = stateManager.getState().localPlayer.combat.active || res.combat_active;
+        if (res.damage_to_npc && isCombatTurn) {
             const currentState = stateManager.getState();
             const activeMap = stateManager.getActiveMap();
             const room = activeMap[currentState.localPlayer.currentRoom] || { npcs: [] };
-            const opponentName = currentState.localPlayer.combat.opponent.toLowerCase();
+            
+            // Try to find the opponent name from state, then from AI response speaker, then fallback to "Shadow"
+            let opponentName = (currentState.localPlayer.combat.opponent || res.speaker || "Shadow").toLowerCase();
+            if (opponentName === 'narrator' || opponentName === 'system') opponentName = "shadow";
+            
             // Fuzzy match for NPC name
             const npc = room.npcs?.find(n => 
                 n.name.toLowerCase() === opponentName || 
@@ -96,9 +116,15 @@ export async function handleGMIntent(
             );
             
             if (npc) {
-                if (!npc.stats) npc.stats = { WILL: 2, CONS: 20, PHYS: 20 };
-                const newNpcWill = Math.max(0, (npc.stats.WILL || 5) - res.damage_to_npc);
+                if (!npc.stats) npc.stats = { WILL: 20, CONS: 20, PHYS: 20 };
+                const currentWill = npc.stats.WILL !== undefined ? npc.stats.WILL : 20;
+                const newNpcWill = Math.max(0, currentWill - res.damage_to_npc);
                 npc.stats.WILL = newNpcWill;
+                
+                // CRITICAL FIX: Update the state so the damage persists even if NPC hasn't reached 0 WILL
+                stateManager.updateMapNode(currentState.localPlayer.currentRoom, { npcs: room.npcs });
+                syncEngine.updateMapNode(currentState.localPlayer.currentRoom, { npcs: room.npcs });
+
                 if (!isSilent) UI.addLog(`[COMBAT]: ${npc.name} took ${res.damage_to_npc} WILL damage! (Remaining WILL: ${newNpcWill})`, "var(--term-amber)");
                 
                 if (newNpcWill <= 0) {
@@ -286,6 +312,21 @@ export async function handleGMIntent(
         
         // AUTO-REPAIR MISSING NPC PORTRAITS ON LOOK
         if (isLooking && currentRoomData.npcs) {
+            // Display stats if looking at a specific NPC
+            const lookMatch = val.toLowerCase().match(/(?:look at|examine|search)\s+(.+)/);
+            if (lookMatch) {
+                const targetName = lookMatch[1].trim();
+                const targetedNpc = currentRoomData.npcs.find(n => 
+                    n.name.toLowerCase() === targetName || 
+                    n.name.toLowerCase().includes(targetName) ||
+                    targetName.includes(n.name.toLowerCase())
+                );
+                if (targetedNpc && targetedNpc.stats) {
+                    const s = targetedNpc.stats;
+                    UI.addLog(`[ANALYSIS]: ${targetedNpc.name} - WILL: ${s.WILL ?? 0}, CONS: ${s.CONS ?? 0}, PHYS: ${s.PHYS ?? 0}`, "var(--term-amber)");
+                }
+            }
+
             for (let npc of currentRoomData.npcs) {
                 if (npc.visual_prompt && !npc.image) {
                     if (!isSilent) UI.addLog(`[REPAIR]: Re-weaving visual imprint for ${npc.name}...`, "var(--term-amber)");

@@ -326,6 +326,7 @@ export function updateRoomEntitiesUI(npcs) {
             <div style="flex: 1; min-width: 0;">
                 <span style="color: var(--crayola-blue); font-weight: bold; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px;" class="uppercase">${npc.name}</span>
                 <span class="text-[9px] text-gray-500 uppercase block truncate">${npc.archetype}</span>
+                ${npc.stats ? `<span class="text-[8px] text-amber-600 block font-mono mt-1">WILL:${npc.stats.WILL} CONS:${npc.stats.CONS} PHYS:${npc.stats.PHYS}</span>` : ''}
             </div>
         </div>
     `).join('');

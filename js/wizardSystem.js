@@ -414,7 +414,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
 
                 // Fire the Shadow Avatar Encounter
                 handleGMIntent(
-                    "The player has just manifested and entered this new astral sector. You MUST spawn a hostile NPC named 'Shadow Avatar' using the world_edit spawn_npc command. Set combat_active to true. Describe its terrifying, glitchy appearance as it challenges the player to a Battle of Wills.", 
+                    "The player has just manifested and entered this new astral sector. You MUST spawn a hostile NPC named 'Shadow Avatar' using the world_edit spawn_npc command. Set combat_active to true. Its stats MUST be: { \"WILL\": 20, \"CONS\": 20, \"PHYS\": 20 }. Describe its terrifying, glitchy appearance as it challenges the player to a Battle of Wills.", 
                     { 
                         activeMap: stateManager.getActiveMap(), 
                         localPlayer: stateManager.getState().localPlayer, 
