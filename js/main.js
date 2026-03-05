@@ -7,18 +7,10 @@ import * as UI from './ui.js';
 import { auth, isSyncEnabled } from './firebaseConfig.js';
 import * as stateManager from './stateManager.js';
 import * as syncEngine from './syncEngine.js';
-import { handleCommand, executeMovement } from './intentRouter.js';
+import { handleCommand, executeMovement, shiftStratum } from './intentRouter.js';
 
 // --- CONFIG & DB VERSION ---
 let hasInitialized = false;
-
-// --- HELPER WRAPPERS ---
-function shiftStratum(targetStratum) {
-    const { localPlayer } = stateManager.getState();
-    const isTransitioningToFaen = targetStratum === 'faen' && localPlayer.stratum !== 'faen';
-    UI.applyStratumTheme(targetStratum, isTransitioningToFaen);
-    stateManager.updatePlayer({ stratum: targetStratum });
-}
 
 // --- AUTHENTICATION & SYNC ---
 if (isSyncEnabled) {
@@ -70,7 +62,7 @@ if (isSyncEnabled) {
             
             const currentRoom = activeMap[stateManager.getState().localPlayer.currentRoom];
             if (currentRoom) {
-                UI.printRoomDescription(currentRoom, updatedState.localPlayer.stratum === 'faen', activeMap, updatedState.activeAvatar);
+                UI.printRoomDescription(currentRoom, updatedState.localPlayer.stratum === 'astral', activeMap, updatedState.activeAvatar);
             }
             
             if (!user.isAnonymous && localStorage.getItem('awaitingNewUserHint') === 'true') {

@@ -156,34 +156,40 @@ style.innerHTML = `
 #right-sidebar > div { flex-shrink: 0; min-height: min-content; }
 @keyframes inv-flash { 0% { box-shadow: 0 0 20px var(--term-green); border-color: var(--term-green); } 100% { box-shadow: none; border-color: inherit; } }
 .flash-inv { animation: inv-flash 1s ease-out; }
-.faen-mode #log div { text-shadow: none !important; filter: none !important; }
+.astral-mode #log div { text-shadow: none !important; filter: none !important; }
 `;
 document.head.appendChild(style);
 
-export function applyStratumTheme(stratum, isTransitioningToFaen) {
+export function applyStratumTheme(stratum, isTransitioningToAstral) {
     const root = document.documentElement;
     const stratDisp = document.getElementById('stratum-display');
     
-    if (isTransitioningToFaen) {
+    if (isTransitioningToAstral) {
         document.body.classList.add('desaturated');
         addLog("[SYSTEM]: REALITY_RENDER_STUTTER_DETECTED...", "var(--term-red)");
         setTimeout(() => {
             document.body.classList.remove('desaturated');
-            document.body.classList.add('faen-mode');
+            document.body.classList.add('astral-mode');
         }, 1000);
-    } else if (stratum !== 'faen') {
-        document.body.classList.remove('faen-mode');
+    } else if (stratum === 'astral') {
+        document.body.classList.add('astral-mode');
+    } else {
+        document.body.classList.remove('astral-mode');
     }
 
-    if (stratum === 'faen' || stratum === 'astral') {
+    if (stratum === 'astral') {
         root.style.setProperty('--term-green', '#e2b714');
         root.style.setProperty('--term-amber', '#ff9d00');
         root.style.setProperty('--term-red', '#e53935'); 
         root.style.setProperty('--term-bg', '#1c0f1a');
         root.style.setProperty('--crayola-blue', '#b084e8'); 
         root.style.setProperty('--gm-purple', '#ff77ff');
-        stratDisp.innerText = `[ STRATA: ${stratum.toUpperCase()} ]`;
+        stratDisp.innerText = `[ STRATA: ASTRAL ]`;
         stratDisp.style.color = 'var(--crayola-blue)';
+    } else if (stratum === 'faen') {
+        // Placeholder for future Faen stratum
+        stratDisp.innerText = `[ STRATA: FAEN (UNIMPLEMENTED) ]`;
+        stratDisp.style.color = 'var(--term-amber)';
     } else if (stratum === 'technate') {
         root.style.setProperty('--term-green', '#e0f7fa');
         root.style.setProperty('--term-amber', '#ff2a2a');
@@ -325,7 +331,7 @@ export function updateRoomEntitiesUI(npcs) {
     `).join('');
 }
 
-export function printRoomDescription(room, isFaen, fullMap = null, activeAvatar = null) {
+export function printRoomDescription(room, isAstral, fullMap = null, activeAvatar = null) {
     if (!room) return; // Guard against undefined room during transitions
     addLog(`[NARRATOR]: ${room.description}`, "#888");
     if (room.marginalia && room.marginalia.length > 0) {
@@ -343,7 +349,7 @@ export function printRoomDescription(room, isFaen, fullMap = null, activeAvatar 
     }
     
     // Check for ADJACENT NPCs through exits
-    if (fullMap && !isFaen) {
+    if (fullMap && !isAstral) {
         let adjacentNpcs = [];
         for (let [dir, exitData] of Object.entries(room.exits || {})) {
             const targetId = typeof exitData === 'object' ? exitData.target : exitData;
@@ -359,11 +365,11 @@ export function printRoomDescription(room, isFaen, fullMap = null, activeAvatar 
         }
     }
     
-    if (!isFaen) {
+    if (!isAstral) {
         const exits = Object.keys(room.exits || {}).map(e => e.toUpperCase()).join(', ');
         addLog(`Obvious Exits: ${exits || 'NONE'}`, "#555");
     } else {
-        addLog(`The astral plane stretches infinitely.`, "var(--faen-pink)");
+        addLog(`The astral plane stretches infinitely.`, "var(--astral-pink)");
     }
 
     if (!activeAvatar) {
@@ -386,7 +392,7 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
     existingZones.forEach(zone => zone.remove());
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    if (stratum === 'astral' || stratum === 'faen') {
+    if (stratum === 'astral' || stratum === 'faen' || currentRoomKey.toLowerCase().includes('astral')) {
         // DRAW STATIC
         const imageData = ctx.createImageData(canvas.width, canvas.height);
         const data = imageData.data;

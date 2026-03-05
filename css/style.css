@@ -7,9 +7,11 @@
             --term-bg: #050505;
             --crayola-blue: #3b82f6;
             --gm-purple: #a855f7;
-            /* Faen Mode Palette */
-            --faen-cyan: #00f5ff;
-            --faen-pink: #ff00ff;
+            /* Astral Mode Palette (Glitch) */
+            --astral-cyan: #00f5ff;
+            --astral-pink: #ff00ff;
+            /* Faen Mode Palette (High-Fantasy - Future Use) */
+            --faen-gold: #ffcc00;
         }
 
         @keyframes flicker {
@@ -29,9 +31,9 @@
             transition: background-color 1s ease, color 1s ease;
         }
 
-        /* --- THE FAEN JUMP STYLES --- */
-        body.faen-mode {
-            text-shadow: 2px 0 var(--faen-pink), -2px 0 var(--faen-cyan) !important;
+        /* --- THE ASTRAL JUMP STYLES --- */
+        body.astral-mode {
+            text-shadow: 2px 0 var(--astral-pink), -2px 0 var(--astral-cyan) !important;
             filter: contrast(1.2) brightness(1.1);
         }
 
@@ -40,12 +42,12 @@
             transition: filter 0.1s steps(2);
         }
 
-        .faen-mode #map-canvas-container::after {
-            content: "SIGNAL LOST // FAEN INTERFERENCE";
+        .astral-mode #map-canvas-container::after {
+            content: "SIGNAL LOST // ASTRAL INTERFERENCE";
             position: absolute;
             inset: 0;
             background: rgba(0,0,0,0.8);
-            color: var(--faen-pink);
+            color: var(--astral-pink);
             display: flex;
             align-items: center;
             justify-content: center;

@@ -161,7 +161,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         const room = activeMap[localPlayer.currentRoom];
         const newItem = { name: currentVal, type: "Constructed Object" };
         const items = [...(room.items || []), newItem];
-        stateManager.updateMapNode(null, localPlayer.currentRoom, { items });
+        stateManager.updateMapNode(localPlayer.currentRoom, { items });
         syncEngine.addArrayElementToNode(localPlayer.currentRoom, 'items', newItem);
         UI.addLog(`[SYSTEM]: Materialized [${currentVal}].`, "var(--term-green)");
         endWizard();
@@ -174,7 +174,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                 name: currentVal,
                 shortName: currentVal.substring(0, 7).toUpperCase()
             };
-            stateManager.updateMapNode(null, localPlayer.currentRoom, updates);
+            stateManager.updateMapNode(localPlayer.currentRoom, updates);
             syncEngine.updateMapNode(localPlayer.currentRoom, updates);
             UI.addLog(`[SYSTEM]: Sector identity overwritten.`, "var(--term-green)");
         }
@@ -189,7 +189,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         const target = typeof room.exits[dir] === 'string' ? room.exits[dir] : room.exits[dir].target;
         const exitUpdate = { target: target, locked: true, lockMsg: currentVal };
         const exits = { ...room.exits, [dir]: exitUpdate };
-        stateManager.updateMapNode(null, localPlayer.currentRoom, { exits });
+        stateManager.updateMapNode(localPlayer.currentRoom, { exits });
         syncEngine.updateMapNode(localPlayer.currentRoom, { [`exits.${dir}`]: exitUpdate });
         UI.addLog(`[SYSTEM]: Exit ${dir.toUpperCase()} locked.`, "var(--term-amber)");
         endWizard();
@@ -211,11 +211,11 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
             items: [], npcs: []
         };
         
-        stateManager.updateMapNode(null, newRoomId, newRoom);
+        stateManager.updateMapNode(newRoomId, newRoom);
         syncEngine.updateMapNode(newRoomId, newRoom);
 
         const currentExits = { ...activeMap[localPlayer.currentRoom].exits, [dir]: newRoomId };
-        stateManager.updateMapNode(null, localPlayer.currentRoom, { exits: currentExits });
+        stateManager.updateMapNode(localPlayer.currentRoom, { exits: currentExits });
         syncEngine.updateMapNode(localPlayer.currentRoom, { [`exits.${dir}`]: newRoomId });
 
         UI.addLog(`[SYSTEM]: Reality expanded ${dir.toUpperCase()}.`, "var(--term-green)");
@@ -243,12 +243,12 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                      items: [], npcs: []
                  };
                  
-                 stateManager.updateMapNode(null, newRoomId, newRoom);
+                 stateManager.updateMapNode(newRoomId, newRoom);
                  syncEngine.updateMapNode(newRoomId, newRoom);
 
                  if (dir !== 'here') {
                     const currentExits = { ...activeMap[localPlayer.currentRoom].exits, [dir]: newRoomId };
-                    stateManager.updateMapNode(null, localPlayer.currentRoom, { exits: currentExits });
+                    stateManager.updateMapNode(localPlayer.currentRoom, { exits: currentExits });
                     syncEngine.updateMapNode(localPlayer.currentRoom, { [`exits.${dir}`]: newRoomId });
                  }
                  UI.addLog(`[SYSTEM]: Sector generated.`, "var(--term-green)");
@@ -270,7 +270,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
             behavior: currentVal
         };
         const npcs = [...(room.npcs || []), newNpc];
-        stateManager.updateMapNode(null, localPlayer.currentRoom, { npcs });
+        stateManager.updateMapNode(localPlayer.currentRoom, { npcs });
         syncEngine.addArrayElementToNode(localPlayer.currentRoom, 'npcs', newNpc);
 
         UI.addLog(`[SYSTEM]: Vessel detached and autonomous protocol initialized.`, "var(--term-amber)");
@@ -313,7 +313,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
             
             const room = activeMap[localPlayer.currentRoom];
             const npcs = [...(room.npcs || []), newNpc];
-            stateManager.updateMapNode(null, localPlayer.currentRoom, { npcs });
+            stateManager.updateMapNode(localPlayer.currentRoom, { npcs });
             syncEngine.addArrayElementToNode(localPlayer.currentRoom, 'npcs', newNpc);
             
             UI.addLog(`[SYSTEM]: Entity [${newNpc.name}] spawned successfully.`, "var(--term-green)");
@@ -398,11 +398,11 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                     items: [], marginalia: [], npcs: []
                 };
                 
-                stateManager.updateMapNode(null, newRoomId, newRoom);
+                stateManager.updateMapNode(newRoomId, newRoom);
                 syncEngine.updateMapNode(newRoomId, newRoom);
 
                 const fromExits = { ...(activeMap[fromId].exits || {}), [dir]: newRoomId };
-                stateManager.updateMapNode(null, fromId, { exits: fromExits });
+                stateManager.updateMapNode(fromId, { exits: fromExits });
                 syncEngine.updateMapNode(fromId, { [`exits.${dir}`]: newRoomId });
 
                 stateManager.updatePlayer({ currentRoom: newRoomId });
@@ -414,7 +414,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
 
                 // Fire the Shadow Avatar Encounter
                 handleGMIntent(
-                    "The player has just manifested and entered this new astral sector. You MUST manifest the Glitchy Shadow Avatar NPC now. Use spawn_npc in world_edit. This is an urgent System encounter.", 
+                    "The player has just manifested and entered this new astral sector. You MUST spawn a hostile NPC named 'Shadow Avatar' using the world_edit spawn_npc command. Set combat_active to true. Describe its terrifying, glitchy appearance as it challenges the player to a Battle of Wills.", 
                     { 
                         activeMap: stateManager.getActiveMap(), 
                         localPlayer: stateManager.getState().localPlayer, 

@@ -148,7 +148,7 @@ export async function handleGMIntent(
                 stateManager.setLocalAreaCache({ [entryId]: entryNode });
                 stateManager.updatePlayer({ currentRoom: entryId });
                 stateChanged = true;
-                if (!isSilent) UI.addLog(`[SYSTEM]: Conventional geometry discarded. Welcome to the Astral Plane.`, "var(--faen-pink)");
+                if (!isSilent) UI.addLog(`[SYSTEM]: Conventional geometry discarded. Welcome to the Astral Plane.`, "var(--astral-pink)");
             } else {
                 if (!isSilent) UI.addLog("[SYSTEM]: Dimensional shift failed. Anchors too strong in this node.", "var(--term-red)");
             }

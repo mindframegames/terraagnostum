@@ -19,11 +19,13 @@ function getUserTier() {
     return stateManager.getUserTier();
 }
 
-function shiftStratum(targetStratum) {
+export function shiftStratum(targetStratum) {
     const { localPlayer } = stateManager.getState();
-    const isTransitioningToFaen = targetStratum === 'faen' && localPlayer.stratum !== 'faen';
-    UI.applyStratumTheme(targetStratum, isTransitioningToFaen);
+    const isTransitioningToAstral = targetStratum === 'astral' && localPlayer.stratum !== 'astral';
+    UI.applyStratumTheme(targetStratum, isTransitioningToAstral);
     stateManager.updatePlayer({ stratum: targetStratum });
+    // Force a save to Firestore for stratum changes
+    syncEngine.savePlayerState();
 }
 
 // --- NARRATIVE MOVEMENT ENGINE ---
@@ -43,7 +45,7 @@ export async function executeMovement(targetDir) {
         return;
     }
     
-    if (localPlayer.stratum === 'astral') {
+    if (localPlayer.stratum === 'astral' || localPlayer.currentRoom.toLowerCase().includes('astral')) {
         const currentRoomData = activeMap[localPlayer.currentRoom];
         
         if (currentRoomData.exits && currentRoomData.exits[targetDir]) {
@@ -353,6 +355,7 @@ export async function handleCommand(val) {
             };
             stateManager.setLocalAreaCache(newAstralMap);
             stateManager.updatePlayer({ currentRoom: entryId });
+            syncEngine.savePlayerState(); 
             const activeMap = getActiveMap();
 
             UI.addLog("[NARRATOR]: The walls of the closet dissolve into raw, static data. You are pulled into the Astral Plane.", "#888");
