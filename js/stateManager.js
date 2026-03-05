@@ -4,23 +4,13 @@ import { isArchiveRoom } from './mapData.js';
 // --- INITIAL STATE ---
 let state = {
     localPlayer: { 
-        hp: 20, 
-        currentRoom: "bedroom", 
-        currentArea: null,
-        stratum: "mundane",
-        inventory: [],
-        closetDoorClosed: false,
-        isArchitect: false,
-        combat: { active: false, opponent: null },
-        activeAvatarId: null
+        hp: 20, currentRoom: "bedroom", currentArea: null, stratum: "mundane",
+        inventory: [], closetDoorClosed: false, isArchitect: false,
+        combat: { active: false, opponent: null }, activeAvatarId: null
     },
-    localAreaCache: {},
-    localCharacters: [], 
-    activeAvatar: null,  
-    user: null,
-    activeTerminal: false,
-    isProcessing: false,
-    suggestions: [],
+    localAreaCache: {}, // THE ONLY CACHE
+    localCharacters: [], activeAvatar: null, user: null,
+    activeTerminal: false, isProcessing: false, suggestions: [],
     wizardState: { active: false, type: null, step: 0, pendingData: {} }
 };
 
@@ -57,48 +47,20 @@ export function getUserTier() {
 }
 
 export function getActiveMap() {
-    return state.localAreaCache;
-}
-
-// --- SETTERS & VALIDATION ---
-
-/**
- * Validates the player's current location and falls back to bedroom if invalid.
- * This is the central "Trust Boundary" for player movement.
- */
-function validateLocation() {
-    const activeMap = getActiveMap();
-    const currentRoom = state.localPlayer.currentRoom;
-
-    // Leniency during transitions: if map is loading or we are transitioning via "outside"
-    if (Object.keys(activeMap).length === 0 || currentRoom === "outside") {
-        return false;
-    }
-
-    // 1. Check if the current room exists in the active map
-    if (!activeMap[currentRoom]) {
-        console.warn(`[GLITCH]: Room '${currentRoom}' not found in active map. Intercepting and redirecting to bedroom.`);
-        state.localPlayer.currentRoom = "bedroom";
-        return true;
-    }
-    
-    return false;
+    return state.localAreaCache; // Always return the flat cache
 }
 
 export function updatePlayer(updates) {
     state.localPlayer = { ...state.localPlayer, ...updates };
-    const changed = validateLocation();
     notify();
-    return changed;
 }
 
 export function setLocalAreaCache(nodes) {
     state.localAreaCache = nodes || {};
-    validateLocation();
     notify();
 }
 
-export function updateMapNode(mapType_deprecated, nodeId, updates) {
+export function updateMapNode(nodeId, updates) {
     if (state.localAreaCache[nodeId]) {
         state.localAreaCache[nodeId] = { ...state.localAreaCache[nodeId], ...updates };
         notify();

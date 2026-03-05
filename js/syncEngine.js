@@ -85,27 +85,22 @@ async function loadUserCharacters(user) {
 export async function updateAreaListener(areaId) {
     const { user } = stateManager.getState();
     if (!db || !user) return;
-
     if (mapUnsubscribe) mapUnsubscribe();
-    currentMapPath = areaId;
 
     const areaRoomsRef = collection(db, 'artifacts', appId, 'public', 'data', 'areas', areaId, 'rooms');
     
     return new Promise((resolve) => {
-        let resolved = false;
-        mapUnsubscribe = onSnapshot(areaRoomsRef, async (snapshot) => {
+        mapUnsubscribe = onSnapshot(areaRoomsRef, (snapshot) => {
             const areaNodes = {};
             snapshot.forEach(doc => { areaNodes[doc.id] = doc.data(); });
             
-            // THE IMPOSITION: If area is empty, spawn the blueprint apartment!
+            // Seeding logic for the apartment
             if (Object.keys(areaNodes).length === 0 && areaId === `apartment_${user.uid}`) {
                 console.log("[SYNC]: Imposing full apartment architecture...");
                 const batch = writeBatch(db);
                 
                 for (const [roomId, roomData] of Object.entries(blueprintApartment)) {
-                    // If the room is 'outside', it actually belongs in the public area, so we skip imposing it into the private apartment.
                     if (roomId === 'outside') continue; 
-                    
                     const roomRef = doc(areaRoomsRef, roomId);
                     batch.set(roomRef, { 
                         ...roomData, 
@@ -113,24 +108,12 @@ export async function updateAreaListener(areaId) {
                         metadata: { ...roomData.metadata, ownerId: user.uid, area: areaId }
                     });
                 }
-                await batch.commit();
-                return; // The snapshot will automatically re-fire after the commit
-            }
-
-            // PUBLIC WORLD SEEDING
-            if (Object.keys(areaNodes).length === 0 && areaId === 'public_void') {
-                console.log("[SYNC]: Imposing public void anchor...");
-                const roomRef = doc(areaRoomsRef, 'outside');
-                await setDoc(roomRef, { 
-                    ...blueprintApartment['outside'], 
-                    id: 'outside',
-                    metadata: { stratum: 'mundane', isEditable: false, ownerId: 'PUBLIC', area: 'public_void' }
-                });
+                batch.commit();
                 return;
             }
 
             stateManager.setLocalAreaCache(areaNodes);
-            if (!resolved) { resolved = true; resolve(); }
+            resolve();
         });
     });
 }
@@ -157,11 +140,12 @@ export async function syncAvatarStats(avatarId, stats) {
     } catch (e) { console.error("SyncEngine: Failed to sync avatar stats:", e); }
 }
 
-export async function updateMapNode(roomId, updates) {
+export async function updateMapNode(roomId, updates, targetArea = null) {
     const { user, localPlayer } = stateManager.getState();
     if (!db || !user || !isSyncEnabled) return;
-    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'areas', localPlayer.currentArea, 'rooms', roomId);
-    try { await updateDoc(roomRef, updates); } catch (e) { console.error(e); }
+    const areaToUpdate = targetArea || localPlayer.currentArea;
+    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'areas', areaToUpdate, 'rooms', roomId);
+    try { await setDoc(roomRef, updates, { merge: true }); } catch (e) { console.error(e); }
 }
 
 export async function removeArrayElementFromNode(roomId, arrayPath, element) {

@@ -195,7 +195,7 @@ export async function handleGMIntent(
                     
                     // Remove NPC from room
                     const newNpcs = room.npcs.filter(n => n.name !== npc.name);
-                    stateManager.updateMapNode(null, currentState.localPlayer.currentRoom, { npcs: newNpcs });
+                    stateManager.updateMapNode(currentState.localPlayer.currentRoom, { npcs: newNpcs });
                     syncEngine.updateMapNode(currentState.localPlayer.currentRoom, { npcs: newNpcs });
 
                     // Reset Combat State
@@ -297,7 +297,7 @@ export async function handleGMIntent(
                     npcs: [] 
                 };
                 
-                stateManager.updateMapNode(null, t.new_room_id, newRoom);
+                stateManager.updateMapNode(t.new_room_id, newRoom);
                 syncEngine.updateMapNode(t.new_room_id, newRoom);
             }
             stateManager.updatePlayer({ currentRoom: t.new_room_id }); 
@@ -321,20 +321,20 @@ export async function handleGMIntent(
             
             if (res.world_edit.type === 'add_marginalia') {
                 const marginalia = [...(room.marginalia || []), res.world_edit.text];
-                stateManager.updateMapNode(null, currentState.localPlayer.currentRoom, { marginalia });
+                stateManager.updateMapNode(currentState.localPlayer.currentRoom, { marginalia });
                 syncEngine.addArrayElementToNode(currentState.localPlayer.currentRoom, 'marginalia', res.world_edit.text);
             } else if (res.world_edit.type === 'unlock_exit') {
                 const unlockDir = res.world_edit.direction.toLowerCase();
                 if (room.exits[unlockDir] && typeof room.exits[unlockDir] === 'object') {
                     const exits = { ...room.exits };
                     exits[unlockDir] = { ...exits[unlockDir], locked: false };
-                    stateManager.updateMapNode(null, currentState.localPlayer.currentRoom, { exits });
+                    stateManager.updateMapNode(currentState.localPlayer.currentRoom, { exits });
                     syncEngine.updateMapNode(currentState.localPlayer.currentRoom, { [`exits.${unlockDir}.locked`]: false });
                     if (!isSilent) UI.addLog(`[SYSTEM]: The path ${unlockDir.toUpperCase()} has been opened.`, "var(--term-green)");
                 }
             } else if (res.world_edit.type === 'spawn_item') {
                 const items = [...(room.items || []), res.world_edit.item];
-                stateManager.updateMapNode(null, currentState.localPlayer.currentRoom, { items });
+                stateManager.updateMapNode(currentState.localPlayer.currentRoom, { items });
                 syncEngine.addArrayElementToNode(currentState.localPlayer.currentRoom, 'items', res.world_edit.item);
                 if (!isSilent) UI.addLog(`[SYSTEM]: ${res.world_edit.item.name} has manifested in the room.`, "var(--term-green)");
             } else if (res.world_edit.type === 'spawn_npc') {
@@ -369,7 +369,7 @@ export async function handleGMIntent(
                 } else {
                     npcs.push(npcData);
                 }
-                stateManager.updateMapNode(null, currentState.localPlayer.currentRoom, { npcs });
+                stateManager.updateMapNode(currentState.localPlayer.currentRoom, { npcs });
                 syncEngine.updateMapNode(currentState.localPlayer.currentRoom, { npcs });
                 if (!isSilent) UI.addLog(`[SYSTEM]: A new presence detected: ${npcData.name}.`, "var(--term-amber)");
             }
@@ -385,7 +385,7 @@ export async function handleGMIntent(
                     const b64 = await generatePortrait(npc.visual_prompt, stateManager.getState().localPlayer.stratum);
                     if (b64) {
                         npc.image = await compressImage(`data:image/png;base64,${b64}`, 400, 0.7);
-                        stateManager.updateMapNode(null, stateManager.getState().localPlayer.currentRoom, { npcs: currentRoomData.npcs });
+                        stateManager.updateMapNode(stateManager.getState().localPlayer.currentRoom, { npcs: currentRoomData.npcs });
                         syncEngine.updateMapNode(stateManager.getState().localPlayer.currentRoom, { npcs: currentRoomData.npcs });
                     }
                 }
