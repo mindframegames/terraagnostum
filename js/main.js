@@ -47,6 +47,7 @@ if (isSyncEnabled) {
                 }, 1500);
             }
         }
+        UI.initHUDWidgets();
     });
 }
 

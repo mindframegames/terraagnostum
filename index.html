@@ -81,9 +81,19 @@
                 </div>
 
                 <!-- INPUT AREA -->
-                <div class="input-area">
-                    <span id="prompt-prefix" class="mr-2 opacity-80 text-gray-500">GUEST@VOID:~$</span>
-                    <input type="text" id="cmd-input" autofocus spellcheck="false" autocomplete="off">
+                <div id="input-container">
+                    <div class="input-area">
+                        <span id="prompt-prefix" class="mr-2 opacity-80 text-gray-500">GUEST@VOID:~$</span>
+                        <input type="text" id="cmd-input" autofocus spellcheck="false" autocomplete="off">
+                    </div>
+
+                    <!-- MOBILE ACTION BAR -->
+                    <div id="mobile-action-bar" class="flex md:hidden gap-1 mb-2 mt-2">
+                        <button class="action-btn flex-1 bg-green-900/20 border border-green-900 text-[10px] py-2 uppercase" data-cmd="look">LOOK</button>
+                        <button class="action-btn flex-1 bg-green-900/20 border border-green-900 text-[10px] py-2 uppercase" data-cmd="inv">INV</button>
+                        <button class="action-btn flex-1 bg-green-900/20 border border-green-900 text-[10px] py-2 uppercase" data-cmd="stat">STAT</button>
+                        <button class="action-btn flex-1 bg-green-900/20 border border-green-900 text-[10px] py-2 uppercase" data-cmd="map">MAP</button>
+                    </div>
                 </div>
 
                 <!-- CONTEXTUAL COMMANDS -->
@@ -105,6 +115,20 @@
                 <div class="text-[10px] text-green-600 uppercase tracking-widest border-b border-green-900 pb-2 mb-2 mt-6">SYSTEM.TOPOLOGY</div>
                 <div id="map-canvas-container" class="w-full bg-black/50 border border-green-900/50 rounded mb-4 flex items-center justify-center overflow-hidden h-40">
                     <canvas id="map-canvas" width="230" height="150" class="max-w-full opacity-80"></canvas>
+                </div>
+
+                <!-- COMPASS WIDGET -->
+                <div class="text-[10px] text-green-600 uppercase tracking-widest border-b border-green-900 pb-2 mb-2 mt-6">SYSTEM.COMPASS</div>
+                <div id="compass-widget" class="grid grid-cols-3 gap-1 mb-6 w-32 mx-auto aspect-square">
+                    <div class="bg-transparent"></div>
+                    <button id="btn-n" class="compass-btn border border-green-900 text-[10px] flex items-center justify-center hover:bg-green-900/30 disabled:opacity-20">N</button>
+                    <div class="bg-transparent"></div>
+                    <button id="btn-w" class="compass-btn border border-green-900 text-[10px] flex items-center justify-center hover:bg-green-900/30 disabled:opacity-20">W</button>
+                    <div class="bg-green-900/10 flex items-center justify-center text-[8px] text-green-800 font-bold">NAV</div>
+                    <button id="btn-e" class="compass-btn border border-green-900 text-[10px] flex items-center justify-center hover:bg-green-900/30 disabled:opacity-20">E</button>
+                    <div class="bg-transparent"></div>
+                    <button id="btn-s" class="compass-btn border border-green-900 text-[10px] flex items-center justify-center hover:bg-green-900/30 disabled:opacity-20">S</button>
+                    <div class="bg-transparent"></div>
                 </div>
                 
                 <div class="text-[10px] text-green-600 uppercase tracking-widest border-b border-green-900 pb-2 mb-2 mt-2">SYSTEM.INVENTORY</div>

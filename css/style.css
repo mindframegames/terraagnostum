@@ -362,3 +362,42 @@
             color: #000;
             box-shadow: 0 0 15px var(--term-amber);
         }
+
+        /* COMPASS & MOBILE UI */
+        .compass-btn {
+            background: rgba(0, 255, 65, 0.05);
+            transition: all 0.2s;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .compass-btn:hover:not(:disabled) {
+            background: rgba(0, 255, 65, 0.2);
+            box-shadow: 0 0 10px var(--term-green);
+        }
+        .compass-btn:disabled {
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        .action-btn {
+            transition: all 0.2s;
+            cursor: pointer;
+            letter-spacing: 1px;
+        }
+        .action-btn:hover {
+            background: var(--term-green);
+            color: var(--term-bg);
+            box-shadow: 0 0 10px var(--term-green);
+        }
+        
+        #input-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (max-width: 768px) {
+            .terminal-container { padding: 10px; }
+            .visual-buffer { height: 180px; min-height: 180px; }
+            #header-bar { font-size: 8px; }
+            #mobile-action-bar { display: flex !important; }
+        }

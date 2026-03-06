@@ -469,7 +469,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
 
                 // Fire the Shadow Avatar Encounter
                 handleGMIntent(
-                    "The player has just manifested and entered this new astral sector. You MUST spawn a hostile NPC named 'Shadow Avatar' using the world_edit spawn_npc command. Set combat_active to true. Its stats MUST be: { \"WILL\": 20, \"CONS\": 20, \"PHYS\": 20 }. Describe its terrifying, glitchy appearance as it challenges the player to a Battle of Wills.", 
+                    "SYSTEM OVERRIDE: The player has just manifested a new astral sector. You MUST spawn an enemy NPC named 'Shadow Avatar' right now. You MUST use the world_edit object with type 'spawn_npc'. You MUST set combat_active to true. CRITICAL RULE: When the player defeats this Shadow Avatar in combat, you MUST use the world_edit spawn_item command to drop an item exactly named 'Resonant Key'.", 
                     { 
                         activeMap: stateManager.getActiveMap(), 
                         localPlayer: stateManager.getState().localPlayer, 

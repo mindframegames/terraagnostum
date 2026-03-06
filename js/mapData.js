@@ -148,7 +148,14 @@ export const blueprintApartment = {
         shortName: "HALLWAY",
         description: "A narrow corridor extending south. At the far southern end is the front door leading 'outside'.",
         visualPrompt: "A narrow, dimly lit apartment hallway. At the end is a heavy metal door.",
-        exits: { north: "lore2", south: "outside" },
+        exits: { 
+            north: "lore2", 
+            south: { 
+                target: "outside", 
+                itemReq: "Resonant Key", 
+                lockMsg: "[SYSTEM]: The heavy metal door is sealed by a Technate biometric lock. A [Resonant Key] is required." 
+            } 
+        },
         metadata: { stratum: "mundane", isEditable: false }
     },
     "outside": {

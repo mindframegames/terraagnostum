@@ -9,6 +9,7 @@ import { startWizard } from './wizardSystem.js';
 import { triggerVisualUpdate, togglePinView } from './visualSystem.js';
 import { callGemini } from './apiService.js';
 import { openForgeModal } from './forgeSystem.js';
+import { startTerminal, handleTerminalInput } from './terminalSystem.js';
 
 // --- HELPER WRAPPERS (Local to Router) ---
 
@@ -83,16 +84,18 @@ export async function executeMovement(targetDir) {
                 UI.addLog(targetExit.lockMsg || "[SYSTEM]: Identity verification required to proceed.", "#b084e8");
                 return;
             }
+            if (targetExit.itemReq) {
+                const hasItem = (localPlayer.inventory || []).some(i => i.name.toLowerCase().includes(targetExit.itemReq.toLowerCase()));
+                if (!hasItem) {
+                    UI.addLog(targetExit.lockMsg || `[SYSTEM]: Required item missing: [${targetExit.itemReq}].`, "var(--term-amber)");
+                    return;
+                }
+            }
         }
 
         // --- AREA TRANSITION LOGIC (v0.2 DYNAMIC BOUNDARIES) ---
         let newArea = localPlayer.currentArea;
         if (targetRoomId === 'outside') {
-            const hasKey = (localPlayer.inventory || []).some(i => i.name === 'Resonant Key');
-            if (!hasKey) {
-                UI.addLog("[SYSTEM]: The front door is sealed by a quantum lock. You need a Resonant Key to pass through.", "var(--term-amber)");
-                return;
-            }
             newArea = 'public_void';
         } else if (targetRoomId.startsWith('astral_')) {
             newArea = `astral_${user.uid}`;
@@ -219,21 +222,13 @@ export async function handleCommand(val) {
 
     if (cmd.match(/^(use|access|hack)\s+(terminal|tandem|console)/)) {
         if (localPlayer.currentRoom === 'lore1') {
-            stateManager.setTerminal(true);
-            UI.addLog("[SYSTEM]: TANDEM INTERFACE ACTIVE. TYPE 'login' TO BIND SIGNATURE OR 'exit' TO DISCONNECT.", "var(--term-green)");
+            startTerminal();
             return;
         }
     }
 
     if (activeTerminal) {
-        if (cmd === 'exit' || cmd === 'leave' || cmd === 'disconnect') {
-            stateManager.setTerminal(false);
-            UI.addLog("[SYSTEM]: TANDEM INTERFACE DISCONNECTED.", "var(--term-amber)");
-            return;
-        }
-
-        UI.addLog("[TANDEM]: Unknown command. Type 'login' or 'exit'.", "var(--term-amber)");
-        return;
+        if (handleTerminalInput(val)) return;
     }
 
 

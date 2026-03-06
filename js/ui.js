@@ -36,10 +36,73 @@ stateManager.subscribe((state) => {
     const room = activeMap[localPlayer.currentRoom];
     updateRoomItemsUI(room?.items);
     updateRoomEntitiesUI(room?.npcs);
+    updateCompassUI(room);
     renderMapHUD(activeMap, localPlayer.currentRoom, localPlayer.stratum);
     updateContextualSuggestions(state.suggestions);
     updateArchitectHUD(localPlayer.isArchitect, state.user);
 });
+
+/**
+ * Initializes listeners for the persistent HUD widgets (Compass, Mobile Bar).
+ */
+export function initHUDWidgets() {
+    // Compass Listeners
+    const compassButtons = {
+        'btn-n': 'north',
+        'btn-s': 'south',
+        'btn-e': 'east',
+        'btn-w': 'west'
+    };
+
+    Object.entries(compassButtons).forEach(([id, dir]) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.onclick = () => {
+                const input = document.getElementById('cmd-input');
+                if (input) {
+                    input.value = dir;
+                    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+                }
+            };
+        }
+    });
+
+    // Mobile Action Bar Listeners
+    const actionBtns = document.querySelectorAll('.action-btn');
+    actionBtns.forEach(btn => {
+        btn.onclick = () => {
+            const cmd = btn.getAttribute('data-cmd');
+            const input = document.getElementById('cmd-input');
+            if (input) {
+                input.value = cmd;
+                input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+            }
+        };
+    });
+}
+
+/**
+ * Updates the compass buttons to show/hide based on available exits.
+ */
+export function updateCompassUI(room) {
+    const directions = ['north', 'south', 'east', 'west'];
+    const btnMap = { north: 'btn-n', south: 'btn-s', east: 'btn-e', west: 'btn-w' };
+
+    directions.forEach(dir => {
+        const btn = document.getElementById(btnMap[dir]);
+        if (!btn) return;
+
+        if (room && room.exits && room.exits[dir]) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-20');
+            btn.classList.add('bg-green-900/40', 'text-green-400', 'border-green-500');
+        } else {
+            btn.disabled = true;
+            btn.classList.add('opacity-20');
+            btn.classList.remove('bg-green-900/40', 'text-green-400', 'border-green-500');
+        }
+    });
+}
 
 /**
  * Updates the Architect link and User Status in the bottom HUD.
