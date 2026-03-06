@@ -4,6 +4,8 @@ import * as stateManager from './stateManager.js';
 import * as syncEngine from './syncEngine.js';
 import { triggerVisualUpdate } from './visualSystem.js';
 import { handleGMIntent } from './gmEngine.js';
+import { auth } from './firebaseConfig.js';
+import { signInWithEmailAndPassword, EmailAuthProvider, linkWithCredential } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 // State is now managed by stateManager.js
 export function startWizard(type, initialData = {}) {
@@ -65,20 +67,57 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         return;
     }
 
-    if (wizardState.type === 'login') {
-        const email = currentVal;
-        UI.addLog(`[SYSTEM]: Transmitting anchoring frequency to ${email}...`, "var(--term-amber)");
-        const { auth } = await import('./firebaseConfig.js');
-        const { sendSignInLinkToEmail } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+    // --- REGISTRATION WIZARD ---
+    if (wizardState.type === 'register') {
+        if (wizardState.step === 1) {
+            stateManager.updateWizardState({ step: 2, pendingData: { email: currentVal } });
+            UI.addLog(`[WIZARD]: Enter a SECURE PASSWORD (Min 6 characters):`, "var(--term-amber)");
+            return;
+        }
+        if (wizardState.step === 2) {
+            UI.addLog("[SYSTEM]: Anchoring signature to the Archive...", "var(--term-green)");
+            const email = wizardState.pendingData.email;
+            const password = currentVal;
+            
+            try {
+                const credential = EmailAuthProvider.credential(email, password);
+                // Upgrade Guest -> Permanent
+                await linkWithCredential(stateManager.getState().user, credential);
+                UI.addLog("[SYSTEM]: Registration complete. Guest data preserved.", "var(--term-green)");
+                localStorage.setItem('awaitingNewUserHint', 'true');
+                setTimeout(() => window.location.reload(), 1500);
+            } catch (error) {
+                console.error(error);
+                UI.addLog(`[SYSTEM ERROR]: Registration failed: ${error.message}`, "var(--term-red)");
+            }
+            stateManager.resetWizard();
+            return;
+        }
+    }
 
-        const actionCodeSettings = { url: window.location.href.split('?')[0], handleCodeInApp: true };
-        try {
-            await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-            window.localStorage.setItem('emailForSignIn', email);
-            UI.addLog("[TANDY]: Pulse sent. Check your inbox to fuse your signature.", "#b084e8");
-        } catch(e) { UI.addLog(`[ERROR]: ${e.message}`, "var(--term-red)"); }
-        endWizard();
-        return;
+    // --- LOGIN WIZARD ---
+    if (wizardState.type === 'login') {
+        if (wizardState.step === 1) {
+            stateManager.updateWizardState({ step: 2, pendingData: { email: currentVal } });
+            UI.addLog(`[WIZARD]: Enter your PASSWORD:`, "var(--term-amber)");
+            return;
+        }
+        if (wizardState.step === 2) {
+            UI.addLog("[SYSTEM]: Authenticating...", "var(--term-green)");
+            const email = wizardState.pendingData.email;
+            const password = currentVal;
+            
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                UI.addLog("[SYSTEM]: Authentication successful. Reconnecting...", "var(--term-green)");
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (error) {
+                console.error(error);
+                UI.addLog(`[SYSTEM ERROR]: Authentication failed: ${error.message}`, "var(--term-red)");
+            }
+            stateManager.resetWizard();
+            return;
+        }
     }
 
     // 2. AVATAR WIZARD (With AI Assists & Compression)

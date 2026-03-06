@@ -1,4 +1,4 @@
-import { signInAnonymously, onAuthStateChanged, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail, signOut, EmailAuthProvider, linkWithCredential } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 // IMPORT DECOMPOSED DATA & SERVICES
 import { triggerVisualUpdate } from './visualSystem.js';
@@ -12,55 +12,12 @@ import './forgeSystem.js';
 
 // --- CONFIG & DB VERSION ---
 let hasInitialized = false;
-let isProcessingAuthLink = false;
 
 // --- AUTHENTICATION & SYNC ---
 if (isSyncEnabled) {
     onAuthStateChanged(auth, async (u) => {
-        // 1. HANDLE EMAIL LINK UPGRADES
-        if (isSignInWithEmailLink(auth, window.location.href) && !isProcessingAuthLink) {
-            isProcessingAuthLink = true;
-            let email = window.localStorage.getItem('emailForSignIn');
-            
-            if (!email) {
-                email = window.prompt('Please provide your email for confirmation');
-            }
-            
-            if (email) {
-                try {
-                    if (u && u.isAnonymous) {
-                        // UPGRADE THE ANONYMOUS ACCOUNT (Keeps characters)
-                        const credential = EmailAuthProvider.credentialWithLink(email, window.location.href);
-                        await linkWithCredential(u, credential);
-                        console.log("[AUTH]: Anonymous account upgraded successfully.");
-                    } else {
-                        // NORMAL SIGN IN
-                        await signInWithEmailLink(auth, email, window.location.href);
-                        console.log("[AUTH]: Signed in via email link.");
-                    }
-                } catch (error) {
-                    if (error.code === 'auth/credential-already-in-use') {
-                        // Email already registered to another account. Fallback to normal sign-in.
-                        await signInWithEmailLink(auth, email, window.location.href);
-                    } else {
-                        console.error("Auth Link Error:", error);
-                    }
-                } finally {
-                    window.localStorage.removeItem('emailForSignIn');
-                    window.history.replaceState(null, '', window.location.pathname);
-                    isProcessingAuthLink = false;
-                }
-                // Return so the new auth state event handles the boot sequence
-                return;
-            } else {
-                window.history.replaceState(null, '', window.location.pathname);
-                isProcessingAuthLink = false;
-            }
-        }
-
-        // 2. NORMAL AUTH INITIALIZATION
         if (!u) {
-            if (!isSignInWithEmailLink(auth, window.location.href)) signInAnonymously(auth);
+            signInAnonymously(auth);
             return;
         }
 
@@ -145,7 +102,13 @@ if (input) {
             
             if (!val && !wizardState.active) return;
             if (isProcessing) return;
-            if (val) UI.addLog(val, "#ffffff");
+            if (val) {
+                if (wizardState.active && (wizardState.type === 'login' || wizardState.type === 'register') && wizardState.step === 2) {
+                    UI.addLog("********", "#ffffff");
+                } else {
+                    UI.addLog(val, "#ffffff");
+                }
+            }
             
             if (wizardState.active) { 
                 const activeMap = stateManager.getActiveMap();

@@ -1,5 +1,5 @@
 // js/intentRouter.js
-import { sendSignInLinkToEmail, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { auth, db, appId, isSyncEnabled } from './firebaseConfig.js';
 import * as stateManager from './stateManager.js';
 import * as syncEngine from './syncEngine.js';
@@ -231,38 +231,12 @@ export async function handleCommand(val) {
             UI.addLog("[SYSTEM]: TANDEM INTERFACE DISCONNECTED.", "var(--term-amber)");
             return;
         }
-        if (cmd === 'login') {
-            if (getUserTier() === "ENTITY" || getUserTier() === "ARCHITECT") {
-                UI.addLog("[SYSTEM]: You are already bound to the Technate.", "var(--term-amber)");
-                return;
-            }
-            startWizard('login');
-            if (localPlayer.currentRoom === 'lore1') {
-                stateManager.setTerminal(true);
-                UI.addLog("[TANDY]: To anchor this vessel permanently, the Technate requires a frequency signature. An email address will do.", "#b084e8");
-            } else {
-                UI.addLog("[SYSTEM]: INITIATING REMOTE LOGIN. Enter your email address:", "var(--term-green)");
-            }
-            return;
-        }
+
         UI.addLog("[TANDEM]: Unknown command. Type 'login' or 'exit'.", "var(--term-amber)");
         return;
     }
 
-    if (cmd === 'login') {
-        if (getUserTier() === "ENTITY" || getUserTier() === "ARCHITECT") {
-            UI.addLog("[SYSTEM]: You are already bound to the Technate.", "var(--term-amber)");
-            return;
-        }
-        startWizard('login');
-        if (localPlayer.currentRoom === 'lore1') {
-            stateManager.setTerminal(true);
-            UI.addLog("[TANDY]: To anchor this vessel permanently, the Technate requires a frequency signature. An email address will do.", "#b084e8");
-        } else {
-            UI.addLog("[SYSTEM]: INITIATING REMOTE LOGIN. Enter your email address:", "var(--term-green)");
-        }
-        return;
-    }
+
 
     if (cmd === 'list avatars' || cmd === 'avatars') {
         if (localCharacters.length === 0) {
@@ -366,21 +340,19 @@ export async function handleCommand(val) {
         return;
     }
 
-    const authMatch = cmd.match(/^(?:register|log in|login)\s+(.+@.+\..+)$/i);
-    if (authMatch) {
-        const email = authMatch[1].trim();
-        UI.addLog(`[SYSTEM]: Initiating secure handshake for ${email}...`, "var(--term-amber)");
-        const actionCodeSettings = { url: window.location.href.split('?')[0], handleCodeInApp: true };
-        try {
-            await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-            window.localStorage.setItem('emailForSignIn', email);
-            UI.addLog(`[SYSTEM]: Authentication link dispatched. Check the inbox for ${email} to complete the uplink.`, "var(--term-green)");
-        } catch (err) {
-            UI.addLog(`[SYSTEM ERROR]: Registration failed. ${err.message}`, "var(--term-red)");
-        }
+    if (cmd === 'login') {
+        startWizard('login');
+        UI.setWizardPrompt("AUTH@LOGIN:~$");
+        UI.addLog("[WIZARD]: Terminal Authentication sequence initiated.", "var(--term-amber)");
+        UI.addLog("[WIZARD]: Enter your EMAIL ADDRESS:", "var(--term-amber)");
         return;
-    } else if (cmd === 'register' || cmd === 'log in' || cmd === 'login') {
-        UI.addLog(`[SYSTEM]: Invalid format. Use 'register [your@email.com]' or 'log in [your@email.com]'.`, "var(--term-red)");
+    }
+
+    if (cmd === 'register') {
+        startWizard('register');
+        UI.setWizardPrompt("AUTH@REGISTER:~$");
+        UI.addLog("[WIZARD]: New Vessel Registration sequence initiated.", "var(--term-amber)");
+        UI.addLog("[WIZARD]: Enter a valid EMAIL ADDRESS:", "var(--term-amber)");
         return;
     }
 
