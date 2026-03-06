@@ -152,11 +152,37 @@ if (closeStratumModal) {
     });
 }
 
+// MAP MODAL LISTENERS
+const mapCanvasContainer = document.getElementById('map-canvas-container');
+if (mapCanvasContainer) {
+    mapCanvasContainer.addEventListener('click', (e) => {
+        // Only trigger if we didn't click a specific node (though nodes are children, so they'd bubble)
+        // But the nodes in the sidebar map are for movement.
+        // Actually, the user specifically said "if the user clicks on the map pane".
+        UI.toggleMapModal();
+    });
+}
+
+const closeMapModal = document.getElementById('close-map-modal');
+if (closeMapModal) {
+    closeMapModal.addEventListener('click', () => {
+        UI.toggleMapModal();
+    });
+}
+
 document.addEventListener('click', (e) => {
-    const modal = document.getElementById('stratum-modal');
-    if (modal && !modal.classList.contains('hidden')) {
-        if (!modal.contains(e.target) && e.target !== stratumDisplay) {
-            modal.classList.add('hidden');
+    const sModal = document.getElementById('stratum-modal');
+    if (sModal && !sModal.classList.contains('hidden')) {
+        if (!sModal.contains(e.target) && e.target !== stratumDisplay) {
+            sModal.classList.add('hidden');
+        }
+    }
+
+    const mModal = document.getElementById('map-modal');
+    if (mModal && !mModal.classList.contains('hidden')) {
+        const mapContainer = document.getElementById('map-canvas-container');
+        if (!mModal.contains(e.target) && !mapContainer.contains(e.target)) {
+            UI.toggleMapModal();
         }
     }
 });

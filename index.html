@@ -27,6 +27,29 @@
             <div id="stratum-modal-desc" class="text-gray-400 text-[10px] leading-relaxed"></div>
         </div>
 
+        <!-- MAP MODAL (Topology HUD) -->
+        <div id="map-modal" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] bg-black/95 border border-blue-500 p-4 w-[90%] max-w-md shadow-[0_0_20px_rgba(0,100,255,0.5)] terminal-window">
+            <div class="flex justify-between border-b border-blue-900 pb-2 mb-4 uppercase tracking-widest text-[10px]">
+                <span class="font-bold text-blue-400">SYSTEM.TOPOLOGY_HUD</span>
+                <button id="close-map-modal" class="text-gray-500 hover:text-red-500 cursor-pointer">[ ESC ]</button>
+            </div>
+            <div id="map-modal-content" class="flex flex-col gap-4">
+                <div id="map-modal-canvas-container" class="w-full bg-black/50 border border-blue-900/50 rounded flex items-center justify-center overflow-hidden h-64 relative">
+                    <canvas id="map-modal-canvas" width="400" height="250" class="max-w-full opacity-90"></canvas>
+                </div>
+                <div id="map-modal-details" class="text-[10px] text-gray-400 font-mono bg-blue-950/10 p-2 border border-blue-900/30">
+                    <div class="flex justify-between mb-1">
+                        <span class="text-blue-800">CURRENT_SECTOR:</span>
+                        <span id="map-modal-room-name" class="text-blue-400">---</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-blue-800">STRATUM_PHASE:</span>
+                        <span id="map-modal-stratum" class="text-blue-400">---</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="flex flex-1 min-h-0">
             <!-- MAIN TERMINAL COLUMN -->
             <div class="flex flex-col flex-1 min-w-0 md:pr-4">

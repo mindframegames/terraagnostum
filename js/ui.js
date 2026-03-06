@@ -384,9 +384,31 @@ export function printRoomDescription(room, isAstral, fullMap = null, activeAvata
     }
 }
 
-export function renderMapHUD(activeMap, currentRoomKey, stratum) {
-    const canvasContainer = document.getElementById('map-canvas-container');
-    const canvas = document.getElementById('map-canvas');
+export function toggleMapModal() {
+    const modal = document.getElementById('map-modal');
+    if (!modal) return;
+
+    if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        const state = stateManager.getState();
+        const activeMap = stateManager.getActiveMap();
+        const currentRoom = activeMap[state.localPlayer.currentRoom];
+        
+        document.getElementById('map-modal-room-name').innerText = currentRoom?.name || state.localPlayer.currentRoom;
+        document.getElementById('map-modal-stratum').innerText = state.localPlayer.stratum.toUpperCase();
+        
+        renderMapHUD(activeMap, state.localPlayer.currentRoom, state.localPlayer.stratum, true);
+    } else {
+        modal.classList.add('hidden');
+    }
+}
+
+export function renderMapHUD(activeMap, currentRoomKey, stratum, isModal = false) {
+    const containerId = isModal ? 'map-modal-canvas-container' : 'map-canvas-container';
+    const canvasId = isModal ? 'map-modal-canvas' : 'map-canvas';
+    
+    const canvasContainer = document.getElementById(containerId);
+    const canvas = document.getElementById(canvasId);
     if (!canvas || !canvasContainer) return;
 
     // Guard against empty map or missing room during transitions
@@ -412,7 +434,8 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
         }
         ctx.putImageData(imageData, 0, 0);
         
-        ctx.fillStyle = "var(--term-green)";
+        const termColor = isModal ? "var(--crayola-blue)" : "var(--term-green)";
+        ctx.fillStyle = termColor;
         ctx.font = "bold 12px monospace";
         ctx.textAlign = "center";
         ctx.fillText("SIGNAL LOST", canvas.width / 2, canvas.height / 2);
@@ -421,14 +444,14 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
     }
 
     const computedStyle = getComputedStyle(document.body);
-    const termGreen = computedStyle.getPropertyValue('--term-green').trim() || '#00ff41';
+    const termGreen = isModal ? '#3b82f6' : (computedStyle.getPropertyValue('--term-green').trim() || '#00ff41');
     const termAmber = computedStyle.getPropertyValue('--term-amber').trim() || '#ffb000';
     const termBg = computedStyle.getPropertyValue('--term-bg').trim() || '#050505';
 
-    const nodeSize = 30;
-    const spacing = 60;
-    const centerX = (canvas.width || 230) / 2;
-    const centerY = (canvas.height || 150) / 2;
+    const nodeSize = isModal ? 40 : 30;
+    const spacing = isModal ? 80 : 60;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
 
     let coords = {}; 
     let queue = [{key: currentRoomKey, logicalX: 0, logicalY: 0}];
@@ -505,7 +528,7 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
     ctx.globalAlpha = 1.0;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "bold 9px monospace";
+    ctx.font = isModal ? "bold 12px monospace" : "bold 9px monospace";
     processed.forEach(key => {
         let node = activeMap[key];
         let p = coords[key];
@@ -527,22 +550,28 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
         ctx.strokeRect(x - nodeSize/2, y - nodeSize/2, nodeSize, nodeSize);
         ctx.fillStyle = isCurrent ? '#000' : termAmber; 
         ctx.shadowBlur = 0;
-        let shortName = (node.shortName || "???").substring(0, 4);
+        let shortName = (node.shortName || "???").substring(0, isModal ? 8 : 4);
         ctx.fillText(shortName, x, y);
+        
+        // Click zones for movement
+        let clickZone = document.createElement('div');
+        clickZone.className = 'map-clickable-zone';
+        clickZone.style.left = `${x - nodeSize/2}px`;
+        clickZone.style.top = `${y - nodeSize/2}px`;
+        clickZone.style.width = `${nodeSize}px`;
+        clickZone.style.height = `${nodeSize}px`;
+        clickZone.title = isCurrent ? "You are here" : `Go to ${node.name}`;
         if (!isCurrent) {
-            let clickZone = document.createElement('div');
-            clickZone.className = 'map-clickable-zone';
-            clickZone.style.left = `${x - nodeSize/2}px`;
-            clickZone.style.top = `${y - nodeSize/2}px`;
-            clickZone.style.width = `${nodeSize}px`;
-            clickZone.style.height = `${nodeSize}px`;
-            clickZone.title = `Go to ${node.name}`;
-            clickZone.onclick = () => {
+            clickZone.onclick = (e) => {
+                e.stopPropagation();
                 document.getElementById('cmd-input').value = `go to ${node.name}`;
                 document.getElementById('cmd-input').dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter'}));
+                if (isModal) toggleMapModal();
             };
-            canvasContainer.appendChild(clickZone);
+        } else if (isModal) {
+             clickZone.onclick = (e) => e.stopPropagation();
         }
+        canvasContainer.appendChild(clickZone);
     });
 }
 
