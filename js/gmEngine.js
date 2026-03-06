@@ -26,7 +26,7 @@ export async function handleGMIntent(
         const inventoryNames = localPlayer.inventory.map(i => i.name).join(', ');
         const npcText = (currentRoomData.npcs || []).map(n => {
             let statsStr = "";
-            if (n.stats) statsStr = ` (WILL: ${n.stats.WILL}, CONS: ${n.stats.CONS}, PHYS: ${n.stats.PHYS})`;
+            if (n.stats) statsStr = ` (WILL: ${n.stats.WILL}, AWR: ${n.stats.AWR}, PHYS: ${n.stats.PHYS})`;
             return `[NPC] ${n.name}${statsStr} - Personality: ${n.personality}`;
         }).join('\n') || "None";
         
@@ -116,7 +116,7 @@ export async function handleGMIntent(
             );
             
             if (npc) {
-                if (!npc.stats) npc.stats = { WILL: 20, CONS: 20, PHYS: 20 };
+                if (!npc.stats) npc.stats = { WILL: 20, AWR: 20, PHYS: 20 };
                 const currentWill = npc.stats.WILL !== undefined ? npc.stats.WILL : 20;
                 const newNpcWill = Math.max(0, currentWill - res.damage_to_npc);
                 npc.stats.WILL = newNpcWill;
@@ -323,7 +323,7 @@ export async function handleGMIntent(
                 );
                 if (targetedNpc && targetedNpc.stats) {
                     const s = targetedNpc.stats;
-                    UI.addLog(`[ANALYSIS]: ${targetedNpc.name} - WILL: ${s.WILL ?? 0}, CONS: ${s.CONS ?? 0}, PHYS: ${s.PHYS ?? 0}`, "var(--term-amber)");
+                    UI.addLog(`[ANALYSIS]: ${targetedNpc.name} - WILL: ${s.WILL ?? 0}, AWR: ${s.AWR ?? 0}, PHYS: ${s.PHYS ?? 0}`, "var(--term-amber)");
                 }
             }
 

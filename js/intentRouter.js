@@ -8,6 +8,7 @@ import { handleGMIntent } from './gmEngine.js';
 import { startWizard } from './wizardSystem.js';
 import { triggerVisualUpdate, togglePinView } from './visualSystem.js';
 import { callGemini } from './apiService.js';
+import { openForgeModal } from './forgeSystem.js';
 
 // --- HELPER WRAPPERS (Local to Router) ---
 
@@ -370,13 +371,11 @@ export async function handleCommand(val) {
 
     // CORE SYSTEM COMMANDS
     if (cmd === 'create avatar' || cmd === 'forge form' || cmd === 'make avatar') {
-        if (localPlayer.currentRoom !== 'character_room' && localPlayer.currentRoom !== 'spare_room') {
-            UI.addLog(`[SYSTEM]: You must be in the Archive (Character Room) to forge a form.`, "var(--term-amber)");
+        if (localPlayer.currentRoom !== 'character_room') {
+            UI.addLog("[SYSTEM]: Vessel manifestation is only possible within The Forge (character_room).", "var(--term-amber)");
             return;
         }
-        startWizard('avatar');
-        UI.setWizardPrompt("WIZARD@FORGE:~$");
-        UI.addLog(`[WIZARD]: Vessel Forging Protocol Initiated. Enter your identity (Name):`, "var(--term-amber)");
+        openForgeModal();
         return;
     }
 
@@ -460,7 +459,7 @@ export async function handleCommand(val) {
                 archetype: npc.archetype || "Unknown",
                 visual_prompt: npc.visual_prompt || npc.visualPrompt || "A borrowed form.",
                 image: npc.image || null,
-                stats: npc.stats || { WILL: 20, CONS: 20, PHYS: 20 },
+                stats: npc.stats || { WILL: 20, AWR: 20, PHYS: 20 },
                 deceased: false, deployed: false, timestamp: Date.now()
             };
 
@@ -582,7 +581,7 @@ export async function handleCommand(val) {
     } else if (cmd === 'stat' || cmd === 'stats') {
         if (!activeAvatar) return;
         UI.addLog(`IDENTITY: ${activeAvatar.name} | CLASS: ${activeAvatar.archetype}`, "var(--term-green)");
-        UI.addLog(`WILL: ${activeAvatar.stats.WILL} | CONS: ${activeAvatar.stats.CONS} | PHYS: ${activeAvatar.stats.PHYS}`, "var(--term-amber)");
+        UI.addLog(`WILL: ${activeAvatar.stats.WILL} | AWR: ${activeAvatar.stats.AWR} | PHYS: ${activeAvatar.stats.PHYS}`, "var(--term-amber)");
         return;
     } else if (cmd === 'map') {
         UI.addLog(`[SYSTEM]: Topology map live on HUD.`, "var(--term-green)"); return;

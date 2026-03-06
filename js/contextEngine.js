@@ -85,7 +85,7 @@ EVALUATION DIRECTIVES:
      "text": "...",
      "direction": "north|south|east|west",
      "item": { "name": "...", "type": "...", "description": "..." },
-     "npc": { "name": "...", "archetype": "...", "personality": "...", "visual_prompt": "...", "stats": {"WILL":20, "CONS":20, "PHYS":20} }
+     "npc": { "name": "...", "archetype": "...", "personality": "...", "visual_prompt": "...", "stats": {"WILL":20, "AWR":20, "PHYS":20} }
   } or null
 }
 `;

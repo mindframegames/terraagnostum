@@ -299,3 +299,66 @@
         .anim-pulse {
             animation: pulse 1s infinite ease-in-out;
         }
+
+        /* FORGE MODAL STYLES */
+        .terminal-window {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 800px;
+            background: #000;
+            border: 2px solid var(--term-green);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.2);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            border-radius: 4px;
+        }
+
+        .terminal-window.hidden {
+            display: none;
+        }
+
+        .ascii-placeholder {
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre;
+            line-height: 1.2;
+            color: var(--term-green);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        #forge-portrait-img {
+            filter: grayscale(100%) contrast(150%) brightness(0.8);
+            mix-blend-mode: screen;
+        }
+
+        #forge-visual-target::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        input#forge-name::placeholder, 
+        textarea#forge-desc::placeholder {
+            color: #1a3a1a;
+        }
+
+        #btn-manifest-vessel:not(:disabled) {
+            border-color: var(--term-amber);
+            color: var(--term-amber);
+            cursor: pointer;
+        }
+
+        #btn-manifest-vessel:not(:disabled):hover {
+            background: var(--term-amber);
+            color: #000;
+            box-shadow: 0 0 15px var(--term-amber);
+        }

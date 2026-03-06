@@ -144,6 +144,88 @@
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 </style>
 
+    <!-- FORGE MODAL (Character Creation) -->
+    <div id="forge-modal" class="terminal-window hidden">
+        <div class="terminal-header flex justify-between px-2 py-1 bg-green-900/30 border-b border-green-500 text-[10px] tracking-[3px] uppercase">
+            <span>VESSEL_FORGE_v1.0.4</span>
+            <button id="close-forge" class="hover:text-red-500 cursor-pointer">[ ESC ]</button>
+        </div>
+        
+        <div class="forge-body p-4 flex flex-col md:flex-row gap-6 min-h-[400px]">
+            <!-- Left: Drafting & Input -->
+            <div class="flex-1 flex flex-col gap-4">
+                <div class="forge-field">
+                    <label class="block text-[10px] text-green-700 uppercase mb-1 italic">Identity Designation</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="forge-name" placeholder="Enter name..." class="flex-1 bg-black border border-green-900 p-2 text-green-400 text-sm focus:border-green-500 outline-none font-mono">
+                        <button id="btn-suggest-name" class="px-3 border border-green-900 text-green-700 hover:text-green-400 hover:border-green-500 transition-all cursor-pointer" title="Suggest Name">[ 🎲 ]</button>
+                    </div>
+                </div>
+
+                <div class="forge-field">
+                    <label class="block text-[10px] text-green-700 uppercase mb-1 italic">Biometric Seed (Backstory)</label>
+                    <div class="relative">
+                        <textarea id="forge-desc" rows="4" placeholder="Describe the vessel's origins..." class="w-full bg-black border border-green-900 p-2 text-green-400 text-xs focus:border-green-500 outline-none font-mono resize-none"></textarea>
+                        <button id="btn-suggest-desc" class="absolute bottom-2 right-2 px-2 py-1 bg-black/80 border border-green-900 text-green-700 hover:text-green-400 transition-all cursor-pointer text-[10px]" title="Suggest Backstory">[ 🎲 SUGGEST ]</button>
+                    </div>
+                </div>
+
+                <button id="btn-analyze-biometrics" class="w-full py-2 bg-green-900/20 border border-green-500 text-green-400 hover:bg-green-500 hover:text-black font-bold text-xs tracking-widest transition-all cursor-pointer uppercase">
+                    [ ANALYZE BIOMETRICS ]
+                </button>
+
+                <!-- Stats Readout (Hidden until Analyzed) -->
+                <div id="forge-stats-readout" class="hidden border border-dashed border-green-900 p-3 bg-green-950/10">
+                    <div class="flex justify-between text-[10px] mb-2">
+                        <span class="text-green-800">ARCHETYPE:</span>
+                        <span id="forge-archetype" class="text-green-400 font-bold tracking-widest">---</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="text-center">
+                            <div class="text-[8px] text-green-800">WILL</div>
+                            <div id="stat-will" class="text-xl text-amber-500 font-mono">00</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-[8px] text-green-800">AWR</div>
+                            <div id="stat-awr" class="text-xl text-amber-500 font-mono">00</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-[8px] text-green-800">PHYS</div>
+                            <div id="stat-phys" class="text-xl text-amber-500 font-mono">00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Visual Manifestation -->
+            <div class="w-full md:w-64 flex flex-col gap-4 items-center justify-center border-l border-green-900/30 md:pl-6">
+                <div id="forge-visual-target" class="w-48 h-64 border border-green-900 bg-black flex items-center justify-center relative overflow-hidden">
+                    <div id="forge-ascii-placeholder" class="ascii-placeholder text-[8px] leading-[6px] text-green-900 font-mono text-center select-none opacity-40">
+                        &nbsp; &nbsp; &nbsp;.--. &nbsp; &nbsp; &nbsp;<br>
+                        &nbsp; &nbsp; / _ &nbsp;\ &nbsp; &nbsp; <br>
+                        &nbsp; &nbsp;| ( ) | &nbsp; &nbsp;<br>
+                        &nbsp; &nbsp; \ _ / &nbsp; &nbsp; <br>
+                        &nbsp; _ / &nbsp; \ _ &nbsp; <br>
+                        &nbsp;( &nbsp; &nbsp; &nbsp; &nbsp; ) &nbsp;<br>
+                        &nbsp; / &nbsp; &nbsp; &nbsp; \ &nbsp; <br>
+                        &nbsp;| &nbsp; &nbsp; &nbsp; &nbsp; | &nbsp;<br>
+                        &nbsp; \ _ _ _ / &nbsp; <br>
+                        [ AWAITING INPUT ]
+                    </div>
+                    <img id="forge-portrait-img" class="hidden absolute inset-0 w-full h-full object-cover">
+                    <div id="forge-manifest-loading" class="hidden absolute inset-0 bg-black/80 flex items-center justify-center text-[10px] text-amber-500 italic text-center px-4">
+                        WEAVING VISUAL IMPRINT...
+                    </div>
+                </div>
+                
+                <button id="btn-manifest-vessel" disabled class="w-full py-2 border border-gray-800 text-gray-800 font-bold text-xs tracking-widest uppercase transition-all">
+                    [ MANIFEST IMPRINT ]
+                </button>
+                <p class="text-[8px] text-green-900 italic text-center">WARNING: Manifestation requires localized quantum stability. Ensure biometrics are finalized.</p>
+            </div>
+        </div>
+    </div>
+
     <!-- BOOT SEQUENCE -->
     <script type="module" src="./js/main.js"></script>
   

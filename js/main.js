@@ -8,6 +8,7 @@ import { auth, isSyncEnabled } from './firebaseConfig.js';
 import * as stateManager from './stateManager.js';
 import * as syncEngine from './syncEngine.js';
 import { handleCommand, executeMovement, shiftStratum } from './intentRouter.js';
+import './forgeSystem.js';
 
 // --- CONFIG & DB VERSION ---
 let hasInitialized = false;
