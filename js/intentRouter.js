@@ -47,7 +47,11 @@ export async function executeMovement(targetDir) {
         return;
     }
     
-    if (localPlayer.stratum === 'astral' || localPlayer.currentRoom.toLowerCase().includes('astral')) {
+    const isAstral = localPlayer.stratum === 'astral' || 
+                     localPlayer.currentRoom.toLowerCase().includes('astral') || 
+                     localPlayer.currentArea?.toLowerCase().includes('astral');
+
+    if (isAstral) {
         const currentRoomData = activeMap[localPlayer.currentRoom];
         
         if (currentRoomData.exits && currentRoomData.exits[targetDir]) {

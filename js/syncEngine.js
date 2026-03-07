@@ -160,7 +160,22 @@ export async function updateMapNode(roomId, updates, targetArea = null) {
     if (!db || !user || !isSyncEnabled) return;
     const areaToUpdate = targetArea || localPlayer.currentArea;
     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'areas', areaToUpdate, 'rooms', roomId);
-    try { await setDoc(roomRef, updates, { merge: true }); } catch (e) { console.error(e); }
+    try { 
+        // Use updateDoc for dot-notated paths to ensure nested updates work correctly in Firestore
+        const hasDotPaths = Object.keys(updates).some(k => k.includes('.'));
+        if (hasDotPaths) {
+            await updateDoc(roomRef, updates);
+        } else {
+            await setDoc(roomRef, updates, { merge: true });
+        }
+    } catch (e) { 
+        // Fallback to setDoc if updateDoc fails (e.g. document doesn't exist)
+        try {
+            await setDoc(roomRef, updates, { merge: true });
+        } catch (innerE) {
+            console.error("SyncEngine: Failed to update map node:", innerE); 
+        }
+    }
 }
 
 export async function removeArrayElementFromNode(roomId, arrayPath, element) {

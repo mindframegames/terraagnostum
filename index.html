@@ -14,6 +14,7 @@
         <div id="mobile-nav-rail" class="flex lg:hidden flex-col w-10 border-r border-[#1a3a1a] bg-black items-center py-4 gap-6 z-50">
             <button id="nav-map" class="nav-rail-btn" title="TOPOLOGY">M</button>
             <button id="nav-bio" class="nav-rail-btn" title="BIOMETRICS">B</button>
+            <button id="nav-ent" class="nav-rail-btn" title="ENTITIES">E</button>
             <button id="nav-inv" class="nav-rail-btn" title="INVENTORY">I</button>
         </div>
 
@@ -86,15 +87,7 @@
     </div>
 
     <!-- 2. SIDEBAR -->
-        <div id="right-sidebar" class="hidden lg:flex flex-col w-80 p-4 overflow-y-auto h-full border-l border-[#1a3a1a] bg-black/90">
-            <!-- Map Canvas goes inside Sidebar for Desktop -->
-            <div class="sidebar-section mb-6">
-                <div class="section-header text-[10px] text-green-700 mb-2 tracking-widest border-b border-[#1a3a1a] pb-1">SYSTEM.TOPOLOGY</div>
-                <div id="map-canvas-container" class="relative w-full aspect-square border border-[#1a3a1a] bg-black/40">
-                    <canvas id="map-canvas"></canvas>
-                </div>
-            </div>
-
+        <div id="right-sidebar" class="hidden lg:flex flex-col w-96 flex-shrink-0 p-4 overflow-y-auto h-full border-l border-[#1a3a1a] bg-black/90">
             <!-- BIOMETRICS -->
             <div class="sidebar-section mb-6">
                 <div class="section-header text-[10px] text-green-700 mb-2 tracking-widest border-b border-[#1a3a1a] pb-1">SYSTEM.BIOMETRICS</div>
@@ -103,6 +96,20 @@
                         NO VESSEL DETECTED
                     </div>
                 </div>
+            </div>
+
+            <!-- Map Canvas goes inside Sidebar for Desktop -->
+            <div class="sidebar-section mb-6">
+                <div class="section-header text-[10px] text-green-700 mb-2 tracking-widest border-b border-[#1a3a1a] pb-1">SYSTEM.TOPOLOGY</div>
+                <div id="map-canvas-container" class="relative w-full aspect-square border border-[#1a3a1a] bg-black/40">
+                    <canvas id="map-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- ENTITIES -->
+            <div class="sidebar-section mb-6">
+                <div class="section-header text-[10px] text-green-700 mb-2 tracking-widest border-b border-[#1a3a1a] pb-1">SYSTEM.ENTITIES</div>
+                <div id="room-entities-container" class="text-xs text-blue-400 flex flex-col gap-2">[NONE]</div>
             </div>
 
             <!-- INVENTORY -->

@@ -468,23 +468,27 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                 triggerVisualUpdate(res.visual_prompt, stateManager.getState().localPlayer, updatedActiveMap, stateManager.getState().user);
 
                 // Fire the Shadow Avatar Encounter
-                handleGMIntent(
-                    "SYSTEM OVERRIDE: The player has just manifested a new astral sector. You MUST spawn an enemy NPC named 'Shadow Avatar' right now. You MUST use the world_edit object with type 'spawn_npc'. You MUST set combat_active to true. Describe its terrifying, glitchy appearance. CRITICAL RULE: When the player defeats this Shadow Avatar in combat, you MUST use the world_edit spawn_item command to drop an item exactly named 'Resonant Key'.", 
-                    { 
-                        activeMap: stateManager.getActiveMap(), 
-                        localPlayer: stateManager.getState().localPlayer, 
-                        user: stateManager.getState().user,
-                        activeAvatar: stateManager.getState().activeAvatar
-                    }, 
-                    { 
-                        updateMapListener: () => syncEngine.updateAreaListener(stateManager.getState().localPlayer.currentArea),
-                        shiftStratum: shiftStratum,
-                        savePlayerState: syncEngine.savePlayerState,
-                        setActiveAvatar: stateManager.setActiveAvatar,
-                        syncAvatarStats: syncEngine.syncAvatarStats
-                    },
-                    false // Ensure isSilent is false so the player sees the output
-                );
+                try {
+                    await handleGMIntent(
+                        "SYSTEM OVERRIDE: The player has just manifested a new astral sector. You MUST spawn an enemy NPC named 'Shadow Avatar' right now. You MUST use the world_edit object with type 'spawn_npc'. You MUST set combat_active to true. Describe its terrifying, glitchy appearance. CRITICAL RULE: When the player defeats this Shadow Avatar in combat, you MUST use the world_edit spawn_item command to drop an item exactly named 'Resonant Key'.", 
+                        { 
+                            activeMap: stateManager.getActiveMap(), 
+                            localPlayer: stateManager.getState().localPlayer, 
+                            user: stateManager.getState().user,
+                            activeAvatar: stateManager.getState().activeAvatar
+                        }, 
+                        { 
+                            updateMapListener: () => syncEngine.updateAreaListener(stateManager.getState().localPlayer.currentArea),
+                            shiftStratum: shiftStratum,
+                            savePlayerState: syncEngine.savePlayerState,
+                            setActiveAvatar: stateManager.setActiveAvatar,
+                            syncAvatarStats: syncEngine.syncAvatarStats
+                        },
+                        false // Ensure isSilent is false so the player sees the output
+                    );
+                } catch (gmErr) {
+                    console.error("Shadow Avatar spawn failed:", gmErr);
+                }
             }
         } catch(e) { 
             UI.addLog("[SYSTEM ERROR]: Astral manifestation failed. Reality collapsed back to nexus.", "var(--term-red)");

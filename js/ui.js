@@ -34,6 +34,7 @@ export function initHUDWidgets() {
     const railButtons = {
         'nav-map': 'SYSTEM.TOPOLOGY',
         'nav-bio': 'SYSTEM.BIOMETRICS',
+        'nav-ent': 'SYSTEM.ENTITIES',
         'nav-inv': 'SYSTEM.INVENTORY'
     };
 
@@ -241,7 +242,40 @@ export function updateRoomEntitiesUI(npcs) {
         container.innerHTML = "[NONE]";
         return;
     }
-    container.innerHTML = npcs.map(npc => `<div class="text-xs text-blue-400">> ${npc.name} (${npc.archetype})</div>`).join('');
+    
+    container.innerHTML = '';
+    npcs.forEach((npc, index) => {
+        const stats = npc.stats || { WILL: '??', AWR: '??', PHYS: '??' };
+        const portrait = npc.image 
+            ? `<img src="${npc.image}" class="w-12 h-12 object-cover border border-[#1a3a1a] flex-shrink-0 contrast-125">`
+            : `<div class="w-12 h-12 bg-gray-900 border border-[#1a3a1a] flex items-center justify-center text-[8px] text-gray-700">NO PIC</div>`;
+            
+        const card = document.createElement('div');
+        card.className = "flex gap-3 p-2 border border-[#1a3a1a] bg-black/40 items-center cursor-pointer hover:border-blue-500 transition-colors";
+        card.innerHTML = `
+            ${portrait}
+            <div class="flex-grow min-w-0 pointer-events-none">
+                <div class="text-[10px] text-blue-400 font-bold uppercase truncate">${npc.name}</div>
+                <div class="text-[8px] text-blue-800 tracking-tighter uppercase mb-1">${npc.archetype || 'ENTITY'}</div>
+                <div class="flex gap-2 text-[8px] font-mono text-blue-900">
+                    <span>W:${stats.WILL}</span>
+                    <span>A:${stats.AWR}</span>
+                    <span>P:${stats.PHYS}</span>
+                </div>
+            </div>
+        `;
+        
+        card.onclick = () => {
+            // Map NPC data to Forge schema
+            const detailData = {
+                ...npc,
+                description: npc.behavior || npc.visualPrompt || npc.visual_prompt || "No additional data available."
+            };
+            openForgeModal(detailData);
+        };
+        
+        container.appendChild(card);
+    });
 }
 
 export function addLog(text, color = 'var(--term-green)') {
@@ -295,6 +329,26 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
     if (!activeMap || Object.keys(activeMap).length === 0 || canvas.width === 0) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // --- ASTRAL INTERFERENCE ---
+    if (stratum === 'astral') {
+        // Draw digital static
+        for (let i = 0; i < 200; i++) {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            const size = Math.random() * 2;
+            ctx.fillStyle = Math.random() > 0.5 ? "rgba(176, 132, 232, 0.4)" : "rgba(0, 245, 255, 0.2)";
+            ctx.fillRect(x, y, size, size);
+        }
+        
+        ctx.fillStyle = "#b084e8";
+        ctx.font = "bold 10px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("ASTRAL INTERFERENCE: TOPOLOGY MASKED", canvas.width / 2, canvas.height / 2);
+        return;
+    }
+
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     const spacingX = 60;
@@ -396,6 +450,13 @@ export function toggleStratumModal(currentStratum) {
     const modal = document.getElementById('stratum-modal');
     if (modal) {
         modal.classList.toggle('hidden');
+    }
+}
+
+export function setWizardPrompt(promptText) {
+    const prefixEl = document.getElementById('prompt-prefix');
+    if (prefixEl) {
+        prefixEl.innerText = promptText;
     }
 }
 
