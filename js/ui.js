@@ -18,6 +18,7 @@ stateManager.subscribe((state) => {
 
     // Update Sidebars/HUD
     updateStatusUI(roomShort, localPlayer.stratum);
+    updateVitalsUI(activeAvatar);
     updateAvatarUI(activeAvatar);
     updateInventoryUI(localPlayer.inventory);
     
@@ -173,34 +174,48 @@ export function updateStatusUI(roomShort, stratum = 'MUNDANE') {
     if (stratumEl) stratumEl.innerText = stratum.toUpperCase();
 }
 
+export function updateVitalsUI(activeAvatar) {
+    const hpBar = document.getElementById('hp-bar');
+    const willBar = document.getElementById('will-bar');
+    const awrBar = document.getElementById('awr-bar');
+
+    if (!activeAvatar) {
+        if (hpBar) hpBar.style.width = '0%';
+        if (willBar) willBar.style.width = '0%';
+        if (awrBar) awrBar.style.width = '0%';
+        return;
+    }
+
+    // Assuming stats are 1-20 or similar, mapping to % for now or just 100% if not specified
+    const will = activeAvatar.stats.WILL || 10;
+    const awr = activeAvatar.stats.AWR || 10;
+    const phys = activeAvatar.stats.PHYS || 10;
+
+    if (hpBar) hpBar.style.width = `${(phys / 20) * 100}%`;
+    if (willBar) willBar.style.width = `${(will / 20) * 100}%`;
+    if (awrBar) awrBar.style.width = `${(awr / 20) * 100}%`;
+}
+
 export function updateAvatarUI(activeAvatar) {
     const container = document.getElementById('avatar-container');
     if (!container) return;
     
     if (!activeAvatar) {
         container.innerHTML = `
-            <div class="text-amber-500 text-[10px] text-center border border-dashed border-amber-900 p-4 mt-2 uppercase tracking-tighter">
-                NO VESSEL DETECTED<br>DISEMBODIED STATE<br><br>
-                <span class="text-gray-600">Navigate to character_room and type 'CREATE AVATAR'.</span>
+            <div class="text-amber-500 text-[10px] absolute inset-0 flex items-center justify-center text-center border border-dashed border-amber-900 p-4 m-2 uppercase tracking-tighter">
+                NO VESSEL DETECTED<br>DISEMBODIED STATE
             </div>`;
         return;
     }
     
     const portrait = activeAvatar.image 
-        ? `<img src="${activeAvatar.image}" id="avatar-portrait-main" class="w-full h-32 object-cover border border-[#1a3a1a] mb-2 contrast-125 cursor-pointer hover:border-amber-500 transition-colors">`
-        : `<div class="w-full h-32 bg-gray-900 border border-[#1a3a1a] mb-2 flex items-center justify-center text-[10px] text-gray-700">[ NO VISUAL DATA ]</div>`;
+        ? `<img src="${activeAvatar.image}" id="avatar-portrait-main" class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity">`
+        : `<div class="w-full h-full bg-gray-900 flex items-center justify-center text-[10px] text-gray-700">[ NO VISUAL DATA ]</div>`;
 
     container.innerHTML = `
-        <div class="char-card w-full m-0 mt-2 p-3 bg-transparent border-[#1a3a1a]">
-            ${portrait}
-            <div class="char-card-header pb-2 mb-2 border-b border-[#1a3a1a]">
-                <span class="char-card-title text-[10px] text-amber-500 font-bold uppercase tracking-widest">[ACTV] ${activeAvatar.name}</span>
-            </div>
-            <div class="char-card-stats flex flex-col gap-1 text-[9px] font-mono text-green-700 uppercase">
-                <div class="flex justify-between"><span>WILLFORCE:</span> <span>${activeAvatar.stats.WILL || 10}</span></div>
-                <div class="flex justify-between"><span>AWARENESS:</span> <span>${activeAvatar.stats.AWR || 10}</span></div>
-                <div class="flex justify-between"><span>PHYSICALITY:</span> <span>${activeAvatar.stats.PHYS || 10}</span></div>
-            </div>
+        ${portrait}
+        <div class="absolute bottom-0 left-0 right-0 bg-black/60 p-2 text-[10px] text-amber-500 font-bold uppercase tracking-widest border-t border-[#1a3a1a]">
+            ${activeAvatar.name}
         </div>
     `;
 
@@ -219,8 +234,8 @@ export function updateInventoryUI(inventory) {
         return;
     }
     container.innerHTML = inventory.map(item => `
-        <div class="border border-[#1a3a1a] p-2 rounded bg-black/40 border-l-4 border-l-green-900">
-            <span class="text-amber-500 font-bold block">${item.name}</span>
+        <div class="border border-[#1a3a1a] p-1 bg-black/40 border-l-2 border-l-green-900">
+            <span class="text-gray-400 font-bold block truncate">${item.name}</span>
         </div>
     `).join('');
 }
@@ -232,7 +247,7 @@ export function updateRoomItemsUI(items) {
         container.innerHTML = "[EMPTY]";
         return;
     }
-    container.innerHTML = items.map(item => `<div class="text-xs text-amber-600">> ${item.name}</div>`).join('');
+    container.innerHTML = items.map(item => `<div class="text-amber-600 truncate">> ${item.name}</div>`).join('');
 }
 
 export function updateRoomEntitiesUI(npcs) {
@@ -246,22 +261,17 @@ export function updateRoomEntitiesUI(npcs) {
     container.innerHTML = '';
     npcs.forEach((npc, index) => {
         const stats = npc.stats || { WILL: '??', AWR: '??', PHYS: '??' };
-        const portrait = npc.image 
-            ? `<img src="${npc.image}" class="w-12 h-12 object-cover border border-[#1a3a1a] flex-shrink-0 contrast-125">`
-            : `<div class="w-12 h-12 bg-gray-900 border border-[#1a3a1a] flex items-center justify-center text-[8px] text-gray-700">NO PIC</div>`;
             
         const card = document.createElement('div');
-        card.className = "flex gap-3 p-2 border border-[#1a3a1a] bg-black/40 items-center cursor-pointer hover:border-blue-500 transition-colors";
+        card.className = "flex justify-between items-center p-1 border border-[#1a3a1a] bg-black/40 cursor-pointer hover:border-blue-500 transition-colors";
         card.innerHTML = `
-            ${portrait}
             <div class="flex-grow min-w-0 pointer-events-none">
-                <div class="text-[10px] text-blue-400 font-bold uppercase truncate">${npc.name}</div>
-                <div class="text-[8px] text-blue-800 tracking-tighter uppercase mb-1">${npc.archetype || 'ENTITY'}</div>
-                <div class="flex gap-2 text-[8px] font-mono text-blue-900">
-                    <span>W:${stats.WILL}</span>
-                    <span>A:${stats.AWR}</span>
-                    <span>P:${stats.PHYS}</span>
-                </div>
+                <div class="text-blue-400 font-bold uppercase truncate">${npc.name}</div>
+            </div>
+            <div class="flex gap-1 text-[8px] font-mono text-blue-900 flex-shrink-0">
+                <span>W:${stats.WILL}</span>
+                <span>A:${stats.AWR}</span>
+                <span>P:${stats.PHYS}</span>
             </div>
         `;
         
@@ -448,9 +458,23 @@ export function toggleMapModal() {
 
 export function toggleStratumModal(currentStratum) {
     const modal = document.getElementById('stratum-modal');
-    if (modal) {
-        modal.classList.toggle('hidden');
+    if (!modal) return;
+    
+    const nameEl = document.getElementById('modal-stratum-name');
+    const descEl = document.getElementById('stratum-description');
+    
+    if (nameEl) nameEl.innerText = currentStratum;
+    if (descEl) {
+        const descs = {
+            mundane: "The Mundane stratum represents base consensus reality. Physics are deterministic, and the Technate's surveillance is absolute. Most vessels are anchored here by default.",
+            astral: "The Astral stratum is a realm of pure information and intent. Conventional geometry fails here, and reality is shaped by the observer's Willforce.",
+            faen: "The Faen stratum is a twilight realm of myth and memory, where the boundaries between biological and digital life are blurred.",
+            technate: "The Technate stratum is the core processing layer of the world's governing AI. It is a place of cold, geometric perfection and overwhelming data flow."
+        };
+        descEl.innerText = descs[currentStratum.toLowerCase()] || "An unidentified layer of reality.";
     }
+
+    modal.classList.toggle('hidden');
 }
 
 export function setWizardPrompt(promptText) {

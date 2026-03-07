@@ -1,3 +1,54 @@
+/* --- SCANLINES OVERLAY --- */
+body::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 2000;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+}
+
+/* --- RADAR SWEEP --- */
+.radar-container {
+    position: relative;
+    box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.2);
+}
+.radar-sweep {
+    position: absolute;
+    inset: 0;
+    background: conic-gradient(from 0deg, rgba(0, 255, 65, 0.3) 0deg, transparent 90deg);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: radar-rotate 4s linear infinite;
+    z-index: 5;
+}
+@keyframes radar-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* --- DOSSIER PORTRAIT --- */
+#avatar-container img {
+    filter: sepia(0.8) contrast(1.4) brightness(0.9);
+    width: 100%;
+    height: 100%;
+    object-cover: cover;
+}
+
+/* --- FLEX DENSITY --- */
+#header-row, #visuals, #input-container, #footer-hud {
+    flex-shrink: 0;
+}
+#output {
+    flex-grow: 1;
+    min-height: 0;
+}
+
 :root {
     --term-green: #00ff41;
     --term-amber: #ffb000;
