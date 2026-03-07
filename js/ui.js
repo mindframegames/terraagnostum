@@ -1,6 +1,7 @@
 // js/ui.js
 // Purpose: Handles all DOM manipulation, canvas rendering, and CSS theme transitions.
 import * as stateManager from './stateManager.js';
+import { openForgeModal } from './forgeSystem.js';
 
 // Subscribe to state changes
 stateManager.subscribe((state) => {
@@ -147,7 +148,7 @@ export function updateAvatarUI(activeAvatar) {
     }
     
     const portrait = activeAvatar.image 
-        ? `<img src="${activeAvatar.image}" class="w-full h-32 object-cover border border-[#1a3a1a] mb-2 contrast-125">`
+        ? `<img src="${activeAvatar.image}" id="avatar-portrait-main" class="w-full h-32 object-cover border border-[#1a3a1a] mb-2 contrast-125 cursor-pointer hover:border-amber-500 transition-colors">`
         : `<div class="w-full h-32 bg-gray-900 border border-[#1a3a1a] mb-2 flex items-center justify-center text-[10px] text-gray-700">[ NO VISUAL DATA ]</div>`;
 
     container.innerHTML = `
@@ -163,6 +164,12 @@ export function updateAvatarUI(activeAvatar) {
             </div>
         </div>
     `;
+
+    // Add click listener to the portrait
+    const portraitImg = document.getElementById('avatar-portrait-main');
+    if (portraitImg) {
+        portraitImg.onclick = () => openForgeModal(activeAvatar);
+    }
 }
 
 export function updateInventoryUI(inventory) {

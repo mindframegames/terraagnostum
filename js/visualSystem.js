@@ -6,7 +6,7 @@ import * as stateManager from './stateManager.js';
 import * as syncEngine from './syncEngine.js';
 
 // MODULE VARS
-window.DISABLE_ROOM_GENERATION = false; // SET TO TRUE TO DISABLE API CALLS FOR ROOM IMAGES
+window.DISABLE_ROOM_GENERATION = true; // SET TO TRUE TO DISABLE API CALLS FOR ROOM IMAGES
 
 let activeVisualTicket = 0;
 let lastRenderedUrl = null;
@@ -140,6 +140,11 @@ export async function triggerVisualUpdate(overridePrompt, localPlayer, activeMap
 
         const result = await projectionPromise;
         activeProjections.delete(roomId); // Clean up
+        
+        if (result === null) {
+            if (loader) loader.innerHTML = "DEV MODE: VISUALS OFFLINE";
+            return;
+        }
         
         if (result) {
             const dataUri = result.startsWith('data:') ? result : `data:image/png;base64,${result}`;

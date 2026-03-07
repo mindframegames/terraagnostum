@@ -5,6 +5,14 @@
  */
 
 export default async function handler(req, res) {
+  const disableGen = process.env.DISABLE_ROOM_GENERATION === 'true';
+  if (disableGen) {
+    return res.status(200).json({ 
+      predictions: [{ bytesBase64Encoded: null }],
+      info: "DEV MODE: Room image generation is disabled via environment variable."
+    });
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     console.error("CRITICAL: GEMINI_API_KEY is missing from environment.");
