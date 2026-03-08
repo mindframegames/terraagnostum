@@ -6,8 +6,26 @@ const API_IMAGE = "/api/image";
  * GLOBAL COST CONTROL
  * Set this to true to suppress room generation costs during development.
  * In a professional CI/CD pipeline, this can be injected via build-time environment variables.
+ * Linked to window.DISABLE_ROOM_GENERATION for global state.
  */
-const DISABLE_ROOM_GENERATION = false; 
+const getDisableFlag = () => window.DISABLE_ROOM_GENERATION || false;
+
+export async function fetchSystemConfig() {
+    try {
+        const res = await fetch(API_IMAGE);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.disableGen !== undefined) {
+                window.DISABLE_ROOM_GENERATION = data.disableGen;
+                if (data.disableGen) {
+                    console.log("[SYSTEM]: Room generation is disabled by server environment.");
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("[SYSTEM]: Failed to fetch system config.", e);
+    }
+}
 
 /**
  * Compresses an image data URI to prevent Firestore document size limits.
@@ -85,7 +103,7 @@ export async function projectVisual(prompt, stratum, addLogCallback, pinnedViewU
     if (pinnedViewUrl) return pinnedViewUrl;
 
     // --- COST CONTROL INTERCEPT ---
-    if (DISABLE_ROOM_GENERATION) {
+    if (getDisableFlag()) {
         if (addLogCallback) addLogCallback("[SYSTEM]: Room generation suppressed. Reality buffer standby...", "var(--term-amber)");
         return "https://placehold.co/1024x512/051505/4ade80.png?text=REALITY_BUFFER_STANDBY";
     }

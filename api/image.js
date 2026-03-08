@@ -3,9 +3,21 @@
  * DEFAULT: Imagen 4 Fast ($0.02 / Image)
  * Path: /api/image.js
  */
+import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
+
+// Explicitly load .env.local for local development if not in production
+const envPath = path.join(process.cwd(), '.env.local');
+if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+} else {
+    dotenv.config();
+}
 
 export default async function handler(req, res) {
-  const disableGen = process.env.DISABLE_ROOM_GENERATION === 'true';
+  const disableEnv = process.env.DISABLE_ROOM_GENERATION;
+  const disableGen = disableEnv === 'true' || disableEnv === true || (disableEnv && String(disableEnv).trim().toLowerCase() === 'true');
   if (disableGen) {
     return res.status(200).json({ 
       predictions: [{ bytesBase64Encoded: null }],
@@ -31,6 +43,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ 
       status: "Active",
       activeEngine: imageEngine,
+      disableGen: disableGen,
       message: "Send a POST request to generate an image." 
     });
   }

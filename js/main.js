@@ -13,6 +13,10 @@ import './forgeSystem.js';
 // --- CONFIG & DB VERSION ---
 let hasInitialized = false;
 
+// Initial config fetch
+import { fetchSystemConfig } from './apiService.js';
+await fetchSystemConfig();
+
 // --- AUTHENTICATION & SYNC ---
 if (isSyncEnabled) {
     onAuthStateChanged(auth, async (u) => {
