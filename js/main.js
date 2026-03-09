@@ -139,21 +139,15 @@ if (input) {
     });
 }
 
-// STRATUM MODAL LISTENERS
+// STRATUM CLICK LISTENER
 const stratumDisplay = document.getElementById('stratum-display');
 if (stratumDisplay) {
     stratumDisplay.addEventListener('click', (e) => {
         e.stopPropagation();
         const { localPlayer } = stateManager.getState();
-        UI.toggleStratumModal(localPlayer.stratum);
-    });
-}
-
-const closeStratumModal = document.getElementById('close-stratum-modal');
-if (closeStratumModal) {
-    closeStratumModal.addEventListener('click', () => {
-        const modal = document.getElementById('stratum-modal');
-        if (modal) modal.classList.add('hidden');
+        const cmd = `tell me a bout strata ${localPlayer.stratum}`;
+        UI.addLog(cmd, "#ffffff");
+        handleCommand(cmd);
     });
 }
 
@@ -161,9 +155,6 @@ if (closeStratumModal) {
 const mapCanvasContainer = document.getElementById('map-canvas-container');
 if (mapCanvasContainer) {
     mapCanvasContainer.addEventListener('click', (e) => {
-        // Only trigger if we didn't click a specific node (though nodes are children, so they'd bubble)
-        // But the nodes in the sidebar map are for movement.
-        // Actually, the user specifically said "if the user clicks on the map pane".
         UI.toggleMapModal();
     });
 }
@@ -176,13 +167,6 @@ if (closeMapModal) {
 }
 
 document.addEventListener('click', (e) => {
-    const sModal = document.getElementById('stratum-modal');
-    if (sModal && !sModal.classList.contains('hidden')) {
-        if (!sModal.contains(e.target) && e.target !== stratumDisplay) {
-            sModal.classList.add('hidden');
-        }
-    }
-
     const mModal = document.getElementById('map-modal');
     if (mModal && !mModal.classList.contains('hidden')) {
         const mapContainer = document.getElementById('map-canvas-container');

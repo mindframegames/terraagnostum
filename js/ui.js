@@ -253,19 +253,29 @@ export function updateAvatarUI(activeAvatar) {
     }
     
     const portrait = activeAvatar.image 
-        ? `<img src="${activeAvatar.image}" id="avatar-portrait-main" class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity">`
-        : `<div class="w-full h-full bg-gray-900 flex items-center justify-center text-[10px] text-gray-700">[ NO VISUAL DATA ]</div>`;
-
-    const willBar = generateAsciiBar(activeAvatar.will || activeAvatar.stats.WILL, activeAvatar.stats.WILL);
-    const physBar = generateAsciiBar(activeAvatar.hp || activeAvatar.stats.PHYS, activeAvatar.stats.PHYS);
+        ? `<img src="${activeAvatar.image}" id="avatar-portrait-main" class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer">`
+        : `<div class="absolute inset-0 w-full h-full bg-gray-900 flex items-center justify-center text-[10px] text-gray-700">[ NO VISUAL DATA ]</div>`;
 
     container.innerHTML = `
-        <div class="relative w-full h-full">
+        <div class="relative w-full aspect-[3/4] group overflow-hidden border border-[#1a3a1a] rounded-sm">
+            <!-- Full Un-obscured Portrait -->
             ${portrait}
-            <div class="absolute bottom-0 left-0 right-0 bg-black/80 p-2 border-t border-[#1a3a1a]">
-                <div class="text-[10px] text-amber-500 font-bold uppercase mb-1">${activeAvatar.name}</div>
-                <div class="text-[8px] font-mono text-green-500">HP:   ${physBar}</div>
-                <div class="text-[8px] font-mono text-blue-400">WILL: ${willBar}</div>
+            
+            <!-- Always-visible Name Bar (Top) -->
+            <div class="absolute top-0 left-0 w-full bg-gradient-to-b from-black/90 to-transparent p-2">
+                <div class="font-bold text-green-400 text-sm tracking-widest">${activeAvatar.name.toUpperCase()}</div>
+                <div class="text-[9px] text-green-600">${activeAvatar.stratum?.toUpperCase() || 'UNKNOWN'}</div>
+            </div>
+
+            <!-- Stats Overlay (Slides up on Hover) -->
+            <div class="absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-md border-t border-green-900 p-3 
+                        transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                <div class="text-[10px] text-green-500 font-bold mb-1 border-b border-green-900 pb-1">BIOMETRICS</div>
+                <div class="flex justify-between text-xs font-mono">
+                    <span class="text-purple-400">WILL:${activeAvatar.stats?.WILL || 0}</span>
+                    <span class="text-blue-400">AWR:${activeAvatar.stats?.AWR || 0}</span>
+                    <span class="text-amber-400">PHYS:${activeAvatar.stats?.PHYS || 0}</span>
+                </div>
             </div>
         </div>
     `;
