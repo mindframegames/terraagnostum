@@ -301,11 +301,14 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         if (!currentVal) return;
         const room = activeMap[localPlayer.currentRoom];
         
+        // FIX: Add fallbacks to prevent 'undefined' values from crashing the Firestore write
         const newNpc = {
-            name: activeAvatar.name,
-            archetype: activeAvatar.archetype,
-            visualPrompt: activeAvatar.visual_prompt,
-            image: activeAvatar.image,
+            id: `npc_${Date.now()}`,
+            name: activeAvatar.name || "Unknown Vessel",
+            archetype: activeAvatar.archetype || "Unknown",
+            visualPrompt: activeAvatar.visual_prompt || activeAvatar.visualPrompt || "A vacant shell.",
+            image: activeAvatar.image || null,
+            stats: activeAvatar.stats || { WILL: 20, AWR: 20, PHYS: 20 },
             behavior: currentVal
         };
         const npcs = [...(room.npcs || []), newNpc];
@@ -313,7 +316,11 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         syncEngine.spawnNPCInRoom(localPlayer.currentRoom, newNpc);
 
         UI.addLog(`[SYSTEM]: Vessel detached and autonomous protocol initialized.`, "var(--term-amber)");
+        
+        // FIX: Clear avatar locally AND save the new state to Firestore immediately
         stateManager.setActiveAvatar(null);
+        if (typeof savePlayerState === 'function') savePlayerState();
+        
         endWizard();
         return;
     }
