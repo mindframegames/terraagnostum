@@ -95,22 +95,29 @@
             <!-- Context chips stay at the top of the container -->
             <div id="context-bar" class="flex flex-wrap gap-2"></div>
             
-            <div class="flex flex-col sm:flex-row items-start sm:items-end gap-3 w-full">
-                <!-- THE COMPASS -->
-                <div id="compass-widget" class="flex-none self-center sm:self-auto">
-                    <div class="compass-grid">
+            <div class="flex items-center gap-3 w-full">
+                
+                <!-- DESKTOP: STATIC COMPASS -->
+                <div id="compass-widget" class="hidden sm:block flex-shrink-0">
+                    <div class="compass-grid scale-90 opacity-60 hover:opacity-100 transition-opacity">
                         <button id="compass-n" class="compass-btn" data-cmd="n">N</button>
                         <button id="compass-w" class="compass-btn" data-cmd="w">W</button>
-                        <div id="compass-center">+</div>
+                        <div class="text-[#1a3a1a] flex items-center justify-center">+</div>
                         <button id="compass-e" class="compass-btn" data-cmd="e">E</button>
                         <button id="compass-s" class="compass-btn" data-cmd="s">S</button>
                     </div>
                 </div>
 
-                <!-- COMMAND PROMPT (FULL WIDTH ON MOBILE) -->
-                <div id="prompt-line" class="flex-1 w-full flex flex-row items-center min-w-0 bg-[#050a05] border border-[#1a3a1a] p-2 rounded mt-2 sm:mt-0">
-                    <span id="prompt-prefix" class="flex-none font-mono whitespace-nowrap mr-2 text-green-700 text-xs sm:text-sm"></span>
-                    <input id="cmd-input" type="text" autocomplete="off" autofocus class="flex-1 w-full min-w-0 bg-transparent outline-none border-none text-green-400 p-0 m-0 font-mono text-sm sm:text-base" placeholder="Enter command...">
+                <!-- MOBILE: INTERACTIVE RADAR -->
+                <div id="mobile-radar-widget" class="block sm:hidden relative w-14 h-14 rounded-full border-2 border-green-900 bg-[#051005] overflow-hidden flex-shrink-0 cursor-pointer radar-grid shadow-[0_0_10px_rgba(74,222,128,0.2)]">
+                    <canvas id="mobile-radar-canvas" class="w-full h-full absolute inset-0 z-10"></canvas>
+                    <div class="radar-sweep z-20"></div>
+                </div>
+
+                <!-- COMMAND PROMPT -->
+                <div id="prompt-line" class="flex-grow flex items-center bg-black/40 border border-[#1a3a1a] p-2 rounded-sm min-w-0">
+                    <span id="prompt-prefix" class="mr-2 text-green-900 font-bold text-xs sm:text-sm"></span>
+                    <input id="cmd-input" type="text" autocomplete="off" autofocus class="w-full min-w-0 bg-transparent outline-none border-none text-green-400 placeholder-green-900 text-sm sm:text-base" placeholder="Enter command...">
                 </div>
             </div>
         </div>

@@ -93,7 +93,49 @@ export function initMobileDrawer() {
 // Call it on load
 document.addEventListener('DOMContentLoaded', () => {
     initMobileDrawer();
+    initMobileRadar();
 });
+
+export function initMobileRadar() {
+    const radar = document.getElementById('mobile-radar-widget');
+    const input = document.getElementById('cmd-input');
+    
+    if (!radar || !input) return;
+
+    radar.addEventListener('click', (e) => {
+        const rect = radar.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        
+        const dx = x - cx;
+        const dy = y - cy;
+        
+        // Ignore dead-center clicks
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+
+        let cmdDir = '';
+        if (Math.abs(dx) > Math.abs(dy)) {
+            cmdDir = dx > 0 ? 'e' : 'w';
+        } else {
+            cmdDir = dy > 0 ? 's' : 'n';
+        }
+
+        // Fire command
+        input.value = cmdDir;
+        input.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Enter',
+            bubbles: true,
+            cancelable: true
+        }));
+        
+        // Visual feedback
+        radar.style.borderColor = "var(--term-amber)";
+        setTimeout(() => radar.style.borderColor = "var(--term-green)", 150);
+    });
+}
 
 export function updateCompassUI(room) {
     const directions = ['north', 'south', 'east', 'west'];
@@ -370,13 +412,21 @@ export function renderContextualCommands(commands) {
 }
 
 /**
- * Real-time Topology Renderer: Draws the active map graph with labeled nodes.
+ * Real-time Topology Renderer: Draws the map to target canvases.
  */
 export function renderMapHUD(activeMap, currentRoomKey, stratum) {
-    const canvas = document.getElementById('map-canvas');
+    // Render to Desktop Sidebar
+    drawTopologyToCanvas('map-canvas', activeMap, currentRoomKey, stratum, true);
+    // Render to Mobile Radar
+    drawTopologyToCanvas('mobile-radar-canvas', activeMap, currentRoomKey, stratum, false);
+}
+
+function drawTopologyToCanvas(canvasId, activeMap, currentRoomKey, stratum, drawLabels) {
+    const canvas = document.getElementById(canvasId);
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     
+    // Auto-resize
     const rect = canvas.parentElement.getBoundingClientRect();
     if (canvas.width !== rect.width || canvas.height !== rect.height) {
         if (rect.width > 0 && rect.height > 0) {
@@ -388,51 +438,30 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
     if (!activeMap || Object.keys(activeMap).length === 0 || canvas.width === 0) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // --- ASTRAL INTERFERENCE ---
-    if (stratum === 'astral' || currentRoomKey.startsWith('astral_')) {
-        // Draw digital static
-        for (let i = 0; i < 200; i++) {
-            const x = Math.random() * canvas.width;
-            const y = Math.random() * canvas.height;
-            const size = Math.random() * 2;
-            ctx.fillStyle = Math.random() > 0.5 ? "rgba(176, 132, 232, 0.4)" : "rgba(0, 245, 255, 0.2)";
-            ctx.fillRect(x, y, size, size);
-        }
-        
-        ctx.fillStyle = "#b084e8";
-        ctx.font = "bold 10px monospace";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("ASTRAL INTERFERENCE: TOPOLOGY MASKED", canvas.width / 2, canvas.height / 2);
-        return;
-    }
-
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    const spacingX = 60;
-    const spacingY = 50;
+    
+    // Tighter spacing for the mobile radar, wider for desktop
+    const spacingX = drawLabels ? 60 : 25;
+    const spacingY = drawLabels ? 50 : 25;
 
     const room = activeMap[currentRoomKey];
     if (!room) return;
 
-    // Use hex codes for canvas compatibility
     const currentGreen = "#4ade80";
-    const dimGreen = "#3a7a3a";
+    const dimGreen = "#1a3a1a";
     const astralPurple = "#b084e8";
 
-    ctx.strokeStyle = stratum === 'astral' ? astralPurple : '#3a7a3a';
+    ctx.strokeStyle = stratum === 'astral' ? astralPurple : '#2a5a2a';
     ctx.lineWidth = 2;
 
-    // Draw Connections & Adjacent Nodes
+    // Draw Connections
     if (room.exits) {
         Object.entries(room.exits).forEach(([dir, target]) => {
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
             
-            let tx = centerX;
-            let ty = centerY;
-
+            let tx = centerX, ty = centerY;
             if (dir === 'north') ty -= spacingY;
             if (dir === 'south') ty += spacingY;
             if (dir === 'east') tx += spacingX;
@@ -441,24 +470,27 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
             ctx.lineTo(tx, ty);
             ctx.stroke();
 
-            // Draw adjacent node box
-            const targetRoom = activeMap[typeof target === 'string' ? target : target.target];
-            const label = targetRoom ? (targetRoom.shortName || targetRoom.name).substring(0, 4).toUpperCase() : "???";
-            
+            // Draw adjacent nodes
             ctx.fillStyle = "#051505";
             ctx.strokeStyle = stratum === 'astral' ? astralPurple : dimGreen;
             ctx.lineWidth = 1;
-            ctx.fillRect(tx - 16, ty - 12, 32, 24);
-            ctx.strokeRect(tx - 16, ty - 12, 32, 24);
             
-            // Draw label
-            ctx.fillStyle = stratum === 'astral' ? astralPurple : dimGreen;
-            ctx.font = "10px monospace";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(label, tx, ty);
-            
-            ctx.lineWidth = 2; // Restore line width for next connection
+            if (drawLabels) {
+                ctx.fillRect(tx - 16, ty - 12, 32, 24);
+                ctx.strokeRect(tx - 16, ty - 12, 32, 24);
+                const targetRoom = activeMap[typeof target === 'string' ? target : target.target];
+                const label = targetRoom ? (targetRoom.shortName || targetRoom.name).substring(0, 4).toUpperCase() : "???";
+                ctx.fillStyle = stratum === 'astral' ? astralPurple : dimGreen;
+                ctx.font = "10px monospace";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(label, tx, ty);
+            } else {
+                // Mini dots for mobile radar
+                ctx.fillRect(tx - 4, ty - 4, 8, 8);
+                ctx.strokeRect(tx - 4, ty - 4, 8, 8);
+            }
+            ctx.lineWidth = 2;
         });
     }
 
@@ -467,17 +499,22 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
     ctx.strokeStyle = stratum === 'astral' ? "#d8b4fe" : currentGreen;
     ctx.shadowBlur = 10; 
     ctx.shadowColor = stratum === 'astral' ? "#d8b4fe" : currentGreen;
-    ctx.fillRect(centerX - 16, centerY - 12, 32, 24);
-    ctx.strokeRect(centerX - 16, centerY - 12, 32, 24);
-    ctx.shadowBlur = 0;
     
-    // Draw Current Label
-    ctx.fillStyle = stratum === 'astral' ? "#d8b4fe" : currentGreen;
-    ctx.font = "bold 11px monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    const currentLabel = (room.shortName || room.name).substring(0, 4).toUpperCase();
-    ctx.fillText(currentLabel, centerX, centerY);
+    if (drawLabels) {
+        ctx.fillRect(centerX - 16, centerY - 12, 32, 24);
+        ctx.strokeRect(centerX - 16, centerY - 12, 32, 24);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = stratum === 'astral' ? "#d8b4fe" : currentGreen;
+        ctx.font = "bold 11px monospace";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText((room.shortName || room.name).substring(0, 4).toUpperCase(), centerX, centerY);
+    } else {
+        // Mini player dot for mobile radar
+        ctx.fillRect(centerX - 5, centerY - 5, 10, 10);
+        ctx.strokeRect(centerX - 5, centerY - 5, 10, 10);
+        ctx.shadowBlur = 0;
+    }
 }
 
 export function materializeEffect() {
