@@ -367,9 +367,10 @@ export async function handleGMIntent(
                     id: `npc_${Date.now()}`, 
                     name: edit.name || "Unknown Entity", 
                     description: edit.description || edit.personality || "A strange entity.",
+                    visual_prompt: edit.visual_prompt || edit.description || edit.personality,
                     archetype: edit.archetype || "Unknown",
                     stats: edit.stats || { WILL: 10, AWR: 10, PHYS: 10 },
-                    image: null // We do not generate expensive portraits for basic map NPCs yet
+                    image: null 
                 };
                 
                 // 1. Push to local array
@@ -382,13 +383,29 @@ export async function handleGMIntent(
                 syncEngine.updateMapNode(roomId, { npcs: currentNpcs }, currentState.localPlayer.currentArea);
                 
                 if (!isSilent) UI.addLog(`[SYSTEM]: WARNING. Entity [${newNpc.name}] has manifested in the sector.`, "var(--term-amber)");
+
+                // 4. If combat is active, immediately trigger portrait generation
+                if (res.combat_active || currentState.localPlayer.combat.active) {
+                    (async () => {
+                        try {
+                            const b64 = await generatePortrait(newNpc.visual_prompt, currentState.localPlayer.stratum);
+                            if (b64) {
+                                newNpc.image = await compressImage(`data:image/png;base64,${b64}`, 400, 0.7);
+                                stateManager.updateMapNode(roomId, { npcs: currentNpcs });
+                                syncEngine.updateMapNode(roomId, { npcs: currentNpcs }, currentState.localPlayer.currentArea);
+                            }
+                        } catch (e) {
+                            console.error("Portrait auto-gen failed for spawned combatant:", e);
+                        }
+                    })();
+                }
             }
         }
         
         const isLooking = val.toLowerCase().includes('look') || val.toLowerCase().includes('examine') || val.toLowerCase().includes('search');
         
-        // AUTO-REPAIR MISSING NPC PORTRAITS ON LOOK
-        if (isLooking && currentRoomData.npcs) {
+        // AUTO-REPAIR MISSING NPC PORTRAITS ON LOOK OR COMBAT
+        if ((isLooking || isCombatTurn) && currentRoomData.npcs) {
             // Display stats if looking at a specific NPC
             const lookMatch = val.toLowerCase().match(/(?:look at|examine|search)\s+(.+)/);
             if (lookMatch) {
@@ -405,6 +422,9 @@ export async function handleGMIntent(
             }
 
             for (let npc of currentRoomData.npcs) {
+                // Ensure visual_prompt exists (fallback to description)
+                if (!npc.visual_prompt) npc.visual_prompt = npc.description || npc.personality;
+
                 if (npc.visual_prompt && !npc.image) {
                     if (!isSilent) UI.addLog(`[REPAIR]: Re-weaving visual imprint for ${npc.name}...`, "var(--term-amber)");
                     const b64 = await generatePortrait(npc.visual_prompt, stateManager.getState().localPlayer.stratum);
