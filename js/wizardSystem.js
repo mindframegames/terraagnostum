@@ -320,9 +320,16 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
 
         UI.addLog(`[SYSTEM]: Vessel detached and autonomous protocol initialized.`, "var(--term-amber)");
         
+        // Mark the character as deployed in Firestore
+        if (activeAvatar && activeAvatar.id) {
+            await syncEngine.syncAvatarStats(activeAvatar.id, { deployed: true });
+        }
+        
         // FIX: Clear avatar locally AND save the new state to Firestore immediately
         stateManager.setActiveAvatar(null);
-        if (typeof savePlayerState === 'function') savePlayerState();
+        if (typeof savePlayerState === 'function') {
+            await savePlayerState();
+        }
         
         endWizard();
         return;

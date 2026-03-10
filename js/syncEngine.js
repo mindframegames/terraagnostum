@@ -101,10 +101,16 @@ async function loadUserCharacters(user) {
         const { localPlayer } = stateManager.getState();
         if (localPlayer.activeAvatarId) {
             const found = characters.find(c => c.id === localPlayer.activeAvatarId);
-            if (found) stateManager.setActiveAvatar(found);
-        } else if (characters.length > 0) {
-            const defaultAvatar = characters.find(c => !c.deceased && !c.deployed) || characters[0];
-            stateManager.setActiveAvatar(defaultAvatar);
+            if (found) {
+                stateManager.setActiveAvatar(found);
+            }
+        } else if (localPlayer.activeAvatarId === undefined) {
+            // Only auto-pick if activeAvatarId is missing (undefined)
+            // If it's explicitly null or empty string, stay in VOID state.
+            const defaultAvatar = characters.find(c => !c.deceased && !c.deployed);
+            if (defaultAvatar) {
+                stateManager.setActiveAvatar(defaultAvatar);
+            }
         }
     } catch (e) { console.error("SyncEngine: Failed to load characters:", e); }
 }
@@ -269,7 +275,11 @@ export async function createCharacter(charData) {
         }
 
         const charCol = collection(db, 'artifacts', appId, 'users', user.uid, CHAR_COLLECTION);
-        const docRef = await addDoc(charCol, charData);
+        const finalCharData = {
+            ...charData,
+            deployed: charData.deployed ?? false
+        };
+        const docRef = await addDoc(charCol, finalCharData);
         return docRef.id;
     } catch (e) { 
         console.error("SyncEngine: Failed to create character:", e); 
@@ -285,6 +295,16 @@ export async function markCharacterDeceased(avatarId) {
         const charRef = doc(db, 'artifacts', appId, 'users', user.uid, CHAR_COLLECTION, avatarId);
         await updateDoc(charRef, { deceased: true });
     } catch (e) { console.error("SyncEngine: Failed to mark character deceased:", e); }
+}
+
+export async function markCharacterDeployed(avatarId) {
+    const { user } = stateManager.getState();
+    if (!db || !user || !isSyncEnabled) return;
+    
+    try {
+        const charRef = doc(db, 'artifacts', appId, 'users', user.uid, CHAR_COLLECTION, avatarId);
+        await updateDoc(charRef, { deployed: true });
+    } catch (e) { console.error("SyncEngine: Failed to mark character deployed:", e); }
 }
 
 export async function saveLoreFragment(areaId, loreData) {
