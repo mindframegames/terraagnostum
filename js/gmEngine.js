@@ -59,8 +59,13 @@ export async function handleGMIntent(
         // Handle Combat State from AI
         if (res.combat_active !== undefined) {
             if (res.combat_active && !localPlayer.combat.active) {
+                let opponentName = res.speaker || "Shadow";
+                if (res.world_edit?.type === 'spawn_npc' && res.world_edit.npc?.name) {
+                    opponentName = res.world_edit.npc.name;
+                }
+                
                 stateManager.updatePlayer({ 
-                    combat: { active: true, opponent: res.speaker || "Shadow" } 
+                    combat: { active: true, opponent: opponentName } 
                 });
                 if (!isSilent) UI.addLog(`[SYSTEM]: COMBAT INITIALIZED. BATTLE OF WILLS ENGAGED.`, "var(--term-red)");
                 stateChanged = true;

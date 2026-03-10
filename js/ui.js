@@ -34,8 +34,12 @@ stateManager.subscribe((state) => {
 
     // Combat UI Toggle
     if (localPlayer.combat.active) {
-        // Find opponent in current room
-        const opponent = room?.npcs?.find(n => n.name === localPlayer.combat.opponent);
+        // Find opponent in current room with fuzzy matching
+        const opponent = room?.npcs?.find(n => {
+            const search = (localPlayer.combat.opponent || "").toLowerCase();
+            const name = (n.name || "").toLowerCase();
+            return name === search || name.includes(search) || search.includes(name) || (search.includes('narrator') && name.includes('shadow'));
+        });
         toggleCombatUI(true, opponent || { name: localPlayer.combat.opponent });
     } else {
         toggleCombatUI(false);

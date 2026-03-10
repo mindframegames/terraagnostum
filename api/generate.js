@@ -100,7 +100,8 @@ export default async function handler(req, res) {
     };
 
     // 5. CALL THE SOURCE
-    const model = "gemini-2.5-flash-lite";
+    //const model = "gemini-2.5-flash-lite";
+    const model = "gemini-3.1-flash-lite-preview";// "gemini-2.5-flash-lite"; //"gemini-3-flash-preview";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
