@@ -4,6 +4,7 @@ import { triggerVisualUpdate } from './visualSystem.js';
 import * as UI from './ui.js';
 import * as stateManager from './stateManager.js';
 import * as syncEngine from './syncEngine.js';
+import { isArchiveRoom } from './mapData.js';
 
 export async function handleGMIntent(
     val,
@@ -12,7 +13,7 @@ export async function handleGMIntent(
     isSilent = false
 ) {
     const { localPlayer, user, activeAvatar } = state;
-    const { shiftStratum, savePlayerState, setActiveAvatar, syncAvatarStats, updateMapListener, triggerVisualUpdate: triggerVisual } = actions;
+    const { shiftStratum, savePlayerState, updateMapListener, triggerVisualUpdate: triggerVisual } = actions;
 
     if (!isSilent) {
         UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">EVALUATING INTENT...</span>`);
@@ -82,16 +83,16 @@ export async function handleGMIntent(
                 hp: newHP
             };
             
-            stateManager.setActiveAvatar(updatedAvatar);
+            stateManager.updatePlayer({ activeAvatar: updatedAvatar });
             if (!isSilent) UI.addLog(`[COMBAT]: You took ${res.damage_to_player} PHYSICAL damage!`, "var(--term-red)");
-            if (syncAvatarStats) syncAvatarStats(activeAvatar.id, { hp: newHP });
+            if (actions.syncAvatarStats) actions.syncAvatarStats(activeAvatar.id, { hp: newHP });
 
             if (newHP <= 0) {
                 if (!isSilent) UI.addLog(`[SYSTEM]: Your physical form has failed. Connection severed.`, "var(--term-red)");
                 // Defeat Sequence: Teleport to bedroom, restore HP
                 const restoredAvatar = { ...updatedAvatar, hp: activeAvatar.stats.PHYS || 20 };
-                stateManager.setActiveAvatar(restoredAvatar);
-                if (syncAvatarStats) syncAvatarStats(activeAvatar.id, { hp: restoredAvatar.hp });
+                stateManager.updatePlayer({ activeAvatar: restoredAvatar });
+                if (actions.syncAvatarStats) actions.syncAvatarStats(activeAvatar.id, { hp: restoredAvatar.hp });
                 stateManager.updatePlayer({ 
                     currentRoom: "bedroom", 
                     currentArea: `apartment_${user.uid}`,
@@ -217,8 +218,8 @@ export async function handleGMIntent(
         if (res.trigger_respawn) {
             const currentAvatar = stateManager.getState().activeAvatar;
             if (currentAvatar && user) syncEngine.markCharacterDeceased(currentAvatar.id);
-            setActiveAvatar(null);
             stateManager.updatePlayer({ 
+                activeAvatar: null,
                 currentRoom: "bedroom", 
                 currentArea: `apartment_${user.uid}`,
                 stratum: "mundane" 
@@ -312,43 +313,43 @@ export async function handleGMIntent(
             } else if (res.world_edit.type === 'spawn_item') {
                 const items = [...(room.items || []), res.world_edit.item];
                 stateManager.updateMapNode(currentState.localPlayer.currentRoom, { items });
-                syncEngine.addArrayElementToNode(currentState.localPlayer.currentRoom, 'items', res.world_edit.item);
+                
+                if (isArchiveRoom(currentState.localPlayer.currentRoom)) {
+                    syncEngine.updateRoom(currentState.localPlayer.currentRoom, { items });
+                } else {
+                    syncEngine.addArrayElementToNode(currentState.localPlayer.currentRoom, 'items', res.world_edit.item);
+                }
+                
                 if (!isSilent) UI.addLog(`[SYSTEM]: ${res.world_edit.item.name} has manifested in the room.`, "var(--term-green)");
             } else if (res.world_edit.type === 'spawn_npc') {
-                const npcData = res.world_edit.npc;
+                const currentState = stateManager.getState();
+                const activeMap = stateManager.getActiveMap();
+                const roomId = currentState.localPlayer.currentRoom;
                 
-                // Generate portrait for NPC if visual_prompt provided and no image
-                if (npcData.visual_prompt && !npcData.image) {
-                    if (!isSilent) UI.addLog(`[SYSTEM]: Manifesting visual imprint for ${npcData.name}...`, "var(--term-amber)");
-                    try {
-                        const b64 = await generatePortrait(npcData.visual_prompt, currentState.localPlayer.stratum);
-                        if (b64) {
-                            const dataUrl = `data:image/png;base64,${b64}`;
-                            npcData.image = await compressImage(dataUrl, 400, 0.7);
-                            if (!isSilent) UI.addLog(`[SYSTEM]: Visual imprint successful for ${npcData.name}.`, "var(--term-green)");
-                        } else {
-                            if (!isSilent) UI.addLog(`[SYSTEM]: Visual manifestation failed for ${npcData.name}.`, "var(--term-red)");
-                        }
-                    } catch (e) {
-                        console.error("NPC Portrait generation error:", e);
-                        if (!isSilent) UI.addLog(`[SYSTEM ERROR]: Portrait generation failed.`, "var(--term-red)");
-                    }
-                }
-
-                const npcs = [...(room.npcs || [])];
-                // Prevent duplicate NPCs if the GM keeps sending spawn_npc for the same entity
-                const existingIdx = npcs.findIndex(n => n.name === npcData.name);
-                if (existingIdx > -1) {
-                    // Update existing NPC data but preserve image if new data doesn't have one
-                    const oldNpc = npcs[existingIdx];
-                    if (!npcData.image && oldNpc.image) npcData.image = oldNpc.image;
-                    npcs[existingIdx] = npcData;
-                } else {
-                    npcs.push(npcData);
-                }
-                stateManager.updateMapNode(currentState.localPlayer.currentRoom, { npcs });
-                syncEngine.updateMapNode(currentState.localPlayer.currentRoom, { npcs });
-                if (!isSilent) UI.addLog(`[SYSTEM]: A new presence detected: ${npcData.name}.`, "var(--term-amber)");
+                // Safely get the room, ensuring arrays exist
+                const room = activeMap[roomId] || {};
+                const currentNpcs = room.npcs || [];
+                
+                const edit = res.world_edit.npc || {};
+                const newNpc = { 
+                    id: `npc_${Date.now()}`, 
+                    name: edit.name || "Unknown Entity", 
+                    description: edit.description || edit.personality || "A strange entity.",
+                    archetype: edit.archetype || "Unknown",
+                    stats: edit.stats || { WILL: 10, AWR: 10, PHYS: 10 },
+                    image: null // We do not generate expensive portraits for basic map NPCs yet
+                };
+                
+                // 1. Push to local array
+                currentNpcs.push(newNpc);
+                
+                // 2. Update local state immediately so UI updates
+                stateManager.updateMapNode(roomId, { npcs: currentNpcs });
+                
+                // 3. Save to Firebase Room Document using the exact current area
+                syncEngine.updateMapNode(roomId, { npcs: currentNpcs }, currentState.localPlayer.currentArea);
+                
+                if (!isSilent) UI.addLog(`[SYSTEM]: WARNING. Entity [${newNpc.name}] has manifested in the sector.`, "var(--term-amber)");
             }
         }
         

@@ -4,7 +4,7 @@ import {
     serverTimestamp, collection, addDoc, getDocs, writeBatch 
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
-import { db, appId, storage, isSyncEnabled } from './firebaseConfig.js';
+import { db, auth, appId, storage, isSyncEnabled } from './firebaseConfig.js';
 import * as stateManager from './stateManager.js';
 import { blueprintApartment, isArchiveRoom } from './mapData.js';
 
@@ -47,6 +47,12 @@ export async function bootSyncEngine(mergeAndRefreshCallback) {
     await updateAreaListener(startArea);
     await loadPlayerState(user);
     await loadUserCharacters(user);
+
+    // Ensure the starting room is properly merged if it's an archive room
+    if (isArchiveRoom(startRoom)) {
+        const roomData = await loadRoom(startRoom);
+        stateManager.updateMapNode(null, startRoom, roomData);
+    }
 }
 
 /**
@@ -110,7 +116,7 @@ export async function updateAreaListener(areaId) {
     const areaRoomsRef = collection(db, 'artifacts', appId, 'public', 'data', 'areas', areaId, 'rooms');
     
     return new Promise((resolve) => {
-        mapUnsubscribe = onSnapshot(areaRoomsRef, (snapshot) => {
+        mapUnsubscribe = onSnapshot(areaRoomsRef, async (snapshot) => {
             const areaNodes = {};
             snapshot.forEach(doc => { areaNodes[doc.id] = doc.data(); });
             
@@ -146,6 +152,15 @@ export async function updateAreaListener(areaId) {
                 }
             }
 
+            // CRITICAL: For archive rooms, we must merge the blueprint and the GLOBAL state
+            // to ensure NPCs/Items from loadRoom/spawnNPCInRoom are not overwritten by 
+            // the area-specific listener.
+            for (const roomId of Object.keys(areaNodes)) {
+                if (isArchiveRoom(roomId)) {
+                    areaNodes[roomId] = await loadRoom(roomId, areaId);
+                }
+            }
+
             stateManager.setLocalAreaCache(areaNodes);
             resolve();
         });
@@ -176,6 +191,9 @@ export async function syncAvatarStats(avatarId, stats) {
 }
 
 export async function updateMapNode(roomId, updates, targetArea = null) {
+    if (isArchiveRoom(roomId)) {
+        return updateRoom(roomId, updates);
+    }
     const { user, localPlayer } = stateManager.getState();
     if (!db || !user || !isSyncEnabled) return;
     const areaToUpdate = targetArea || localPlayer.currentArea;
@@ -199,6 +217,10 @@ export async function updateMapNode(roomId, updates, targetArea = null) {
 }
 
 export async function removeArrayElementFromNode(roomId, arrayPath, element) {
+    if (isArchiveRoom(roomId)) {
+        if (arrayPath === 'npcs') return removeNPCFromRoom(roomId, element);
+        if (arrayPath === 'items') return removeItemFromRoom(roomId, element);
+    }
     const { user, localPlayer } = stateManager.getState();
     if (!db || !user || !isSyncEnabled) return;
     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'areas', localPlayer.currentArea, 'rooms', roomId);
@@ -208,6 +230,13 @@ export async function removeArrayElementFromNode(roomId, arrayPath, element) {
 }
 
 export async function addArrayElementToNode(roomId, arrayPath, element) {
+    if (isArchiveRoom(roomId)) {
+        if (arrayPath === 'npcs') return spawnNPCInRoom(roomId, element);
+        if (arrayPath === 'items') {
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+            return updateDoc(roomRef, { items: arrayUnion(element) });
+        }
+    }
     const { user, localPlayer } = stateManager.getState();
     if (!db || !user || !isSyncEnabled) return;
     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'areas', localPlayer.currentArea, 'rooms', roomId);
@@ -275,4 +304,113 @@ export async function logManifestation(roomId, text) {
     // For now, logging to a central doc is fine if it still exists, 
     // but the path 'artifacts/appId/public/data/rooms/archive_apartment' is deprecated.
     console.log(`[MANIFESTATION] ${roomId}: ${text}`);
+}
+
+/**
+ * Loads a room by merging static blueprint data with dynamic Firestore state.
+ * This ensures NPCs created via "LEAVE VESSEL" persist across map transitions.
+ */
+export async function loadRoom(roomId, areaId = null) {
+    // 1. Get the base data from the static blueprint
+    const blueprint = blueprintApartment[roomId] || {};
+
+    const { user, localPlayer } = stateManager.getState();
+    const targetArea = areaId || localPlayer.currentArea;
+
+    // 2. Fetch the "Live" state from Firestore
+    // We check BOTH the shared path and the area-specific path for maximum persistence
+    const sharedRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+    const areaRef = doc(db, 'artifacts', appId, 'public', 'data', 'areas', targetArea, 'rooms', roomId);
+    
+    const [sharedSnap, areaSnap] = await Promise.all([
+        getDoc(sharedRef),
+        getDoc(areaRef)
+    ]);
+
+    const sharedData = sharedSnap.exists() ? sharedSnap.data() : {};
+    const areaData = areaSnap.exists() ? areaSnap.data() : {};
+
+    // 3. CRITICAL MERGE: Combine static layout with dynamic entities from both locations
+    // We prioritize Area Data -> Shared Data -> Blueprint
+    return {
+        ...blueprint,
+        ...sharedData,
+        ...areaData,
+        // Ensure we combine items and npcs from all sources
+        items: [
+            ...(blueprint.items || []), 
+            ...(sharedData.items || []),
+            ...(areaData.items || [])
+        ],
+        npcs: [
+            ...(sharedData.npcs || []),
+            ...(areaData.npcs || [])
+        ]
+    };
+}
+
+/**
+ * Persists a spawned NPC to Firestore so it survives map reloads.
+ */
+export async function spawnNPCInRoom(roomId, npcData) {
+    if (!auth.currentUser) return;
+    const { localPlayer } = stateManager.getState();
+
+    // We save to BOTH to ensure it's found regardless of loading method
+    const sharedRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+    const areaRef = doc(db, 'artifacts', appId, 'public', 'data', 'areas', localPlayer.currentArea, 'rooms', roomId);
+    
+    const p1 = setDoc(sharedRef, { npcs: arrayUnion(npcData) }, { merge: true });
+    const p2 = setDoc(areaRef, { npcs: arrayUnion(npcData) }, { merge: true });
+
+    await Promise.all([p1, p2]);
+    console.log(`[SYSTEM]: ${npcData.name} persisted to ${roomId} state.`);
+}
+
+/**
+ * Removes an NPC from a room in Firestore.
+ */
+export async function removeNPCFromRoom(roomId, npcData) {
+    if (!auth.currentUser) return;
+    const { localPlayer } = stateManager.getState();
+
+    const sharedRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+    const areaRef = doc(db, 'artifacts', appId, 'public', 'data', 'areas', localPlayer.currentArea, 'rooms', roomId);
+    
+    await Promise.all([
+        updateDoc(sharedRef, { npcs: arrayRemove(npcData) }).catch(()=>{}),
+        updateDoc(areaRef, { npcs: arrayRemove(npcData) }).catch(()=>{})
+    ]);
+}
+
+/**
+ * Removes an item from a room in Firestore.
+ */
+export async function removeItemFromRoom(roomId, itemData) {
+    if (!auth.currentUser) return;
+    const { localPlayer } = stateManager.getState();
+
+    const sharedRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+    const areaRef = doc(db, 'artifacts', appId, 'public', 'data', 'areas', localPlayer.currentArea, 'rooms', roomId);
+    
+    await Promise.all([
+        updateDoc(sharedRef, { items: arrayRemove(itemData) }).catch(()=>{}),
+        updateDoc(areaRef, { items: arrayRemove(itemData) }).catch(()=>{})
+    ]);
+}
+
+/**
+ * Updates a specific field in a room (e.g., name or description).
+ */
+export async function updateRoom(roomId, updates) {
+    if (!auth.currentUser) return;
+    const { localPlayer } = stateManager.getState();
+
+    const sharedRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+    const areaRef = doc(db, 'artifacts', appId, 'public', 'data', 'areas', localPlayer.currentArea, 'rooms', roomId);
+    
+    await Promise.all([
+        setDoc(sharedRef, updates, { merge: true }),
+        setDoc(areaRef, updates, { merge: true })
+    ]);
 }

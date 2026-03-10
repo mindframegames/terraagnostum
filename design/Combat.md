@@ -102,6 +102,10 @@ Weakness: Ghosting / AFK Players.
 
 Solution: The "Chief Mechanic" takeover is non-negotiable. This prevents combat from stalling in a multiplayer environment.
 
+STRATA EFFECT ON COMBAT:
+Astral has unique combat mechanisms.  It is a contest of wills.  Character can use their turn to create items (which will dissapear when leaving Astral).  They can create weapons and armor and otherwise attempt to use creative commands.  All damage is done to WILL stat, but 'dying' in Astral plane just resets you to BEDROOM (stats recovered).
+
+Mundane combat is like normal, real world except more exotic weapons, strange high-tech devices and fabrics, and some magic use from Faen.
 
 -- HUMAN WRITTEN STUFF:
 Combat should open a pane that takes over the main commands (the CLI and log) area.  It should have a card-based MTG style layout where the combatants each display their cards.

@@ -10,6 +10,7 @@ import { triggerVisualUpdate, togglePinView } from './visualSystem.js';
 import { callGemini } from './apiService.js';
 import { openForgeModal } from './forgeSystem.js';
 import { startTerminal, handleTerminalInput } from './terminalSystem.js';
+import { isArchiveRoom } from './mapData.js';
 
 // --- HELPER WRAPPERS (Local to Router) ---
 
@@ -131,6 +132,14 @@ export async function executeMovement(targetDir) {
         // --- INTERNAL MOVEMENT ---
         UI.addLog(`[SYSTEM]: You move ${targetDir.toUpperCase()}.`, "var(--term-green)");
         stateManager.updatePlayer({ currentRoom: targetRoomId });
+        
+        // Ensure archive rooms (apartment) are merged with their blueprints
+        if (isArchiveRoom(targetRoomId)) {
+            syncEngine.loadRoom(targetRoomId).then(roomData => {
+                stateManager.updateMapNode(null, targetRoomId, roomData);
+            });
+        }
+        
         syncEngine.savePlayerState();
         triggerVisualUpdate(null, stateManager.getState().localPlayer, stateManager.getActiveMap(), user);
     } else {
@@ -455,7 +464,7 @@ export async function handleCommand(val) {
             const npc = npcs[npcIndex];
 
             npcs.splice(npcIndex, 1);
-            syncEngine.removeArrayElementFromNode(localPlayer.currentRoom, 'npcs', npc);
+            syncEngine.removeNPCFromRoom(localPlayer.currentRoom, npc);
 
             const newCharData = {
                 name: npc.name,
@@ -599,7 +608,13 @@ export async function handleCommand(val) {
             const inventory = [...localPlayer.inventory, item];
             stateManager.updateMapNode(null, localPlayer.currentRoom, { items });
             stateManager.updatePlayer({ inventory });
-            syncEngine.removeArrayElementFromNode(localPlayer.currentRoom, 'items', item);
+
+            if (isArchiveRoom(localPlayer.currentRoom)) {
+                syncEngine.removeItemFromRoom(localPlayer.currentRoom, item);
+            } else {
+                syncEngine.removeArrayElementFromNode(localPlayer.currentRoom, 'items', item);
+            }
+            
             syncEngine.savePlayerState(); 
             UI.addLog(`Picked up [${item.name}].`, "var(--term-green)");
         }

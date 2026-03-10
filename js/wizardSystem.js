@@ -310,7 +310,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         };
         const npcs = [...(room.npcs || []), newNpc];
         stateManager.updateMapNode(localPlayer.currentRoom, { npcs });
-        syncEngine.addArrayElementToNode(localPlayer.currentRoom, 'npcs', newNpc);
+        syncEngine.spawnNPCInRoom(localPlayer.currentRoom, newNpc);
 
         UI.addLog(`[SYSTEM]: Vessel detached and autonomous protocol initialized.`, "var(--term-amber)");
         stateManager.setActiveAvatar(null);
@@ -353,7 +353,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
             const room = activeMap[localPlayer.currentRoom];
             const npcs = [...(room.npcs || []), newNpc];
             stateManager.updateMapNode(localPlayer.currentRoom, { npcs });
-            syncEngine.addArrayElementToNode(localPlayer.currentRoom, 'npcs', newNpc);
+            syncEngine.spawnNPCInRoom(localPlayer.currentRoom, newNpc);
             
             UI.addLog(`[SYSTEM]: Entity [${newNpc.name}] spawned successfully.`, "var(--term-green)");
             endWizard();
@@ -480,9 +480,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                         { 
                             updateMapListener: () => syncEngine.updateAreaListener(stateManager.getState().localPlayer.currentArea),
                             shiftStratum: shiftStratum,
-                            savePlayerState: syncEngine.savePlayerState,
-                            setActiveAvatar: stateManager.setActiveAvatar,
-                            syncAvatarStats: syncEngine.syncAvatarStats
+                            savePlayerState: syncEngine.savePlayerState
                         },
                         false // Ensure isSilent is false so the player sees the output
                     );
