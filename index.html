@@ -109,9 +109,12 @@
                 </div>
 
                 <!-- MOBILE: INTERACTIVE RADAR -->
-                <div id="mobile-radar-widget" class="block sm:hidden relative w-14 h-14 rounded-full border-2 border-green-900 bg-[#051005] overflow-hidden flex-shrink-0 cursor-pointer radar-grid shadow-[0_0_10px_rgba(74,222,128,0.2)]">
-                    <canvas id="mobile-radar-canvas" class="w-full h-full absolute inset-0 z-10"></canvas>
-                    <div class="radar-sweep z-20"></div>
+                <div class="block sm:hidden flex-shrink-0 flex flex-col items-center">
+                    <div id="mobile-radar-widget" class="relative w-24 h-24 rounded-full border-2 border-green-900 bg-[#051005] overflow-hidden cursor-pointer radar-grid shadow-[0_0_10px_rgba(74,222,128,0.2)]">
+                        <canvas id="mobile-radar-canvas" class="w-full h-full absolute inset-0 z-10"></canvas>
+                        <div class="radar-sweep z-20"></div>
+                    </div>
+                    <div class="text-[8px] text-green-700 mt-1 uppercase tracking-widest animate-pulse">[ TAP MAP TO MOVE ]</div>
                 </div>
 
                 <!-- COMMAND PROMPT -->

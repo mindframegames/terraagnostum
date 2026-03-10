@@ -124,16 +124,34 @@ export function initMobileRadar() {
         }
 
         // Fire command
-        input.value = cmdDir;
-        input.dispatchEvent(new KeyboardEvent('keydown', {
+        const enterEvent = new KeyboardEvent('keydown', {
             key: 'Enter',
+            code: 'Enter',
+            keyCode: 13,
+            which: 13,
             bubbles: true,
             cancelable: true
-        }));
+        });
+        
+        input.value = cmdDir;
+        input.dispatchEvent(enterEvent);
         
         // Visual feedback
         radar.style.borderColor = "var(--term-amber)";
         setTimeout(() => radar.style.borderColor = "var(--term-green)", 150);
+
+        // Directly call the command handler to bypass any event inconsistencies
+        import('./intentRouter.js').then(({ handleCommand }) => {
+            // Log what the user "typed" via the radar
+            addLog(cmdDir, "#ffffff");
+            
+            // Execute the command
+            handleCommand(cmdDir);
+            
+            // Clear input
+            const inputEl = document.getElementById('cmd-input');
+            if (inputEl) inputEl.value = '';
+        });
     });
 }
 
@@ -441,9 +459,9 @@ function drawTopologyToCanvas(canvasId, activeMap, currentRoomKey, stratum, draw
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     
-    // Tighter spacing for the mobile radar, wider for desktop
-    const spacingX = drawLabels ? 60 : 25;
-    const spacingY = drawLabels ? 50 : 25;
+    // Wider spacing on mobile to accommodate the larger tap targets
+    const spacingX = drawLabels ? 60 : 36;
+    const spacingY = drawLabels ? 50 : 36;
 
     const room = activeMap[currentRoomKey];
     if (!room) return;
@@ -486,9 +504,9 @@ function drawTopologyToCanvas(canvasId, activeMap, currentRoomKey, stratum, draw
                 ctx.textBaseline = "middle";
                 ctx.fillText(label, tx, ty);
             } else {
-                // Mini dots for mobile radar
-                ctx.fillRect(tx - 4, ty - 4, 8, 8);
-                ctx.strokeRect(tx - 4, ty - 4, 8, 8);
+                // Larger tap targets for mobile radar
+                ctx.fillRect(tx - 10, ty - 10, 20, 20);
+                ctx.strokeRect(tx - 10, ty - 10, 20, 20);
             }
             ctx.lineWidth = 2;
         });
@@ -510,9 +528,9 @@ function drawTopologyToCanvas(canvasId, activeMap, currentRoomKey, stratum, draw
         ctx.textBaseline = "middle";
         ctx.fillText((room.shortName || room.name).substring(0, 4).toUpperCase(), centerX, centerY);
     } else {
-        // Mini player dot for mobile radar
-        ctx.fillRect(centerX - 5, centerY - 5, 10, 10);
-        ctx.strokeRect(centerX - 5, centerY - 5, 10, 10);
+        // Larger player node for mobile radar
+        ctx.fillRect(centerX - 12, centerY - 12, 24, 24);
+        ctx.strokeRect(centerX - 12, centerY - 12, 24, 24);
         ctx.shadowBlur = 0;
     }
 }

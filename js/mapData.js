@@ -8,7 +8,7 @@ export const apartmentMap = {
         shortName: "LORE1",
         description: "The western half of the main living area. A large, flickering computer console dominates the space against the west wall. The console hums with a strange energy, and the air feels thick with forgotten secrets. A closet door to the north is scrawled on with black marker 'Schrödinger's Closet'.",
         visualPrompt: "A cypherpunk apartment living room, a massive glowing green computer console, dim lighting, retro-futuristic furniture.  A closet door to the north is scrawled on with black marker 'Schrödinger's Closet'.  There is a hint of esoteric quantum light spilling out of the edges of the closet.",
-        exits: { east: "lore2", north: "closet", south: "bedroom" },
+        exits: { east: "maproom", north: "closet", south: "bedroom" },
         pinnedView: null,
         items: [],
         marginalia: [],
@@ -100,12 +100,12 @@ export const blueprintApartment = {
         shortName: "LORE1",
         description: "The western half of the main living area. A large, flickering computer console dominates the space against the west wall. The console hums with a strange energy, and the air feels thick with forgotten secrets.",
         visualPrompt: "A cypherpunk apartment living room, a massive glowing green computer console, dim lighting, retro-futuristic furniture.  A closet door (closed) to the north is scrawled on with black marker 'Schrödinger's Closet'.  There is a hint of esoteric quantum light spilling out of the edges of the closet.",
-        exits: { east: "MAPROOM", north: "closet", south: "bedroom" },
+        exits: { east: "maproom", north: "closet", south: "bedroom" },
         metadata: { stratum: "mundane", isEditable: false }
     },
     "maproom": {
         name: "Map Room",
-        shortName: "MAPROOM",
+        shortName: "MAP",
         description: "The eastern half of the main living area, acting as a central nexus connecting the apartment.  It has a big, central table covered in copious maps, reference books and interdimensional diagrams tracking the connections of planes and strata.",
         visualPrompt: "A cyberpunk apartment living room, dim lighting, worn retro-futuristic couch, cables running along the floor.  The eastern half of the main living area, acting as a central nexus connecting the apartment.  It has a big, central table covered in copious maps, reference books and interdimensional diagrams tracking the connections of planes and strata. The walls are plastered with esoteric charts and maps, and a large, complex map of the Faen hangs prominently on the wall, with esoteric connections to Astral and Mundane.",
         exits: { west: "lore1", north: "kitchen", east: "character_room", south: "hallway" },
@@ -132,7 +132,7 @@ export const blueprintApartment = {
         shortName: "KITCHEN",
         description: "A cramped kitchenette north of the living area with a dusty window looking out into an endless, foggy void.",
         visualPrompt: "A grimy cyberpunk kitchenette, a window showing a dark foggy void, neon light filtering through the blinds.",
-        exits: { south: "MAPROOM" },
+        exits: { south: "maproom" },
         metadata: { stratum: "mundane", isEditable: false }
     },
     "character_room": {
@@ -140,7 +140,7 @@ export const blueprintApartment = {
         shortName: "CHARS",
         description: "A room full of character sheets. There are an endless variety of them. The creators of this world have obsessively logged an enormous range of living beings. They cover the table and walls in piles and layers. It is an RPG bonanza of color and stats and drawings. You can create characters here. Use CREATE AVATAR to make your main character.",
         visualPrompt: "A room overflowing with sketches, RPG character sheets, and anatomical drawings pinned to walls, cinematic lighting, cluttered desk piled with reference books and lore.  Walls covered in anatomical drawings, character portraits, extensive RPG data, figures and info.",
-        exits: { west: "MAPROOM" },
+        exits: { west: "maproom" },
         metadata: { stratum: "mundane", isEditable: false }
     },
     "hallway": {
@@ -149,7 +149,7 @@ export const blueprintApartment = {
         description: "A narrow corridor extending south. At the far southern end is the front door leading 'outside'.",
         visualPrompt: "A narrow, dimly lit apartment hallway. At the end is a heavy metal door.",
         exits: { 
-            north: "MAPROOM", 
+            north: "maproom", 
             south: { 
                 target: "outside", 
                 itemReq: "Resonant Key", 
