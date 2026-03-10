@@ -146,10 +146,12 @@ export async function handleGMIntent(
                 if (newNpcWill <= 0) {
                     if (!isSilent) UI.addLog(`[SYSTEM]: ${npc.name} has been dissipated. Victory!`, "var(--term-green)");
                     
-                    // Remove NPC from room
-                    const newNpcs = room.npcs.filter(n => n.name !== npc.name);
-                    stateManager.updateMapNode(currentState.localPlayer.currentRoom, { npcs: newNpcs });
-                    syncEngine.updateMapNode(currentState.localPlayer.currentRoom, { npcs: newNpcs });
+                    // FIX: Remove only the exact NPC fought, leaving clones alone
+                    const npcIndex = room.npcs.findIndex(n => n === npc);
+                    if (npcIndex > -1) room.npcs.splice(npcIndex, 1);
+                    
+                    stateManager.updateMapNode(currentState.localPlayer.currentRoom, { npcs: room.npcs });
+                    syncEngine.updateMapNode(currentState.localPlayer.currentRoom, { npcs: room.npcs });
 
                     // Reset Combat State
                     stateManager.updatePlayer({ combat: { active: false, opponent: null } });

@@ -463,8 +463,12 @@ export async function handleCommand(val) {
         if (npcIndex > -1) {
             const npc = npcs[npcIndex];
 
+            // 1. Remove exactly ONE from the local array
             npcs.splice(npcIndex, 1);
-            syncEngine.removeNPCFromRoom(localPlayer.currentRoom, npc);
+            
+            // 2. OVERWRITE the array in Firestore to avoid arrayRemove wiping clones
+            stateManager.updateMapNode(localPlayer.currentRoom, { npcs });
+            syncEngine.updateMapNode(localPlayer.currentRoom, { npcs });
 
             const newCharData = {
                 name: npc.name,

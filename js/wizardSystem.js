@@ -125,7 +125,9 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         if (wizardState.step === 1) {
             if (!currentVal) {
                 UI.addLog("[SYSTEM]: Querying Archive for designation...", "var(--term-amber)");
-                const aiRes = await callGemini("Generate 1 cool cyberpunk name. Name only.");
+                //const aiRes = await callGemini("Generate 1 cool cyberpunk name. Name only.");
+                //const aiRes = await callGemini("Generate 1 unique character name that blends gritty cypherpunk with high-fantasy myth (e.g., Kaelen-7, Nyx Shadow-weaver, Jaxon Blood-iron, Jackson Wrey, Marriane Stone). Name only.");
+                const aiRes = await callGemini("Generate 1 unique character name for a world where cypherpunk, clinical transhumanism, and ancient high-fantasy collide. Randomly lean into ONE of these vibes: a gritty street moniker (e.g., Nyx, Jaxon, etc.), a mystic blend with Sanskrit or Arabic roots (e.g., Tariq Null, Dharma-7, etc.), OR a corporate system designation (e.g., Unit 42, Echo-Prime, etc.). Name only.");
                 currentVal = aiRes.trim();
             }
             stateManager.updateWizardState({ pendingData: { ...wizardState.pendingData, name: currentVal }, step: 2 });
@@ -134,7 +136,8 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         else if (wizardState.step === 2) {
             if (!currentVal) {
                 UI.addLog("[SYSTEM]: Querying Archive for archetype...", "var(--term-amber)");
-                const aiRes = await callGemini(`Suggest a 1-word cyberpunk archetype for ${wizardState.pendingData.name}.`);
+                //const aiRes = await callGemini(`Suggest a 1-word cyberpunk archetype for ${wizardState.pendingData.name}.`);
+                const aiRes = await callGemini(`Suggest a 1 to 2-word archetype for ${wizardState.pendingData.name} in a world blending cyberpunk tech, transhumanism, and ancient magic (e.g., Neon Ascendant, Plasteel Mage, Rogue Unit, Data Shaman). Match the origin vibe of the name.`);
                 currentVal = aiRes.replace(/["']/g, '').trim();
             }
             stateManager.updateWizardState({ pendingData: { ...wizardState.pendingData, archetype: currentVal }, step: 3 });

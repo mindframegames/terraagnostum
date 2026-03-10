@@ -31,7 +31,8 @@ export async function bootSyncEngine(mergeAndRefreshCallback) {
             startArea = data.currentArea || startArea;
 
             // Area/Room consistency check
-            if (isArchiveRoom(startRoom)) {
+            // FIX: Exclude 'outside' so it doesn't force you out of the public_void area
+            if (isArchiveRoom(startRoom) && startRoom !== 'outside') {
                 if (!startArea || !startArea.startsWith('apartment_')) {
                     console.log("[SYNC]: Inconsistent room/area detected on boot. Forcing apartment area.");
                     startArea = `apartment_${user.uid}`;
@@ -332,20 +333,23 @@ export async function loadRoom(roomId, areaId = null) {
 
     // 3. CRITICAL MERGE: Combine static layout with dynamic entities from both locations
     // We prioritize Area Data -> Shared Data -> Blueprint
+    const rawItems = [
+        ...(blueprint.items || []), 
+        ...(sharedData.items || []),
+        ...(areaData.items || [])
+    ];
+    const rawNpcs = [
+        ...(sharedData.npcs || []),
+        ...(areaData.npcs || [])
+    ];
+
     return {
         ...blueprint,
         ...sharedData,
         ...areaData,
-        // Ensure we combine items and npcs from all sources
-        items: [
-            ...(blueprint.items || []), 
-            ...(sharedData.items || []),
-            ...(areaData.items || [])
-        ],
-        npcs: [
-            ...(sharedData.npcs || []),
-            ...(areaData.npcs || [])
-        ]
+        // Ensure we combine items and npcs from all sources and deduplicate
+        items: Array.from(new Map(rawItems.map(item => [item.id || item.name, item])).values()),
+        npcs: Array.from(new Map(rawNpcs.map(npc => [npc.id || npc.name, npc])).values())
     };
 }
 

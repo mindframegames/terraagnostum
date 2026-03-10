@@ -104,10 +104,21 @@ async function analyzeBiometrics() {
     const desc = document.getElementById('forge-desc').value;
     if (!desc) return;
     
+    const analyzeBtn = document.getElementById('btn-analyze-biometrics');
+    const oldBtnText = analyzeBtn.innerText;
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerText = "[ ANALYZING... ]";
+    
     const archetypeEl = document.getElementById('forge-archetype');
     const oldArchetype = archetypeEl.innerText;
     archetypeEl.innerText = "CHECKING VITALS...";
     
+    // Clear and show the stats readout area while waiting
+    document.getElementById('stat-will').innerText = "--";
+    document.getElementById('stat-awr').innerText = "--";
+    document.getElementById('stat-phys').innerText = "--";
+    document.getElementById('forge-stats-readout').classList.remove('hidden');
+
     UI.addLog("[SYSTEM]: Checking vessel vitals...", "var(--term-amber)");
     const prompt = `Analyze this biometric seed: "${desc}". Determine stats for a character in the ${currentDraftStratum} stratum. Return JSON: {"WILL": int, "AWR": int, "PHYS": int, "archetype": "string"}`;
     
@@ -118,7 +129,6 @@ async function analyzeBiometrics() {
         document.getElementById('stat-will').innerText = (res.WILL || 10).toString().padStart(2, '0');
         document.getElementById('stat-awr').innerText = (res.AWR || 10).toString().padStart(2, '0');
         document.getElementById('stat-phys').innerText = (res.PHYS || 10).toString().padStart(2, '0');
-        document.getElementById('forge-stats-readout').classList.remove('hidden');
         
         const manifestBtn = document.getElementById('btn-manifest-vessel');
         manifestBtn.disabled = false;
@@ -128,7 +138,10 @@ async function analyzeBiometrics() {
         UI.addLog("[SYSTEM]: Vitals verified. Stats synchronized.", "var(--term-green)");
     } else {
         archetypeEl.innerText = oldArchetype;
+        document.getElementById('forge-stats-readout').classList.add('hidden');
     }
+    analyzeBtn.disabled = false;
+    analyzeBtn.innerText = oldBtnText;
 }
 
 async function manifestVessel() {

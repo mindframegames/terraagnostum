@@ -1,7 +1,6 @@
 // js/ui.js
 // Purpose: Handles all DOM manipulation, canvas rendering, and CSS theme transitions.
 import * as stateManager from './stateManager.js';
-import { openForgeModal } from './forgeSystem.js';
 
 // Subscribe to state changes
 stateManager.subscribe((state) => {
@@ -390,7 +389,7 @@ export function updateRoomEntitiesUI(npcs) {
                 ...npc,
                 description: npc.behavior || npc.visualPrompt || npc.visual_prompt || "No additional data available."
             };
-            openForgeModal(detailData);
+            toggleDossierBuffer(true, detailData);
         };
         
         container.appendChild(card);
