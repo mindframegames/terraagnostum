@@ -120,9 +120,9 @@ if (input) {
                 const { localCharacters } = stateManager.getState();
                 const { handleGMIntent } = await import('./gmEngine.js');
                 await handleWizardInput(val, 
-                    { activeMap, localPlayer, user, activeAvatar, isSyncEnabled: true, appId: 'ignored' },
+                    { activeMap, localPlayer, user, activeAvatar, isSyncEnabled: true },
                     { 
-                        updateMapListener: () => syncEngine.updateAreaListener(stateManager.getState().localPlayer.currentArea), 
+                        updateMapListener: () => syncEngine.updateGlobalMapListener(), 
                         shiftStratum,
                         savePlayerState: syncEngine.savePlayerState,
                         renderMapHUD: UI.renderMapHUD,

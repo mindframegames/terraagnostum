@@ -1,10 +1,9 @@
 // js/stateManager.js
-import { isArchiveRoom } from './mapData.js';
 
 // --- INITIAL STATE ---
 let state = {
     localPlayer: { 
-        hp: 20, currentRoom: "bedroom", currentArea: null, stratum: "mundane",
+        hp: 20, currentRoom: "bedroom", stratum: "mundane",
         inventory: [], closetDoorClosed: false, isArchitect: false,
         combat: { active: false, opponent: null }, activeAvatarId: null
     },

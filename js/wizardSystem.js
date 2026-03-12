@@ -125,8 +125,6 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         if (wizardState.step === 1) {
             if (!currentVal) {
                 UI.addLog("[SYSTEM]: Querying Archive for designation...", "var(--term-amber)");
-                //const aiRes = await callGemini("Generate 1 cool cyberpunk name. Name only.");
-                //const aiRes = await callGemini("Generate 1 unique character name that blends gritty cypherpunk with high-fantasy myth (e.g., Kaelen-7, Nyx Shadow-weaver, Jaxon Blood-iron, Jackson Wrey, Marriane Stone). Name only.");
                 const aiRes = await callGemini("Generate 1 unique character name for a world where cypherpunk, clinical transhumanism, and ancient high-fantasy collide. Randomly lean into ONE of these vibes: a gritty street moniker (e.g., Nyx, Jaxon, etc.), a mystic blend with Sanskrit or Arabic roots (e.g., Tariq Null, Dharma-7, etc.), OR a corporate system designation (e.g., Unit 42, Echo-Prime, etc.). Name only.");
                 currentVal = aiRes.trim();
             }
@@ -136,7 +134,6 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         else if (wizardState.step === 2) {
             if (!currentVal) {
                 UI.addLog("[SYSTEM]: Querying Archive for archetype...", "var(--term-amber)");
-                //const aiRes = await callGemini(`Suggest a 1-word cyberpunk archetype for ${wizardState.pendingData.name}.`);
                 const aiRes = await callGemini(`Suggest a 1 to 2-word archetype for ${wizardState.pendingData.name} in a world blending cyberpunk tech, transhumanism, and ancient magic (e.g., Neon Ascendant, Plasteel Mage, Rogue Unit, Data Shaman). Match the origin vibe of the name.`);
                 currentVal = aiRes.replace(/["']/g, '').trim();
             }
@@ -305,7 +302,6 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
         if (!currentVal) return;
         const room = activeMap[localPlayer.currentRoom];
         
-        // FIX: Add fallbacks to prevent 'undefined' values from crashing the Firestore write
         const newNpc = {
             id: `npc_${Date.now()}`,
             name: activeAvatar.name || "Unknown Vessel",
@@ -322,12 +318,10 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
 
         UI.addLog(`[SYSTEM]: Vessel detached and autonomous protocol initialized.`, "var(--term-amber)");
         
-        // Mark the character as deployed in Firestore
         if (activeAvatar && activeAvatar.id) {
             await syncEngine.syncAvatarStats(activeAvatar.id, { deployed: true });
         }
         
-        // FIX: Clear avatar locally AND save the new state to Firestore immediately
         stateManager.setActiveAvatar(null);
         if (typeof savePlayerState === 'function') {
             await savePlayerState();
@@ -421,12 +415,10 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                     UI.addLog(`[TANDY]: That was close. The field collapsed. You'll need to tune the generator and try again when you're ready.`, "#b084e8");
                 }
                 
-                const apartmentArea = `apartment_${user.uid}`;
                 stateManager.updatePlayer({ 
-                    currentArea: apartmentArea,
                     currentRoom: 'closet'
                 });
-                await syncEngine.updateAreaListener(apartmentArea);
+                await syncEngine.updateGlobalMapListener();
 
                 if (shiftStratum) shiftStratum('mundane');
                 endWizard();
@@ -456,7 +448,6 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                 const getOpposite = (d) => ({'north':'south','south':'north','east':'west','west':'east'})[d] || 'out';
                 const backDir = getOpposite(dir);
                 
-                const targetAreaId = `astral_${stateManager.getState().user.uid}`;
                 const newRoom = {
                     id: newRoomId,
                     name: res.name || "Unknown Sector",
@@ -464,24 +455,24 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                     description: res.description || "A shifting expanse of raw potential.",
                     visualPrompt: res.visual_prompt || "A surreal, dream-like landscape.",
                     exits: { [backDir]: fromId },
-                    metadata: { stratum: 'astral', isEditable: true, ownerId: stateManager.getState().user.uid, area: targetAreaId }
+                    metadata: { stratum: 'astral', isEditable: true, ownerId: stateManager.getState().user.uid }
                 };
 
-                // 1. Save new room to the target ASTRAL subcollection
-                syncEngine.updateMapNode(newRoomId, newRoom, targetAreaId);
+                // 1. Save new room to the global rooms collection
+                syncEngine.updateMapNode(newRoomId, newRoom);
                 
-                // 2. Save the exit link in the CURRENT subcollection
+                // 2. Save the exit link in the current room
                 const currentExits = activeMap[fromId].exits || {};
                 currentExits[dir] = newRoomId;
                 stateManager.updateMapNode(fromId, { exits: currentExits });
-                syncEngine.updateMapNode(fromId, { [`exits.${dir}`]: newRoomId }, stateManager.getState().localPlayer.currentArea);
+                syncEngine.updateMapNode(fromId, { [`exits.${dir}`]: newRoomId });
 
-                // 3. Transition the player to the new Astral Area
-                stateManager.updatePlayer({ currentArea: targetAreaId, currentRoom: newRoomId });
+                // 3. Transition the player to the new room
+                stateManager.updatePlayer({ currentRoom: newRoomId });
                 UI.addLog(`[SYSTEM]: Sector successfully manifested.`, "var(--term-green)");
                 
-                // 4. Force sync engine to shift to the Astral map before rendering
-                await syncEngine.updateAreaListener(targetAreaId);
+                // 4. Force sync engine to shift to the global map before rendering
+                await syncEngine.updateGlobalMapListener();
                 const updatedActiveMap = stateManager.getActiveMap();
                 UI.printRoomDescription(newRoom, true, updatedActiveMap, activeAvatar);
                 
@@ -498,7 +489,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                             activeAvatar: stateManager.getState().activeAvatar
                         }, 
                         { 
-                            updateMapListener: () => syncEngine.updateAreaListener(stateManager.getState().localPlayer.currentArea),
+                            updateMapListener: () => syncEngine.updateGlobalMapListener(),
                             shiftStratum: shiftStratum,
                             savePlayerState: syncEngine.savePlayerState
                         },

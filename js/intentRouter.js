@@ -1,6 +1,6 @@
 // js/intentRouter.js
 import { signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { auth, db, appId, isSyncEnabled } from './firebaseConfig.js';
+import { isSyncEnabled } from './firebaseConfig.js';
 import * as stateManager from './stateManager.js';
 import * as syncEngine from './syncEngine.js';
 import * as UI from './ui.js';
@@ -10,7 +10,6 @@ import { triggerVisualUpdate, togglePinView } from './visualSystem.js';
 import { callGemini } from './apiService.js';
 import { openForgeModal } from './forgeSystem.js';
 import { startTerminal, handleTerminalInput } from './terminalSystem.js';
-import { isArchiveRoom } from './mapData.js';
 
 // --- HELPER WRAPPERS (Local to Router) ---
 
@@ -50,8 +49,7 @@ export async function executeMovement(targetDir) {
     }
     
     const isAstral = localPlayer.stratum === 'astral' || 
-                     localPlayer.currentRoom.toLowerCase().includes('astral') || 
-                     localPlayer.currentArea?.toLowerCase().includes('astral');
+                     localPlayer.currentRoom.toLowerCase().includes('astral');
 
     if (isAstral) {
         const currentRoomData = activeMap[localPlayer.currentRoom];
@@ -99,30 +97,7 @@ export async function executeMovement(targetDir) {
             }
         }
 
-        // --- AREA TRANSITION LOGIC (v0.2 DYNAMIC BOUNDARIES) ---
-        let newArea = localPlayer.currentArea;
-        if (targetRoomId === 'outside') {
-            newArea = 'public_void';
-        } else if (targetRoomId.startsWith('astral_')) {
-            newArea = `astral_${user.uid}`;
-        } else if (['lore1', 'lore2', 'kitchen', 'spare_room', 'bedroom', 'closet', 'character_room', 'hallway'].includes(targetRoomId)) {
-            newArea = `apartment_${user.uid}`;
-        }
-
-        // If we are crossing a boundary, process the area jump and SKIP the local cache check
-        if (newArea !== localPlayer.currentArea) {
-            UI.addLog(`[SYSTEM]: Crossing boundary into area: ${newArea}...`, "var(--term-amber)");
-            stateManager.updatePlayer({ currentArea: newArea, currentRoom: targetRoomId });
-            syncEngine.savePlayerState();
-            
-            // Unsubscribe from old area and load the new one
-            await syncEngine.updateAreaListener(newArea);
-            
-            triggerVisualUpdate(null, stateManager.getState().localPlayer, stateManager.getActiveMap(), user);
-            return;
-        }
-
-        // --- CACHE VALIDATION (Only for internal area movement) ---
+        // --- CACHE VALIDATION ---
         if (!activeMap[targetRoomId]) {
             UI.addLog("[SYSTEM]: Dimensional synchronization in progress. Please wait for the sector to stabilize.", "var(--term-amber)");
             UI.addLog('[SYSTEM]: Type "RECALIBRATE" if you are stuck.', 'var(--term-amber)');
@@ -132,13 +107,6 @@ export async function executeMovement(targetDir) {
         // --- INTERNAL MOVEMENT ---
         UI.addLog(`[SYSTEM]: You move ${targetDir.toUpperCase()}.`, "var(--term-green)");
         stateManager.updatePlayer({ currentRoom: targetRoomId });
-        
-        // Ensure archive rooms (apartment) are merged with their blueprints
-        if (isArchiveRoom(targetRoomId)) {
-            syncEngine.loadRoom(targetRoomId).then(roomData => {
-                stateManager.updateMapNode(null, targetRoomId, roomData);
-            });
-        }
         
         syncEngine.savePlayerState();
         triggerVisualUpdate(null, stateManager.getState().localPlayer, stateManager.getActiveMap(), user);
@@ -160,7 +128,7 @@ export async function handleCommand(val) {
             const activeMap = getActiveMap();
             const suggestions = await handleGMIntent(
                 "Provide context-sensitive suggestions.",
-                { activeMap, localPlayer, user, activeAvatar, isSyncEnabled: true, appId: 'ignored' },
+                { activeMap, localPlayer, user, activeAvatar, isSyncEnabled: true },
                 { 
                     shiftStratum, 
                     savePlayerState: syncEngine.savePlayerState, 
@@ -168,7 +136,7 @@ export async function handleCommand(val) {
                     renderMapHUD: UI.renderMapHUD,
                     setActiveAvatar: stateManager.setActiveAvatar,
                     syncAvatarStats: () => syncEngine.syncAvatarStats(stateManager.getState().activeAvatar?.id, stateManager.getState().activeAvatar?.stats),
-                    updateMapListener: () => syncEngine.updateAreaListener(stateManager.getState().localPlayer.currentArea)
+                    updateMapListener: () => syncEngine.updateGlobalMapListener()
                 },
                 true // IS SILENT
             );
@@ -208,14 +176,12 @@ export async function handleCommand(val) {
     }
 
     if (cmd === 'recalibrate' || cmd === 'home' || cmd === 'unstuck') {
-        const homeArea = `apartment_${user.uid}`;
         stateManager.updatePlayer({ 
             currentRoom: 'bedroom', 
-            currentArea: homeArea,
             stratum: 'mundane',
             combat: { active: false, opponent: null }
         });
-        await syncEngine.updateAreaListener(homeArea);
+        await syncEngine.updateGlobalMapListener();
         shiftStratum('mundane');
         UI.addLog("[SYSTEM]: Recalibrating reality to primary anchor (Bedroom)...", "var(--term-green)");
         triggerVisualUpdate(null, stateManager.getState().localPlayer, stateManager.getActiveMap(), user);
@@ -347,7 +313,7 @@ export async function handleCommand(val) {
             
             // Let the AI take initiative
             await handleGMIntent("Describe the strange astral nexus and present an initial challenge to gain the Resonant Key.", 
-                { activeMap: newAstralMap, localPlayer: stateManager.getState().localPlayer, user, activeAvatar, isSyncEnabled: true, appId: 'ignored' },
+                { activeMap: newAstralMap, localPlayer: stateManager.getState().localPlayer, user, activeAvatar, isSyncEnabled: true },
                 { shiftStratum, savePlayerState: syncEngine.savePlayerState, refreshStatusUI: () => {}, renderMapHUD: UI.renderMapHUD, setActiveAvatar: stateManager.setActiveAvatar, syncAvatarStats: () => syncEngine.syncAvatarStats(stateManager.getState().activeAvatar?.id, stateManager.getState().activeAvatar?.stats) }
             );
             return;
@@ -613,11 +579,7 @@ export async function handleCommand(val) {
             stateManager.updateMapNode(null, localPlayer.currentRoom, { items });
             stateManager.updatePlayer({ inventory });
 
-            if (isArchiveRoom(localPlayer.currentRoom)) {
-                syncEngine.removeItemFromRoom(localPlayer.currentRoom, item);
-            } else {
-                syncEngine.removeArrayElementFromNode(localPlayer.currentRoom, 'items', item);
-            }
+            syncEngine.removeArrayElementFromNode(localPlayer.currentRoom, 'items', item);
             
             syncEngine.savePlayerState(); 
             UI.addLog(`Picked up [${item.name}].`, "var(--term-green)");
@@ -639,7 +601,7 @@ export async function handleCommand(val) {
             val,
             { 
                 get activeMap() { return getActiveMap(); }, 
-                localPlayer, user, activeAvatar, isSyncEnabled: true, appId: 'ignored' 
+                localPlayer, user, activeAvatar, isSyncEnabled: true 
             },
             { 
                 shiftStratum, 
@@ -648,7 +610,7 @@ export async function handleCommand(val) {
                 renderMapHUD: UI.renderMapHUD,
                 setActiveAvatar: stateManager.setActiveAvatar,
                 syncAvatarStats: () => syncEngine.syncAvatarStats(stateManager.getState().activeAvatar?.id, stateManager.getState().activeAvatar?.stats),
-                updateMapListener: () => syncEngine.updateAreaListener(stateManager.getState().localPlayer.currentArea),
+                updateMapListener: () => syncEngine.updateGlobalMapListener(),
                 triggerVisualUpdate: (prompt) => triggerVisualUpdate(prompt, stateManager.getState().localPlayer, stateManager.getActiveMap(), stateManager.getState().user)
             }
         );

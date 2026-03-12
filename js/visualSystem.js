@@ -72,7 +72,6 @@ export async function triggerVisualUpdate(overridePrompt, localPlayer, activeMap
     const roomId = localPlayer.currentRoom;
     const room = activeMap?.[roomId];
     if (!room) return;
-    const capturedArea = localPlayer.currentArea;
     let validStoredUrl = room.storedImageUrl;
 
     // --- 0. PRE-FLIGHT CACHE CHECK (SOVEREIGN) ---
@@ -176,10 +175,8 @@ export async function triggerVisualUpdate(overridePrompt, localPlayer, activeMap
         try {
             currentBase64 = result;
             
-            // Flat Architecture Storage Paths using the captured area
-            let storagePath = capturedArea.startsWith('apartment_') || capturedArea.startsWith('astral_')
-                ? `artifacts/${appId}/users/${user.uid}/areas/${capturedArea}/rooms/${roomId}.png`
-                : `artifacts/${appId}/public/data/areas/${capturedArea}/rooms/${roomId}.png`;
+            // Global Storage Paths
+            let storagePath = `artifacts/${appId}/rooms/${roomId}.png`;
                 
             const fileRef = ref(storage, storagePath);
             const format = result.startsWith('data:') ? 'data_url' : 'base64';
@@ -194,7 +191,7 @@ export async function triggerVisualUpdate(overridePrompt, localPlayer, activeMap
             const downloadURL = await getDownloadURL(fileRef);
             
             // Persist to sync engine
-            await syncEngine.updateMapNode(roomId, { storedImageUrl: downloadURL }, capturedArea);
+            await syncEngine.updateMapNode(roomId, { storedImageUrl: downloadURL });
             stateManager.updateMapNode(roomId, { storedImageUrl: downloadURL });
             
             // CRITICAL FIX: DO NOT overwrite the sessionVisualCache with the downloadURL here.
@@ -246,7 +243,7 @@ export async function togglePinView(localPlayer, activeMap, user) {
         UI.togglePinButton(true, "UPLOADING...", "uploading");
         try {
             const dataUrl = currentBase64.startsWith('data:') ? currentBase64 : `data:image/png;base64,${currentBase64}`;
-            const fileRef = ref(storage, `maps/${appId}/${roomId}_pinned_${Date.now()}.png`);
+            const fileRef = ref(storage, `artifacts/${appId}/rooms/${roomId}_pinned_${Date.now()}.png`);
             await uploadString(fileRef, dataUrl, 'data_url');
             const downloadUrl = await getDownloadURL(fileRef);
             

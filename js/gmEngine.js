@@ -4,7 +4,6 @@ import { triggerVisualUpdate } from './visualSystem.js';
 import * as UI from './ui.js';
 import * as stateManager from './stateManager.js';
 import * as syncEngine from './syncEngine.js';
-import { isArchiveRoom } from './mapData.js';
 
 export async function handleGMIntent(
     val,
@@ -100,7 +99,6 @@ export async function handleGMIntent(
                 if (actions.syncAvatarStats) actions.syncAvatarStats(activeAvatar.id, { hp: restoredAvatar.hp });
                 stateManager.updatePlayer({ 
                     currentRoom: "bedroom", 
-                    currentArea: `apartment_${user.uid}`,
                     stratum: "mundane",
                     combat: { active: false, opponent: null }
                 });
@@ -114,7 +112,7 @@ export async function handleGMIntent(
 
         // Handle Lore Creation
         if (res.create_lore) {
-            syncEngine.saveLoreFragment(localPlayer.currentArea, res.create_lore);
+            syncEngine.saveLoreFragment(localPlayer.currentRoom, res.create_lore);
             if (!isSilent) UI.addLog(`[SYSTEM]: Lore fragment crystallized: ${res.create_lore.title}`, "var(--term-amber)");
         }
 
@@ -174,7 +172,6 @@ export async function handleGMIntent(
                         if (currentLocalPlayer.stratum !== 'mundane') {
                             stateManager.updatePlayer({ 
                                 currentRoom: 'closet', 
-                                currentArea: `apartment_${user.uid}`,
                                 stratum: 'mundane' 
                             });
                             if (updateMapListener) await updateMapListener();
@@ -258,7 +255,6 @@ export async function handleGMIntent(
             stateManager.updatePlayer({ 
                 activeAvatar: null,
                 currentRoom: "bedroom", 
-                currentArea: `apartment_${user.uid}`,
                 stratum: "mundane" 
             });
             if (updateMapListener) await updateMapListener();
@@ -298,24 +294,8 @@ export async function handleGMIntent(
                 stateManager.updateMapNode(t.new_room_id, newRoom);
                 syncEngine.updateMapNode(t.new_room_id, newRoom);
             }
-            // Area detection for teleportation
-            let newArea = currentLocalPlayer.currentArea;
-            if (t.new_room_id === 'outside') {
-                newArea = 'public_void';
-            } else if (t.new_room_id.startsWith('astral_')) {
-                newArea = `astral_${user.uid}`;
-            } else if (['lore1', 'lore2', 'kitchen', 'spare_room', 'bedroom', 'closet', 'character_room', 'hallway'].includes(t.new_room_id)) {
-                newArea = `apartment_${user.uid}`;
-            }
-
-            if (newArea !== currentLocalPlayer.currentArea) {
-                stateManager.updatePlayer({ currentRoom: t.new_room_id, currentArea: newArea }); 
-                if (updateMapListener) await updateMapListener();
-                if (triggerVisual) triggerVisual(t.visualPrompt);
-            } else {
-                stateManager.updatePlayer({ currentRoom: t.new_room_id }); 
-                if (triggerVisual) triggerVisual(t.visualPrompt);
-            }
+            stateManager.updatePlayer({ currentRoom: t.new_room_id }); 
+            if (triggerVisual) triggerVisual(t.visualPrompt);
             stateChanged = true;
             if (!isSilent) UI.addLog(`Reality warp successful.`, "var(--gm-purple)");
         }
@@ -350,12 +330,7 @@ export async function handleGMIntent(
             } else if (res.world_edit.type === 'spawn_item') {
                 const items = [...(room.items || []), res.world_edit.item];
                 stateManager.updateMapNode(currentState.localPlayer.currentRoom, { items });
-                
-                if (isArchiveRoom(currentState.localPlayer.currentRoom)) {
-                    syncEngine.updateRoom(currentState.localPlayer.currentRoom, { items });
-                } else {
-                    syncEngine.addArrayElementToNode(currentState.localPlayer.currentRoom, 'items', res.world_edit.item);
-                }
+                syncEngine.addArrayElementToNode(currentState.localPlayer.currentRoom, 'items', res.world_edit.item);
                 
                 if (!isSilent) UI.addLog(`[SYSTEM]: ${res.world_edit.item.name} has manifested in the room.`, "var(--term-green)");
             } else if (res.world_edit.type === 'spawn_npc') {
@@ -384,8 +359,8 @@ export async function handleGMIntent(
                 // 2. Update local state immediately so UI updates
                 stateManager.updateMapNode(roomId, { npcs: currentNpcs });
                 
-                // 3. Save to Firebase Room Document using the exact current area
-                syncEngine.updateMapNode(roomId, { npcs: currentNpcs }, currentState.localPlayer.currentArea);
+                // 3. Save to Firebase Room Document
+                syncEngine.updateMapNode(roomId, { npcs: currentNpcs });
                 
                 if (!isSilent) UI.addLog(`[SYSTEM]: WARNING. Entity [${newNpc.name}] has manifested in the sector.`, "var(--term-amber)");
 
@@ -397,7 +372,7 @@ export async function handleGMIntent(
                             if (b64) {
                                 newNpc.image = await compressImage(`data:image/png;base64,${b64}`, 400, 0.7);
                                 stateManager.updateMapNode(roomId, { npcs: currentNpcs });
-                                syncEngine.updateMapNode(roomId, { npcs: currentNpcs }, currentState.localPlayer.currentArea);
+                                syncEngine.updateMapNode(roomId, { npcs: currentNpcs });
                             }
                         } catch (e) {
                             console.error("Portrait auto-gen failed for spawned combatant:", e);

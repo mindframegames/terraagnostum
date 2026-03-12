@@ -9,12 +9,15 @@ import fs from 'fs';
 import path from 'path';
 
 // --- THE ANCHOR ENGINE (ALWAYS INCLUDED) ---
+let cachedAnchor = null;
 function fetchAnchorLore() {
+    if (cachedAnchor) return cachedAnchor;
     try {
         const anchorPath = path.join(process.cwd(), 'lore/vault/lore/core_bible.md');
         if (fs.existsSync(anchorPath)) {
             const anchorText = fs.readFileSync(anchorPath, 'utf8');
-            return `\n\n[CORE UNIVERSE BIBLE - ALWAYS ADHERE TO THESE RULES]:\n"${anchorText}"\n`;
+            cachedAnchor = `\n\n[CORE UNIVERSE BIBLE - ALWAYS ADHERE TO THESE RULES]:\n"${anchorText}"\n`;
+            return cachedAnchor;
         }
     } catch (e) {
         console.error("Anchor Fetch Error:", e);
@@ -23,23 +26,27 @@ function fetchAnchorLore() {
 }
 
 // --- THE ZERO-DB RAG ENGINE (DYNAMICALLY INCLUDED) ---
+let cachedLoreChunks = null;
 function fetchRelevantLore(userCommand) {
-    if (!userCommand) return "";
+    if (!userCommand || userCommand.length < 3) return "";
     try {
-        const paths = [
-            path.join(process.cwd(), 'lore/vault/lore/Psychotasy_I.md'),
-            path.join(process.cwd(), 'lore/vault/lore/Interregnum.md'),
-            path.join(process.cwd(), 'lore/vault/lore/The_Coast.md')
-        ];
+        if (!cachedLoreChunks) {
+            const paths = [
+                path.join(process.cwd(), 'lore/vault/lore/Psychotasy_I.md'),
+                path.join(process.cwd(), 'lore/vault/lore/Interregnum.md'),
+                path.join(process.cwd(), 'lore/vault/lore/The_Coast.md')
+            ];
 
-        let combinedText = "";
-        paths.forEach(p => {
-            if (fs.existsSync(p)) combinedText += fs.readFileSync(p, 'utf8') + "\n\n";
-        });
+            let combinedText = "";
+            paths.forEach(p => {
+                if (fs.existsSync(p)) combinedText += fs.readFileSync(p, 'utf8') + "\n\n";
+            });
 
-        if (!combinedText) return "";
+            if (!combinedText) return "";
+            cachedLoreChunks = combinedText.split('\n\n').filter(chunk => chunk.length > 50);
+        }
 
-        const chunks = combinedText.split('\n\n').filter(chunk => chunk.length > 50);
+        const chunks = cachedLoreChunks;
         const searchTerms = userCommand.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
         
         if (searchTerms.length === 0) return "";
@@ -60,7 +67,7 @@ function fetchRelevantLore(userCommand) {
         bestChunks.sort((a, b) => b.score - a.score);
         const topLore = bestChunks.slice(0, 2).map(c => c.text).join('\n\n');
 
-        return topLore ? `\n\n[SITUATIONAL CANON CONTEXT]:\n"${topLore}"\n` : "";
+        return topLore ? `\n\n[ATMOSPHERIC LORE (METAPHYSICAL TEXTURE ONLY)]:\n"${topLore}"\n` : "";
     } catch (e) {
         console.error("RAG Error:", e);
         return "";
@@ -84,9 +91,20 @@ export default async function handler(req, res) {
     const userMessage = body.contents?.[body.contents.length - 1]?.parts?.[0]?.text || "";
     let systemPrompt = body.systemInstruction?.parts?.[0]?.text || "";
 
-    // 2. FETCH LORE
-    const anchorLore = fetchAnchorLore();
-    const dynamicLore = fetchRelevantLore(userMessage);
+    // --- LOW CHURN OPTIMIZATION START ---
+    // Detect if this is a lightweight Forge/UI request instead of the main Game Master
+    const isQuickRequest = systemPrompt.includes("lore archive");
+
+    // FAST PATH: Skip the massive Anchor Bible entirely for quick UI generation
+    const anchorLore = isQuickRequest ? "" : fetchAnchorLore();
+
+    // SAFETY CAP: Fetch dynamic lore, but strictly cap it at ~1000 tokens (approx 4000 chars)
+    // This protects the payload if a markdown file lacks double-newlines and fails to chunk properly.
+    let dynamicLore = fetchRelevantLore(userMessage);
+    if (dynamicLore.length > 4000) {
+        dynamicLore = dynamicLore.substring(0, 4000) + '..."\n[TRUNCATED]';
+    }
+    // --- LOW CHURN OPTIMIZATION END ---
 
     // 3. AUGMENT SYSTEM PROMPT
     const augmentedSystemPrompt = systemPrompt + anchorLore + dynamicLore;
