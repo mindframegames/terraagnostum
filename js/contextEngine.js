@@ -87,7 +87,7 @@ ITEMS PRESENT: ${(currentRoomData.items || []).map(i => i.name).join(', ') || "N
 `;
 
     const entityLayer = `
-PLAYER STATS: HP ${localPlayer.hp}/20, WILL ${localPlayer.will || 10}, AWR ${localPlayer.awr || 10}
+PLAYER STATS: HP ${localPlayer.hp}/20, AMN ${localPlayer.stats?.AMN ?? 20}, WILL ${localPlayer.will || 10}, AWR ${localPlayer.awr || 10}
 PLAYER INVENTORY: ${inventoryNames || "Empty"}
 
 NPCS PRESENT:
@@ -102,7 +102,9 @@ EVALUATION DIRECTIVES:
 4. Maintain the persona and vibe of the current Stratum.
 
 LAYER 4: COMBAT & LORE:
-- If combat_active is true, evaluate actions against WILL/AWR/PHYS (10 is average, 20 is max).
+- AMN (Amnesia/Anchor) is the ROOT stat (usually 20).
+- WILL, AWR, and PHYS are DERIVED stats. Their sum (WILL + AWR + PHYS) MUST EQUAL the AMN value.
+- If combat_active is true, evaluate actions against WILL/AWR/PHYS.
 - Structure combat narratively: [Player Action] -> [Stat Check] -> [Resolution] -> [Telegraph Next Enemy Move].
 - Use 45-second turn logic (narrative pacing).
 - Players can use "WILL FORCE" or "ASTRAL WEAPON" in combat.
@@ -128,7 +130,7 @@ LAYER 4: COMBAT & LORE:
      "text": "...",
      "direction": "north|south|east|west",
      "item": { "name": "...", "type": "...", "description": "..." },
-     "npc": { "name": "...", "archetype": "...", "personality": "...", "visual_prompt": "...", "stats": {"WILL":20, "AWR":20, "PHYS":20} }
+     "npc": { "name": "...", "archetype": "...", "personality": "...", "visual_prompt": "...", "stats": {"WILL":7, "AWR":7, "PHYS":6, "AMN":20} }
   } or null
 }
 `;

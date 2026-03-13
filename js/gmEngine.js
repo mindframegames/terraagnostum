@@ -26,7 +26,7 @@ export async function handleGMIntent(
         const inventoryNames = localPlayer.inventory.map(i => i.name).join(', ');
         const npcText = (currentRoomData.npcs || []).map(n => {
             let statsStr = "";
-            if (n.stats) statsStr = ` (WILL: ${n.stats.WILL}, AWR: ${n.stats.AWR}, PHYS: ${n.stats.PHYS})`;
+            if (n.stats) statsStr = ` (AMN: ${n.stats.AMN ?? 20}, WILL: ${n.stats.WILL}, AWR: ${n.stats.AWR}, PHYS: ${n.stats.PHYS})`;
             return `[NPC] ${n.name}${statsStr} - Personality: ${n.personality}`;
         }).join('\n') || "None";
         
@@ -135,8 +135,8 @@ export async function handleGMIntent(
             );
             
             if (npc) {
-                if (!npc.stats) npc.stats = { WILL: 20, AWR: 20, PHYS: 20 };
-                const currentWill = npc.stats.WILL !== undefined ? npc.stats.WILL : 20;
+                if (!npc.stats) npc.stats = { AMN: 20, WILL: 7, AWR: 7, PHYS: 6 };
+                const currentWill = npc.stats.WILL !== undefined ? npc.stats.WILL : 7;
                 const newNpcWill = Math.max(0, currentWill - res.damage_to_npc);
                 npc.stats.WILL = newNpcWill;
                 
@@ -349,7 +349,7 @@ export async function handleGMIntent(
                     description: edit.description || edit.personality || "A strange entity.",
                     visual_prompt: edit.visual_prompt || edit.description || edit.personality,
                     archetype: edit.archetype || "Unknown",
-                    stats: edit.stats || { WILL: 10, AWR: 10, PHYS: 10 },
+                    stats: edit.stats || { AMN: 20, WILL: 7, AWR: 7, PHYS: 6 },
                     image: null 
                 };
                 
@@ -397,7 +397,7 @@ export async function handleGMIntent(
                 );
                 if (targetedNpc && targetedNpc.stats) {
                     const s = targetedNpc.stats;
-                    UI.addLog(`[ANALYSIS]: ${targetedNpc.name} - WILL: ${s.WILL ?? 0}, AWR: ${s.AWR ?? 0}, PHYS: ${s.PHYS ?? 0}`, "var(--term-amber)");
+                    UI.addLog(`[ANALYSIS]: ${targetedNpc.name} - AMN: ${s.AMN ?? 20}, WILL: ${s.WILL ?? 0}, AWR: ${s.AWR ?? 0}, PHYS: ${s.PHYS ?? 0}`, "var(--term-amber)");
                 }
             }
 

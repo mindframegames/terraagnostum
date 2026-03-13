@@ -33,6 +33,7 @@ function setupReadOnlyForge(data) {
     document.getElementById('forge-desc').readOnly = true;
     document.getElementById('forge-desc').disabled = false; // Ensure it's not grayed out if we're just reading
     document.getElementById('forge-archetype').innerText = (data.archetype || '---').toUpperCase();
+    document.getElementById('stat-amn').innerText = (data.stats?.AMN || 20).toString().padStart(2, '0');
     document.getElementById('stat-will').innerText = (data.stats?.WILL || 0).toString().padStart(2, '0');
     document.getElementById('stat-awr').innerText = (data.stats?.AWR || 0).toString().padStart(2, '0');
     document.getElementById('stat-phys').innerText = (data.stats?.PHYS || 0).toString().padStart(2, '0');
@@ -55,6 +56,7 @@ function resetForge() {
     document.getElementById('forge-desc').value = '';
     document.getElementById('forge-desc').readOnly = false;
     document.getElementById('forge-stats-readout').classList.add('hidden');
+    document.getElementById('forge-help-msg').classList.add('hidden');
     document.getElementById('forge-portrait-img').classList.add('hidden');
     document.getElementById('forge-ascii-placeholder').classList.remove('hidden');
     
@@ -164,9 +166,10 @@ async function suggestBackstory() {
       So we see a gradual 'Neruomancer'/'Deus Ex' style cyberpunk conspiracy, high-tech influence.
       At the same time, we see a benevolent influence from the Faen plane.  This is a hopeful, highfantasy, magical realism of growth and beauty.
       The backstory should be evocative and inspire a visual portrait.  The goal is to create a compelling persona for the player to inhabit.
-      Use normal sounding but non-real location names like: 
-        Rain City, The Sprawl, The Fills, Moon Data Center 37, Mars Outpost 2, Arcadia.  These are SUGGESTIONS!  They suggest a broader world.  They suggest a vibe, a livind world similar to Earth.  BE CREATIVE.
+      Use real-sounding but not-actual location names like: 
+        Rain City, The Sprawl, The Fills, Moon Data Center 37, Mars Outpost 2, Arcadia, Neon Bay, Third Coast, Southern Space Port.  These are SUGGESTIONS!  They suggest a broader world.  They suggest a vibe, a livind world similar to Earth.  BE CREATIVE.
       Make it feel like the person is a normal person who was born and lives in the year 2035, in an slightly alternate Earth timeline.
+      You can use corporate entities like Mesmer AI, The Cloud Consortium.
       The story should be 2-3 sentences long.  
       Return JSON: {"backstory": "string"}
     `;
@@ -194,18 +197,26 @@ async function analyzeBiometrics() {
     archetypeEl.innerText = "CHECKING VITALS...";
     
     // Clear and show the stats readout area while waiting
+    document.getElementById('stat-amn').innerText = "20";
     document.getElementById('stat-will').innerText = "--";
     document.getElementById('stat-awr').innerText = "--";
     document.getElementById('stat-phys').innerText = "--";
     document.getElementById('forge-stats-readout').classList.remove('hidden');
 
     UI.addLog("[SYSTEM]: Checking vessel vitals...", "var(--term-amber)");
-    const prompt = `Analyze this biometric seed: "${desc}". Determine stats for a character in the ${currentDraftStratum} stratum. Return JSON: {"WILL": int, "AWR": int, "PHYS": int, "archetype": "string"}`;
+    const prompt = `Analyze this biometric seed: "${desc}". Determine stats for a character in the ${currentDraftStratum} stratum. 
+      AMN (Amnesia/Anchor) is the ROOT stat and is always 20 for new characters.
+      WILL, AWR, and PHYS are DERIVED stats. 
+      CRITICAL RULE: The sum of (WILL + AWR + PHYS) MUST EQUAL the AMN value (20).
+      Distribute the 20 points among WILL, AWR, and PHYS based on the biometric seed.
+      Return JSON: {"WILL": int, "AWR": int, "PHYS": int, "AMN": 20, "archetype": "string"}`;
     
     const res = await callGemini(prompt, "You are a biometric scanner.");
     if (res) {
         currentDraftStats = res;
+        if (currentDraftStats.AMN === undefined) currentDraftStats.AMN = 20;
         archetypeEl.innerText = (res.archetype || "UNKNOWN").toUpperCase();
+        document.getElementById('stat-amn').innerText = (res.AMN || 20).toString().padStart(2, '0');
         document.getElementById('stat-will').innerText = (res.WILL || 10).toString().padStart(2, '0');
         document.getElementById('stat-awr').innerText = (res.AWR || 10).toString().padStart(2, '0');
         document.getElementById('stat-phys').innerText = (res.PHYS || 10).toString().padStart(2, '0');
@@ -255,6 +266,10 @@ async function manifestVessel() {
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('close-forge').onclick = () => document.getElementById('forge-modal').classList.add('hidden');
+    document.getElementById('forge-help-toggle').onclick = () => {
+        const msg = document.getElementById('forge-help-msg');
+        msg.classList.toggle('hidden');
+    };
     document.getElementById('btn-suggest-name').onclick = suggestName;
     document.getElementById('btn-suggest-desc').onclick = suggestBackstory;
     document.getElementById('btn-analyze-biometrics').onclick = analyzeBiometrics;
@@ -269,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 archetype: document.getElementById('forge-archetype').innerText,
                 description: document.getElementById('forge-desc').value,
                 image: src,
-                stats: currentDraftStats || { WILL: 0, AWR: 0, PHYS: 0 }
+                stats: currentDraftStats || { WILL: 0, AWR: 0, PHYS: 0, AMN: 20 }
             });
             document.getElementById('forge-modal').classList.add('hidden');
         }

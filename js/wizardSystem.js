@@ -172,7 +172,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                 archetype: wizardState.pendingData.archetype,
                 visual_prompt: currentVal,
                 image: finalImage,
-                stats: { WILL: 20, AWR: 20, PHYS: 20 },
+                stats: { AMN: 20, WILL: 7, AWR: 7, PHYS: 6 },
                 inventory: [],
                 deceased: false, deployed: false, timestamp: Date.now()
             };
@@ -312,7 +312,7 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
             archetype: activeAvatar.archetype || "Unknown",
             visualPrompt: activeAvatar.visual_prompt || activeAvatar.visualPrompt || "A vacant shell.",
             image: activeAvatar.image || null,
-            stats: activeAvatar.stats || { WILL: 20, AWR: 20, PHYS: 20 },
+            stats: activeAvatar.stats || { AMN: 20, WILL: 7, AWR: 7, PHYS: 6 },
             inventory: activeAvatar.inventory || [],
             behavior: currentVal
         };

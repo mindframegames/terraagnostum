@@ -326,6 +326,7 @@ export function updateAvatarUI(activeAvatar) {
                         transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                 <div class="text-[10px] text-green-500 font-bold mb-1 border-b border-green-900 pb-1">BIOMETRICS</div>
                 <div class="flex justify-between text-xs font-mono">
+                    <span class="text-amber-500 font-bold">ROOT/AMN:${activeAvatar.stats?.AMN ?? 20}</span>
                     <span class="text-purple-400">WILL:${activeAvatar.stats?.WILL || 0}</span>
                     <span class="text-blue-400">AWR:${activeAvatar.stats?.AWR || 0}</span>
                     <span class="text-amber-400">PHYS:${activeAvatar.stats?.PHYS || 0}</span>
@@ -394,7 +395,7 @@ export function updateRoomEntitiesUI(npcs = [], players = []) {
 
     // Render NPCs
     npcs.forEach((npc, index) => {
-        const stats = npc.stats || { WILL: '??', AWR: '??', PHYS: '??' };
+        const stats = npc.stats || { WILL: '??', AWR: '??', PHYS: '??', AMN: '??' };
             
         const stratum = npc.stratum || 'MUNDANE';
         const card = document.createElement('div');
@@ -407,6 +408,7 @@ export function updateRoomEntitiesUI(npcs = [], players = []) {
                 <div class="text-blue-400 font-bold uppercase truncate">${npc.name}</div>
             </div>
             <div class="flex gap-1 text-[8px] font-mono text-blue-900 flex-shrink-0">
+                <span>M:${stats.AMN ?? 20}</span>
                 <span>W:${stats.WILL}</span>
                 <span>A:${stats.AWR}</span>
                 <span>P:${stats.PHYS}</span>
@@ -692,6 +694,7 @@ export function toggleDossierBuffer(show, data = null) {
         const statsArea = document.getElementById('dossier-stats');
 
         if (statsArea) {
+            const amnBar = generateAsciiBar(displayData.stats?.AMN ?? 20, 20, 20);
             const willBar = generateAsciiBar(displayData.will || displayData.stats?.WILL || 0, displayData.stats?.WILL || 10, 20);
             const physBar = generateAsciiBar(displayData.hp || displayData.stats?.PHYS || 0, displayData.stats?.PHYS || 10, 20);
             
@@ -709,9 +712,10 @@ export function toggleDossierBuffer(show, data = null) {
                     <div class="text-gray-400 leading-relaxed text-sm">${displayData.description || 'No biometric history on file.'}</div>
                 </div>
                 <div class="space-y-2 border-t border-green-900 pt-4 mb-4 font-mono text-xs">
-                    <div class="flex justify-between"><span>WILLPOWER</span> <span>${willBar}</span></div>
-                    <div class="flex justify-between"><span>PHYSIQUE</span>  <span>${physBar}</span></div>
-                    <div class="flex justify-between"><span>AWARENESS</span> <span>[${'|'.repeat(displayData.stats?.AWR || 0)}${' '.repeat(20 - (displayData.stats?.AWR || 0))}] ${displayData.stats?.AWR || 0}/20</span></div>
+                    <div class="flex justify-between text-amber-500 font-bold"><span>ROOT AMNESIA</span>  <span>${amnBar}</span></div>
+                    <div class="flex justify-between pl-2 border-l border-amber-900/50"><span>WILLPOWER</span> <span>${willBar}</span></div>
+                    <div class="flex justify-between pl-2 border-l border-amber-900/50"><span>PHYSIQUE</span>  <span>${physBar}</span></div>
+                    <div class="flex justify-between pl-2 border-l border-amber-900/50"><span>AWARENESS</span> <span>[${'|'.repeat(displayData.stats?.AWR || 0)}${' '.repeat(20 - (displayData.stats?.AWR || 0))}] ${displayData.stats?.AWR || 0}/20</span></div>
                 </div>
                 <div class="border-t border-green-900 pt-4">
                     <div class="text-[10px] text-green-500 font-bold mb-2 tracking-widest uppercase">Possessions</div>

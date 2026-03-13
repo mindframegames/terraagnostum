@@ -449,7 +449,7 @@ export async function handleCommand(val) {
                 archetype: npc.archetype || "Unknown",
                 visual_prompt: npc.visual_prompt || npc.visualPrompt || "A borrowed form.",
                 image: npc.image || null,
-                stats: npc.stats || { WILL: 20, AWR: 20, PHYS: 20 },
+                stats: npc.stats || { AMN: 20, WILL: 7, AWR: 7, PHYS: 6 },
                 deceased: false, deployed: false, timestamp: Date.now()
             };
 
@@ -573,7 +573,7 @@ export async function handleCommand(val) {
     } else if (cmd === 'stat' || cmd === 'stats') {
         if (!activeAvatar) return;
         UI.addLog(`IDENTITY: ${activeAvatar.name} | CLASS: ${activeAvatar.archetype}`, "var(--term-green)");
-        UI.addLog(`WILL: ${activeAvatar.stats.WILL} | AWR: ${activeAvatar.stats.AWR} | PHYS: ${activeAvatar.stats.PHYS}`, "var(--term-amber)");
+        UI.addLog(`AMN: ${activeAvatar.stats.AMN ?? 20} | WILL: ${activeAvatar.stats.WILL} | AWR: ${activeAvatar.stats.AWR} | PHYS: ${activeAvatar.stats.PHYS}`, "var(--term-amber)");
         return;
     } else if (cmd === 'map') {
         UI.addLog(`[SYSTEM]: Topology map live on HUD.`, "var(--term-green)"); return;
