@@ -5,6 +5,11 @@ import * as stateManager from './stateManager.js';
 import * as UI from './ui.js';
 import { STRATA_ARCHIVE } from './contextEngine.js';
 
+let settingString = `
+  Setting: A near-future Earth (The Mundane) is caught in the middle of a battle betweenh a high-tech plane (The Technate) and a high-fantasy plane (The Faen).  
+  The technate is attempting to 'harvest meaning' from Faen.
+  `;
+
 let currentDraftStats = null;
 let currentDraftStratum = 'mundane';
 
@@ -112,8 +117,7 @@ async function suggestName() {
     //const prompt = `Invent a unique name for a character belonging to this world stratum: ${currentDraftStratum} (${lore}). Return JSON: {"name": "string"}`;
     const prompt = `
       Role: You are a world-building consultant specializing in "Uncanny Valley" linguistics.
-      Setting: A near-future Earth (The Mundane) is caught in the middle of a battle betweenh a high-tech plane (The Technate) and a high-fantasy plane (The Faen).  
-      The technate is attempting to 'harvest meaning' from Faen.  
+      ${settingString}
       Task: Generate 20 Player Character names using a [First Name] "[Nickname]" [Last Name] format.
       Naming Rules:
         Base: Use common, relatable 21st-century Earth names as the foundation, be global (e.g., Sarah, David, Miller, Smith, Jackson, Yen, Nguyen, Chan, Mbutu, Mande, Alex, Corian, Ian, Amanda, Marriane, Davies, Mandela, Tashi, Niranjan, Herenandez, Rodriguez, Jan, Jefferson, Bryce, Ash, etc.).
@@ -138,15 +142,29 @@ async function suggestName() {
 }
 
 async function suggestBackstory() {
+    // 1. Grab the current name from the input field
+    const name = document.getElementById('forge-name').value || "this vessel"; 
     const descInput = document.getElementById('forge-desc');
     const oldPlaceholder = descInput.placeholder;
+    
     descInput.value = '';
     descInput.placeholder = "CONSULTING ARCHIVES...";
 
     UI.addLog("[SYSTEM]: Consulting lore archives...", "var(--term-amber)");
-    const lore = STRATA_ARCHIVE[currentDraftStratum];
-    const prompt = `Invent a 2-sentence backstory for a character from the ${currentDraftStratum} stratum (${lore}). Return JSON: {"backstory": "string"}`;
-    const res = await callGemini(prompt, "You are a lore archive.");
+    //const lore = STRATA_ARCHIVE[currentDraftStratum];
+    // 2. Inject the name into the prompt
+    //const prompt = `Invent a 2-sentence backstory for a character named ${name} from the ${currentDraftStratum} stratum (${lore}). Return JSON: {"backstory": "string"}`;
+    // 3. Use the 'lore archive' keyword to keep it fast and lore-free in the backend
+
+    const prompt = `
+      You are an inspired story teller Game Master.  You are inventing a backstory for a character named ${name}.
+      ${settingString}
+      This character is from the Munande plane, however they may have connections to the Faen or Technate.  The backstory should be evocative and inspire a visual portrait, but it should not contain any specific lore that would require the AI to have knowledge of the world.  It should be something that could be true for any character in this setting, and should not reference specific locations, events, or factions.  The goal is to create a compelling personal history that fits the vibe of the world without relying on established lore.
+      The story should be 2 sentences long.  
+        Return JSON: {"backstory": "string"}
+    `;
+
+    const res = await callGemini(prompt, "lore archive: You are a lore archive.");
     
     if (res && res.backstory) {
         descInput.value = res.backstory;
