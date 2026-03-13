@@ -122,6 +122,8 @@ export default async function handler(req, res) {
     const model = "gemini-3.1-flash-lite-preview";// "gemini-2.5-flash-lite"; //"gemini-3-flash-preview";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
+    console.log("generate.js sending payload: ", JSON.stringify(geminiPayload, null, 2));
+
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
