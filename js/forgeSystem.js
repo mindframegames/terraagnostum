@@ -26,6 +26,7 @@ function setupReadOnlyForge(data) {
     document.getElementById('forge-name').readOnly = true;
     document.getElementById('forge-desc').value = data.description || '';
     document.getElementById('forge-desc').readOnly = true;
+    document.getElementById('forge-desc').disabled = false; // Ensure it's not grayed out if we're just reading
     document.getElementById('forge-archetype').innerText = (data.archetype || '---').toUpperCase();
     document.getElementById('stat-will').innerText = (data.stats?.WILL || 0).toString().padStart(2, '0');
     document.getElementById('stat-awr').innerText = (data.stats?.AWR || 0).toString().padStart(2, '0');
@@ -62,6 +63,41 @@ function resetForge() {
     document.getElementById('btn-suggest-name').classList.remove('hidden');
     document.getElementById('btn-suggest-desc').classList.remove('hidden');
     currentDraftStats = null;
+    updateForgeUIState();
+}
+
+function updateForgeUIState() {
+    const name = document.getElementById('forge-name').value.trim();
+    const hasName = name.length > 0;
+    
+    const descInput = document.getElementById('forge-desc');
+    const suggestDescBtn = document.getElementById('btn-suggest-desc');
+    const analyzeBtn = document.getElementById('btn-analyze-biometrics');
+    const manifestBtn = document.getElementById('btn-manifest-vessel');
+    
+    descInput.disabled = !hasName;
+    suggestDescBtn.disabled = !hasName;
+    analyzeBtn.disabled = !hasName;
+
+    // If name is cleared, also ensure manifest is disabled even if biometrics were previously analyzed
+    if (!hasName) {
+        manifestBtn.disabled = true;
+        manifestBtn.classList.remove('border-amber-500', 'text-amber-500', 'animate-pulse');
+        manifestBtn.classList.add('border-gray-800', 'text-gray-800');
+    } else if (currentDraftStats) {
+        // If we have stats and a name, we can enable manifest
+        manifestBtn.disabled = false;
+        manifestBtn.classList.remove('border-gray-800', 'text-gray-800');
+        manifestBtn.classList.add('border-amber-500', 'text-amber-500', 'animate-pulse');
+    }
+
+    [descInput, suggestDescBtn, analyzeBtn].forEach(el => {
+        if (!hasName) {
+            el.classList.add('opacity-30', 'cursor-not-allowed');
+        } else {
+            el.classList.remove('opacity-30', 'cursor-not-allowed');
+        }
+    });
 }
 
 async function suggestName() {
@@ -93,6 +129,7 @@ Format: Return strictly JSON with a "names" array containing strings.
         const pickedName = res.names[Math.floor(Math.random() * res.names.length)];
         nameInput.value = pickedName;
         UI.addLog(`[SYSTEM]: Identity suggested: ${pickedName}`, "var(--term-green)");
+        updateForgeUIState();
     }
     nameInput.placeholder = oldPlaceholder;
 }
@@ -194,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-suggest-desc').onclick = suggestBackstory;
     document.getElementById('btn-analyze-biometrics').onclick = analyzeBiometrics;
     document.getElementById('btn-manifest-vessel').onclick = manifestVessel;
+    document.getElementById('forge-name').oninput = updateForgeUIState;
     document.getElementById('forge-portrait-img').onclick = () => {
         const src = document.getElementById('forge-portrait-img').src;
         if (src) {
