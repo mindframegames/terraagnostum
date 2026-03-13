@@ -75,11 +75,21 @@ async function suggestName() {
     //const lore = STRATA_ARCHIVE[currentDraftStratum];
     //const prompt = `Invent a unique name for a character belonging to this world stratum: ${currentDraftStratum} (${lore}). Return JSON: {"name": "string"}`;
     const prompt = `
-      Invent a compelling Player Character name for an RPG where players are humans in the Mundane plane
-      (near future Earth) where an interdimensional battle between The Technate and the magical Faen is 
-      unfolding and humanity is caught in the middle.  A gritty, cypherpunk consipiracy (think NEuromancer/Deus Ex) is the vibe of The Mundane, 
-      and the backdrop is hidden events and planes colliding.  Be creative and avoid repeating names.  It's
-      OK to use real-world sounding names of present-day Earth. Return JSON: {"name": "string"}`;
+      Role: You are a world-building consultant specializing in "Uncanny Valley" linguistics.
+      Setting: A near-future Earth (The Mundane) is merging with a high-tech plane (The Technate) and a high-fantasy plane (The Faen).
+      Task: Generate 1 Player Character names using a [First Name] "[Nickname]" [Last Name] format.
+      Naming Rules:
+Base: Use common, relatable 21st-century Earth names as the foundation (e.g., Sarah, David, Miller, Smith).
+The Uncanny Valley Filter: Alter the names so they look like "glitched" versions of reality. They should be recognizable but feel slightly "off" or "wrong" to a modern reader.
+Technate Alterations (Sci-Fi): Use "Compression" (dropping vowels, e.g., 'Jennifr'), "Phonetic Flattening" (replacing 'c' with 'k', e.g., 'Kaleb'), or "Data-Tagging" (adding small numerical suffixes or hardware-slang nicknames).
+Faen Alterations (Fantasy): Use "Archaic Drift" (adding extra consonants, e.g., 'Thommas'), "Vowel Shifting" (swapping 'i' for 'y'), or "Nature-Burden" nicknames (nicknames related to plants, shadows, or melodic sounds).
+Avoid "Far Out" Tropes: Do not use random strings of numbers (no "X-J-11") or high-fantasy gibberish (no "Zalathor"). It should look like a typo on a legal document or a name spoken with a strange accent.
+Format:
+Name: First "Nickname" Last
+Origin: (Technate or Faen)
+Explanation: A one-sentence explanation of the base name and why it changed.
+      Return JSON: {"name": "string"}
+      `;
     const res = await callGemini(prompt, "You are a naming protocol.");
     
     if (res && res.name) {
