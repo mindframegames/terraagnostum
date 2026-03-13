@@ -143,6 +143,13 @@ async function suggestName() {
     nameInput.placeholder = oldPlaceholder;
 }
 
+/**
+ * Ash 'Fey' Mandela was a disillusioned Digital Afterlife Coordinator for The Cloud Consortium in Rain City, 
+ * spending his days scrubbing the corrupted memories of the deceased until he discovered a hidden, 
+ * glowing sequence of code that wasn't machine-made. When he decoded the anomaly, 
+ * he unwittingly opened a bridge to the Faen plane, drawing the lethal attention of the Technate’s 
+ * enforcers who sought to harvest the raw, magical meaning fueling his newfound visions.
+ */
 async function suggestBackstory() {
     // 1. Grab the current name from the input field
     const name = document.getElementById('forge-name').value || "this vessel"; 
@@ -169,7 +176,8 @@ async function suggestBackstory() {
       Use real-sounding but not-actual location names like: 
         Rain City, The Sprawl, The Fills, Moon Data Center 37, Mars Outpost 2, Arcadia, Neon Bay, Third Coast, Southern Space Port.  These are SUGGESTIONS!  They suggest a broader world.  They suggest a vibe, a livind world similar to Earth.  BE CREATIVE.
       Make it feel like the person is a normal person who was born and lives in the year 2035, in an slightly alternate Earth timeline.
-      You can use corporate entities like Mesmer AI, The Cloud Consortium.
+      You can use corporate entities like Mesmer AI, The Cloud Consortium, Rare Earth Mining LLC, etc.
+      You may use wierd but plausible sounding job titles like "Neuro-linguisitc Coder", "Memory Curator", "Dream Architect", "Data Forager", "Neural Interface Technician", "Virtual Reality Cartographer", "Cybernetic Ethicist", "Algorithmic Bias Analyst", "Synthetic Biographer", "Digital Afterlife Coordinator".
       The story should be 2-3 sentences long.  
       Return JSON: {"backstory": "string"}
     `;
@@ -182,7 +190,7 @@ async function suggestBackstory() {
     }
     descInput.placeholder = oldPlaceholder;
 }
-
+/** Generates the stats for the char */
 async function analyzeBiometrics() {
     const desc = document.getElementById('forge-desc').value;
     if (!desc) return;
@@ -203,15 +211,19 @@ async function analyzeBiometrics() {
     document.getElementById('stat-phys').innerText = "--";
     document.getElementById('forge-stats-readout').classList.remove('hidden');
 
+    // Determine stats for a character in the ${currentDraftStratum} stratum. 
+
     UI.addLog("[SYSTEM]: Checking vessel vitals...", "var(--term-amber)");
-    const prompt = `Analyze this biometric seed: "${desc}". Determine stats for a character in the ${currentDraftStratum} stratum. 
+    const prompt = `Analyze this biometric seed: "${desc}". 
       AMN (Amnesia/Anchor) is the ROOT stat and is always 20 for new characters.
       WILL, AWR, and PHYS are DERIVED stats. 
       CRITICAL RULE: The sum of (WILL + AWR + PHYS) MUST EQUAL the AMN value (20).
       Distribute the 20 points among WILL, AWR, and PHYS based on the biometric seed.
-      Return JSON: {"WILL": int, "AWR": int, "PHYS": int, "AMN": 20, "archetype": "string"}`;
+      Return JSON: {"WILL": int, "AWR": int, "PHYS": int, "AMN": 20, "archetype": "string"}
+      ${settingString}
+      `;
     
-    const res = await callGemini(prompt, "You are a biometric scanner.");
+    const res = await callGemini(prompt, "[lore archive] You are a biometric scanner.");
     if (res) {
         currentDraftStats = res;
         if (currentDraftStats.AMN === undefined) currentDraftStats.AMN = 20;

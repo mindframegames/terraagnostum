@@ -139,6 +139,7 @@ export async function projectVisual(prompt, stratum, addLogCallback, pinnedViewU
 }
 
 export async function generatePortrait(prompt, stratum) {
+    /*
     const styleMap = {
         'technate': 'clinical brutalism, high-key lighting, geometric, vibrant cyan and electric violet accents',
         'mundane': 'gritty 1980s cyberpunk, high-saturation neon, heavy rain, chrome reflections, vibrant pink and teal lighting, VHS glitch',
@@ -146,13 +147,15 @@ export async function generatePortrait(prompt, stratum) {
         'astral': 'abstract fractal, shimmering, non-euclidean geometry, cosmic nebula colors'
     };
     const style = styleMap[stratum?.toLowerCase()] || styleMap.mundane;
-    
+    */
+
     // HIGH FIDELITY CHARACTER PROMPT
     // Focuses strictly on personhood to prevent the model from drifting into cityscapes.
-    const combinedPrompt = `Masterpiece digital painting, hyper-vibrant full color, high saturation, MTG card art style. 
+    const combinedPrompt = `Masterpiece digital portrait, hyper-vibrant full color, high saturation, MTG card art style. 
         SUBJECT: A close-up high-end character portrait of a humanoid person. 
         Focus on face, eyes, and clothing. NO BUILDINGS. NO EXTERIORS. 
-        Aesthetic: ${style}. 
+        Aesthetic: Modern, near-future real-world critty retro-futuristic cyberpunk influenced by either high-sci-fi or high-fantasy. 
+        Give the portrait a bit of glitchy, retro-futuristic finish (like the image itself is slightly corrupted or has a digital overlay).
         Character Details: ${prompt}`;
     
     try {
