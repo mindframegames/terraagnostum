@@ -100,7 +100,7 @@ export default async function handler(req, res) {
 
     // SAFETY CAP: Fetch dynamic lore, but strictly cap it at ~1000 tokens (approx 4000 chars)
     // This protects the payload if a markdown file lacks double-newlines and fails to chunk properly.
-    let dynamicLore = fetchRelevantLore(userMessage);
+    let dynamicLore = isQuickRequest ? "" : fetchRelevantLore(userMessage);
     if (dynamicLore.length > 4000) {
         dynamicLore = dynamicLore.substring(0, 4000) + '..."\n[TRUNCATED]';
     }

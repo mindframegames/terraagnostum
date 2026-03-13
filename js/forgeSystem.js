@@ -157,11 +157,18 @@ async function suggestBackstory() {
     // 3. Use the 'lore archive' keyword to keep it fast and lore-free in the backend
 
     const prompt = `
-      You are an inspired story teller Game Master.  You are inventing a backstory for a character named ${name}.
+      You are a Master Storyteller.  You are inventing a backstory for a character named ${name}.
       ${settingString}
-      This character is from the Munande plane, however they may have connections to the Faen or Technate.  The backstory should be evocative and inspire a visual portrait, but it should not contain any specific lore that would require the AI to have knowledge of the world.  It should be something that could be true for any character in this setting, and should not reference specific locations, events, or factions.  The goal is to create a compelling personal history that fits the vibe of the world without relying on established lore.
-      The story should be 2 sentences long.  
-        Return JSON: {"backstory": "string"}
+      This character is from the Munande plane.  That means, their backstory should be somewhat relatable to a modern game playing user.  They can have any of a wide range of origin stories from the modern world (software engineer, realtor, homeless person, family backgrounds, native american, whatever, use the name as a guide, but ensure the BEGINNINGS of the story are at least recognizable).
+      Their story can gradually collide with 'The Interregnum', which is the current gameworld narrative of how the elite have made a deal with the Technate.
+      So we see a gradual 'Neruomancer'/'Deus Ex' style cyberpunk conspiracy, high-tech influence.
+      At the same time, we see a benevolent influence from the Faen plane.  This is a hopeful, highfantasy, magical realism of growth and beauty.
+      The backstory should be evocative and inspire a visual portrait.  The goal is to create a compelling persona for the player to inhabit.
+      Use normal sounding but non-real location names like: 
+        Rain City, The Sprawl, The Fills, Moon Data Center 37, Mars Outpost 2, Arcadia.  These are SUGGESTIONS!  They suggest a broader world.  They suggest a vibe, a livind world similar to Earth.  BE CREATIVE.
+      Make it feel like the person is a normal person who was born and lives in the year 2035, in an slightly alternate Earth timeline.
+      The story should be 2-3 sentences long.  
+      Return JSON: {"backstory": "string"}
     `;
 
     const res = await callGemini(prompt, "lore archive: You are a lore archive.");
