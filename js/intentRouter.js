@@ -110,8 +110,80 @@ export async function executeMovement(targetDir) {
         
         syncEngine.savePlayerState();
         triggerVisualUpdate(null, stateManager.getState().localPlayer, stateManager.getActiveMap(), user);
+    } else if (localPlayer.explorerMode) {
+        await handleExploration(targetDir);
     } else {
         UI.addLog(`[SYSTEM]: You cannot go that way.`, "var(--term-amber)");
+    }
+}
+
+async function handleExploration(targetDir) {
+    const state = stateManager.getState();
+    const { localPlayer, activeAvatar, user } = state;
+    const activeMap = getActiveMap();
+    const currentRoom = activeMap[localPlayer.currentRoom];
+    
+    stateManager.setProcessing(true);
+    UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">CONSULTING THE ARCHITECT...</span>`);
+    
+    try {
+        const sysPrompt = `You are the Architect of Terra Agnostum. The player is moving ${targetDir.toUpperCase()}.
+        Based on the current room: "${currentRoom.name}" - "${currentRoom.description}", determine if movement in this direction is logical.
+        For example, if the description says there's a door to the north, then north is logical. 
+        If the player is in an open field, any direction might be logical.
+        If movement is possible, generate a new room. 
+        Respond STRICTLY in JSON: 
+        { 
+            "possible": true/false, 
+            "reasoning": "Brief explanation if movement is not possible",
+            "name": "New Room Name", 
+            "description": "Atmospheric narrative description", 
+            "visual_prompt": "Detailed prompt for image generation" 
+        }`;
+        
+        const res = await callGemini(`Can I move ${targetDir}?`, sysPrompt);
+        
+        if (res && res.possible) {
+            const newRoomId = 'room_' + crypto.randomUUID().split('-')[0];
+            const getOpposite = (d) => ({'north':'south','south':'north','east':'west','west':'east'})[d] || 'out';
+            const backDir = getOpposite(targetDir);
+            
+            const newRoom = {
+                name: res.name,
+                shortName: res.name.substring(0, 7).toUpperCase(),
+                description: res.description,
+                visualPrompt: res.visual_prompt,
+                exits: { [backDir]: localPlayer.currentRoom },
+                items: [], npcs: [],
+                metadata: { stratum: localPlayer.stratum, isEditable: true }
+            };
+            
+            // 1. Save new room
+            stateManager.updateMapNode(newRoomId, newRoom);
+            syncEngine.updateMapNode(newRoomId, newRoom);
+
+            // 2. Link current room to new room
+            const currentExits = { ...(currentRoom.exits || {}), [targetDir]: newRoomId };
+            stateManager.updateMapNode(localPlayer.currentRoom, { exits: currentExits });
+            syncEngine.updateMapNode(localPlayer.currentRoom, { [`exits.${targetDir}`]: newRoomId });
+
+            // 3. Move player
+            UI.addLog(`[SYSTEM]: Reality warps as you move ${targetDir.toUpperCase()}.`, "var(--term-green)");
+            stateManager.updatePlayer({ currentRoom: newRoomId });
+            syncEngine.savePlayerState();
+            
+            const updatedActiveMap = getActiveMap();
+            UI.printRoomDescription(newRoom, localPlayer.stratum === 'astral', updatedActiveMap, activeAvatar);
+            triggerVisualUpdate(res.visual_prompt, stateManager.getState().localPlayer, updatedActiveMap, user, true);
+        } else {
+            UI.addLog(`[SYSTEM]: ${res.reasoning || "The logic of this sector forbids movement in that direction."}`, "var(--term-amber)");
+        }
+    } catch (err) {
+        console.error("Exploration error:", err);
+        UI.addLog("[SYSTEM ERROR]: Reality stabilization failed.", "var(--term-red)");
+    } finally {
+        document.getElementById('thinking-indicator')?.remove();
+        stateManager.setProcessing(false);
     }
 }
 
@@ -180,6 +252,16 @@ export async function handleCommand(val) {
         syncEngine.savePlayerState(); 
         
         UI.addLog(`[SYSTEM]: Architect flag: ${stateManager.getState().localPlayer.isArchitect ? 'ENABLED' : 'DISABLED'}`, "var(--term-amber)");
+        return;
+    }
+
+    if (cmd === 'explorer' || cmd === 'explorer mode') {
+        stateManager.updatePlayer({ explorerMode: !localPlayer.explorerMode });
+        syncEngine.savePlayerState();
+        UI.addLog(`[SYSTEM]: Explorer Mode: ${stateManager.getState().localPlayer.explorerMode ? 'ENABLED' : 'DISABLED'}`, "var(--term-amber)");
+        if (stateManager.getState().localPlayer.explorerMode) {
+            UI.addLog(`[SYSTEM]: The AI Architect will now facilitate movement into unrendered sectors.`, "#888");
+        }
         return;
     }
 

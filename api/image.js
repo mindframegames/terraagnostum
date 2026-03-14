@@ -47,6 +47,7 @@ export default async function handler(req, res) {
 
   try {
     const incomingPayload = req.body;
+    console.log("image.js payload:", JSON.stringify(incomingPayload));
     let promptText = "A lofi glitch terminal art piece.";
     
     // Safely extract the prompt text no matter what format the frontend sends
@@ -101,6 +102,7 @@ export default async function handler(req, res) {
     }
 
     // Execute the request to the Google API
+    console.log("image.js calling URL:", url.split('?')[0]); // Log URL without key
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -108,6 +110,8 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
+    console.log("image.js Google response status:", response.status);
+    console.log("image.js Google response data:", JSON.stringify(data));
 
     if (!response.ok) {
       console.error(`[${imageEngine.toUpperCase()}] Error:`, JSON.stringify(data, null, 2));

@@ -5,6 +5,7 @@ let state = {
     localPlayer: { 
         hp: 20, currentRoom: "bedroom", stratum: "mundane",
         inventory: [], closetDoorClosed: false, isArchitect: false,
+        explorerMode: false,
         combat: { active: false, opponent: null }, activeAvatarId: null
     },
     localAreaCache: {}, // THE ONLY CACHE

@@ -13,6 +13,11 @@ let settingString = `
 let currentDraftStats = null;
 let currentDraftStratum = 'mundane';
 
+/**
+ * 
+ * Daughter of a Tennessee rare earth miner killed in Ukraine, Dora has a penchant for smalls arms and wildlife.  She is Faen-aware, descended from a long line of seers and mystics. 
+ */
+
 export function openForgeModal(readOnlyData = null) {
     const modal = document.getElementById('forge-modal');
     if (!modal) return;
