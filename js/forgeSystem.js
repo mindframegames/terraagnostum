@@ -174,10 +174,18 @@ async function suggestBackstory() {
       At the same time, we see a benevolent influence from the Faen plane.  This is a hopeful, highfantasy, magical realism of growth and beauty.
       The backstory should be evocative and inspire a visual portrait.  The goal is to create a compelling persona for the player to inhabit.
       Use real-sounding but not-actual location names like: 
-        Rain City, The Sprawl, The Fills, Moon Data Center 37, Mars Outpost 2, Arcadia, Neon Bay, Third Coast, Southern Space Port.  These are SUGGESTIONS!  They suggest a broader world.  They suggest a vibe, a livind world similar to Earth.  BE CREATIVE.
+        Rain City, The Sprawl, The Fills, Moon Data Center 37, Mars Outpost 2, Arcadia, Neon Bay, Migrant Camp 3, Rio Encantanto, The Euro Orbital Platform, Golden Enclave, Third Coast, Southern Space Port.  These are SUGGESTIONS!  They suggest a broader world.  They suggest a vibe, a livind world similar to Earth.  BE CREATIVE.
       Make it feel like the person is a normal person who was born and lives in the year 2035, in an slightly alternate Earth timeline.
-      You can use corporate entities like Mesmer AI, The Cloud Consortium, Rare Earth Mining LLC, etc.
-      You may use wierd but plausible sounding job titles like "Neuro-linguisitc Coder", "Memory Curator", "Dream Architect", "Data Forager", "Neural Interface Technician", "Virtual Reality Cartographer", "Cybernetic Ethicist", "Algorithmic Bias Analyst", "Synthetic Biographer", "Digital Afterlife Coordinator".
+      You can use corporate entities like Mesmer AI, The Cloud Consortium, Rare Earth Mining LLC, etc.  
+      Projects like the Chinese "Reservoir" (Store-Now, decrypt Later) 吞海 (Tūn Hǎi) "Swallowing the Sea", the US "Eidolon" program, 
+        the EU "Mnemosyne Initiative", etc.  These are all SUGGESTIONS to help you create a rich backstory that 
+        fits the world.  You can use real-world events as a backdrop (climate disasters, pandemics, economic 
+        collapse, etc.) but alter them slightly to fit the narrative.  For example, instead of "The 2020 Pandemic",
+        it could be "The 2029 Viral Wave" that led to the rise of the Cloud Consortium.
+      You may use wierd but plausible sounding job titles like "Progress Manager", "Neuro-linguisitc Coder", "Memory Curator", "Dream Architect", "Data Forager", "Neural Interface Technician", "Virtual Reality Cartographer", 
+        "Cybernetic Ethicist", "Algorithmic Bias Analyst", "Synthetic Biographer", "Digital Afterlife Coordinator", "Herb Smuggler", "Magical-Digital Interface Specialist",
+        "Planar Marine", "Reality Hacker", "Amn Forger", "Stratum Surveyor", "Meaning Harvester", "Aethal Cartographer", "Lore Keeper", "Interdimensional Courier", "Technomancer", "Faen Whisperer", 
+        "Crypto Analyst", "Cypherpunk Activist", "Data Broker", "Memory Forger", "Virtual Reality Designer", "Neural Network Trainer", "Synthetic Biographer", "Digital Afterlife Coordinator", "Herb Smuggler", "Magical-Digital Interface Specialist", etc.
       The story should be 2-3 sentences long.  
       Return JSON: {"backstory": "string"}
     `;

@@ -213,17 +213,53 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
     }
 
     if (wizardState.type === 'room') {
-        if (currentVal) {
+        if (wizardState.step === 1) {
+            const newName = currentVal || wizardState.pendingData.name;
+            stateManager.updateWizardState({ 
+                pendingData: { ...wizardState.pendingData, name: newName }, 
+                step: 2 
+            });
+            UI.addLog(`Current DESCRIPTION: "${wizardState.pendingData.description}"`, "var(--crayola-blue)");
+            UI.addLog(`Enter new DESCRIPTION (or press Enter to keep current):`, "var(--term-amber)");
+            return;
+        } 
+        else if (wizardState.step === 2) {
+            const newDesc = currentVal || wizardState.pendingData.description;
+            stateManager.updateWizardState({ 
+                pendingData: { ...wizardState.pendingData, description: newDesc }, 
+                step: 3 
+            });
+            const currentPrompt = wizardState.pendingData.visualPrompt || wizardState.pendingData.visual_prompt || "";
+            UI.addLog(`Current VISUAL PROMPT: "${currentPrompt}"`, "var(--crayola-blue)");
+            UI.addLog(`Enter new VISUAL PROMPT (or press Enter to keep current):`, "var(--term-amber)");
+            return;
+        }
+        else if (wizardState.step === 3) {
+            const newPrompt = currentVal || wizardState.pendingData.visualPrompt || wizardState.pendingData.visual_prompt;
+            
             const updates = {
-                name: currentVal,
-                shortName: currentVal.substring(0, 7).toUpperCase()
+                name: wizardState.pendingData.name,
+                shortName: wizardState.pendingData.name.substring(0, 7).toUpperCase(),
+                description: wizardState.pendingData.description,
+                visualPrompt: newPrompt
             };
+            
             stateManager.updateMapNode(localPlayer.currentRoom, updates);
             syncEngine.updateMapNode(localPlayer.currentRoom, updates);
-            UI.addLog(`[SYSTEM]: Sector identity overwritten.`, "var(--term-green)");
+            
+            UI.addLog(`[SYSTEM]: Sector identity successfully overwritten.`, "var(--term-green)");
+            
+            // Refresh view
+            const updatedActiveMap = stateManager.getActiveMap();
+            UI.printRoomDescription(updatedActiveMap[localPlayer.currentRoom], localPlayer.stratum === 'astral', updatedActiveMap, activeAvatar);
+            
+            if (newPrompt !== (wizardState.pendingData.visualPrompt || wizardState.pendingData.visual_prompt)) {
+                triggerVisualUpdate(newPrompt, localPlayer, updatedActiveMap, user, true);
+            }
+            
+            endWizard();
+            return;
         }
-        endWizard();
-        return;
     }
 
     if (wizardState.type === 'lock_exit') {
