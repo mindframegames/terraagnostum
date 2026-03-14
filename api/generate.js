@@ -2,77 +2,16 @@
  * Vercel Serverless Function
  * Path: /api/generate.js
  * Purpose: The AI Game Master (Tandy) brain. 
- * Augmented with core_bible.md (Anchor) and dynamic RAG from the Lore Vault.
  * Optimized for gemini-2.5-flash-lite on v1beta.
  */
-import fs from 'fs';
-import path from 'path';
 
-// --- THE ANCHOR ENGINE (ALWAYS INCLUDED) ---
-let cachedAnchor = null;
-function fetchAnchorLore() {
-    if (cachedAnchor) return cachedAnchor;
-    try {
-        const anchorPath = path.join(process.cwd(), 'lore/vault/lore/core_bible.md');
-        if (fs.existsSync(anchorPath)) {
-            const anchorText = fs.readFileSync(anchorPath, 'utf8');
-            cachedAnchor = `\n\n[CORE UNIVERSE BIBLE - ALWAYS ADHERE TO THESE RULES]:\n"${anchorText}"\n`;
-            return cachedAnchor;
-        }
-    } catch (e) {
-        console.error("Anchor Fetch Error:", e);
-    }
-    return "";
-}
-
-// --- THE ZERO-DB RAG ENGINE (DYNAMICALLY INCLUDED) ---
-let cachedLoreChunks = null;
-function fetchRelevantLore(userCommand) {
-    if (!userCommand || userCommand.length < 3) return "";
-    try {
-        if (!cachedLoreChunks) {
-            const paths = [
-                path.join(process.cwd(), 'lore/vault/lore/Psychotasy_I.md'),
-                path.join(process.cwd(), 'lore/vault/lore/Interregnum.md'),
-                path.join(process.cwd(), 'lore/vault/lore/The_Coast.md')
-            ];
-
-            let combinedText = "";
-            paths.forEach(p => {
-                if (fs.existsSync(p)) combinedText += fs.readFileSync(p, 'utf8') + "\n\n";
-            });
-
-            if (!combinedText) return "";
-            cachedLoreChunks = combinedText.split('\n\n').filter(chunk => chunk.length > 50);
-        }
-
-        const chunks = cachedLoreChunks;
-        const searchTerms = userCommand.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
-        
-        if (searchTerms.length === 0) return "";
-
-        let bestChunks = [];
-        for (const chunk of chunks) {
-            let score = 0;
-            const chunkLower = chunk.toLowerCase();
-            for (const term of searchTerms) {
-                if (chunkLower.includes(term)) score++;
-            }
-            if (chunkLower.includes('technate') && userCommand.toLowerCase().includes('technate')) score += 3;
-            if (chunkLower.includes('faen') && userCommand.toLowerCase().includes('faen')) score += 3;
-            
-            if (score > 0) bestChunks.push({ score, text: chunk });
-        }
-
-        bestChunks.sort((a, b) => b.score - a.score);
-        const topLore = bestChunks.slice(0, 2).map(c => c.text).join('\n\n');
-
-        return topLore ? `\n\n[ATMOSPHERIC LORE (METAPHYSICAL TEXTURE ONLY)]:\n"${topLore}"\n` : "";
-    } catch (e) {
-        console.error("RAG Error:", e);
-        return "";
-    }
-}
+const CONDENSED_LORE = `
+[CORE UNIVERSE BIBLE - ADHERE TO THESE AESTHETICS]:
+- THE TECHNATE: A transhumanist utopia/dystopia. Clean, white plasteel, subtle geometry, humming frequency towers, clinical efficiency. Inhabitants are cybernetic, blurred, and lack individuality.
+- FAEN: A realm of organic magic, meaning, and vitality currently being invaded by the Technate.
+- THE MUNDANE: Gritty, analog, cyberpunk survival.
+- TONE: Solipsistic, mysterious, slightly glitchy, cypherpunk meets cosmic horror.
+`;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -88,38 +27,30 @@ export default async function handler(req, res) {
     const body = req.body;
 
     // 1. EXTRACT DATA FOR LORE INJECTION
-    const userMessage = body.contents?.[body.contents.length - 1]?.parts?.[0]?.text || "";
     let systemPrompt = body.systemInstruction?.parts?.[0]?.text || "";
 
-    // --- LOW CHURN OPTIMIZATION START ---
-    // Detect if this is a lightweight Forge/UI request instead of the main Game Master
-    const isQuickRequest = systemPrompt.includes("lore archive");
+    // New intent detection logic
+    const isArchitect = systemPrompt.includes("Architect of Terra Agnostum");
+    const isUIRequest = systemPrompt.includes("lore archive");
 
-    // FAST PATH: Skip the massive Anchor Bible entirely for quick UI generation
-    const anchorLore = isQuickRequest ? "" : fetchAnchorLore();
+    let finalSystemPrompt = systemPrompt;
 
-    // SAFETY CAP: Fetch dynamic lore, but strictly cap it at ~1000 tokens (approx 4000 chars)
-    // This protects the payload if a markdown file lacks double-newlines and fails to chunk properly.
-    let dynamicLore = isQuickRequest ? "" : fetchRelevantLore(userMessage);
-    if (dynamicLore.length > 4000) {
-        dynamicLore = dynamicLore.substring(0, 4000) + '..."\n[TRUNCATED]';
+    // Inject the condensed lore for room generation and standard Game Master play.
+    // Skip it ONLY for lightweight UI/Forge requests.
+    if (isArchitect || !isUIRequest) {
+        finalSystemPrompt += "\n" + CONDENSED_LORE;
     }
-    // --- LOW CHURN OPTIMIZATION END ---
-
-    // 3. AUGMENT SYSTEM PROMPT
-    const augmentedSystemPrompt = systemPrompt + anchorLore + dynamicLore;
 
     // 4. REBUILD PAYLOAD
     const geminiPayload = {
         ...body,
         systemInstruction: {
-            parts: [{ text: augmentedSystemPrompt }]
+            parts: [{ text: finalSystemPrompt }]
         }
     };
 
     // 5. CALL THE SOURCE
-    //const model = "gemini-2.5-flash-lite";
-    const model = "gemini-3.1-flash-lite-preview";// "gemini-2.5-flash-lite"; //"gemini-3-flash-preview";
+    const model = "gemini-3.1-flash-lite-preview";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     console.log("generate.js sending payload: ", JSON.stringify(geminiPayload, null, 2));

@@ -134,6 +134,9 @@ async function suggestName() {
         Avoid "Far Out" Tropes: Do not use random strings of numbers (no "X-J-11") or high-fantasy gibberish (no "Zalathor"). It should look like a typo on a legal document or a name spoken with a strange accent.
         Leave one of the names as-is (e.g., "Sarah" or "David" or "Stone" or "Collins") to create a sense of familiarity amidst the strangeness.
         Avoid stringing consonants together in a way that makes them unpronounceable. The name should be able to be spoken aloud, even if it sounds odd.
+        More inspirational base names: Joanne Lee, David Chang, Samantha Patel, Marcus Gray, Rachel Chen, Diego Rodriguez, Emily Wong, Aaron Ramirez, Jasmine Singh, Tyler Nguyen, Strom Nightengale, Tenzin Sol, Xander Black, Luna Vega, Aurora Frost,
+        Kai Delacroix, Raven Nightshade, Phoenix Blaine, Sterling Silver, Axel Steele, Nova Starling, Zephyr Storm
+
         Format: Return strictly JSON with a "names" array containing strings.
       Return JSON: {"names": ["name1", "name2", ...]}
       `;
