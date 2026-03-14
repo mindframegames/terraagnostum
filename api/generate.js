@@ -5,14 +5,6 @@
  * Optimized for gemini-2.5-flash-lite on v1beta.
  */
 
-const CONDENSED_LORE = `
-[CORE UNIVERSE BIBLE - ADHERE TO THESE AESTHETICS]:
-- THE TECHNATE: A transhumanist utopia/dystopia. Clean, white plasteel, subtle geometry, humming frequency towers, clinical efficiency. Inhabitants are cybernetic, blurred, and lack individuality.
-- FAEN: A realm of organic magic, meaning, and vitality currently being invaded by the Technate.
-- THE MUNDANE: Gritty, analog, cyberpunk survival.
-- TONE: Solipsistic, mysterious, slightly glitchy, cypherpunk meets cosmic horror.
-`;
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -29,17 +21,10 @@ export default async function handler(req, res) {
     // 1. EXTRACT DATA FOR LORE INJECTION
     let systemPrompt = body.systemInstruction?.parts?.[0]?.text || "";
 
-    // New intent detection logic
-    const isArchitect = systemPrompt.includes("Architect of Terra Agnostum");
-    const isUIRequest = systemPrompt.includes("lore archive");
-
+    // 2. Intent Detection
+    // Note: We used to inject CONDENSED_LORE here, but lore is now centralized 
+    // in the client-side contextEngine.js and passed in via systemPrompt.
     let finalSystemPrompt = systemPrompt;
-
-    // Inject the condensed lore for room generation and standard Game Master play.
-    // Skip it ONLY for lightweight UI/Forge requests.
-    if (isArchitect || !isUIRequest) {
-        finalSystemPrompt += "\n" + CONDENSED_LORE;
-    }
 
     // 4. REBUILD PAYLOAD
     const geminiPayload = {

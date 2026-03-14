@@ -3,12 +3,12 @@ import { callGemini, generatePortrait } from './apiService.js';
 import { createCharacter } from './syncEngine.js';
 import * as stateManager from './stateManager.js';
 import * as UI from './ui.js';
-import { STRATA_ARCHIVE } from './contextEngine.js';
+import { STRATA_ARCHIVE, WORLD_STATE } from './contextEngine.js';
 
-let settingString = `
-  Setting: A near-future Earth (The Mundane) is caught in the middle of a battle betweenh a high-tech plane (The Technate) and a high-fantasy plane (The Faen).  
-  The technate is attempting to 'harvest meaning' from Faen.
-  `;
+const settingString = `
+  Setting: ${WORLD_STATE.MUNDANE.name} is caught in the crossfire between ${WORLD_STATE.TECHNATE.name} and ${WORLD_STATE.FAEN.name}.
+  ${WORLD_STATE.TECHNATE.summary}
+`;
 
 let currentDraftStats = null;
 let currentDraftStratum = 'mundane';
