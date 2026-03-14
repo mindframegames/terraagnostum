@@ -52,6 +52,13 @@ function renderToCanvas(imageUrl, roomId, myTicket) {
         canvas.width = img.width; canvas.height = img.height;
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
+        // Capture the base64 for pinning, even if loaded from a URL
+        try {
+            currentBase64 = canvas.toDataURL('image/png');
+        } catch (e) {
+            console.warn("[VISUALS]: Failed to capture canvas for pinning (CORS?).", e);
+        }
+
         let domImg = document.getElementById('sovereign-dom-image');
         if (!domImg) {
             domImg = document.createElement('img');
@@ -72,6 +79,12 @@ export async function triggerVisualUpdate(overridePrompt, localPlayer, activeMap
     const roomId = localPlayer.currentRoom;
     const room = activeMap?.[roomId];
     if (!room) return;
+    
+    // Clear old projection buffer if we are switching rooms
+    if (roomId !== lastRenderedRoom) {
+        currentBase64 = null;
+    }
+
     let validStoredUrl = room.storedImageUrl;
 
     // --- 0. PRE-FLIGHT CACHE CHECK (SOVEREIGN) ---

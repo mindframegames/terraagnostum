@@ -34,6 +34,29 @@ stateManager.subscribe((state) => {
     renderMapHUD(activeMap, localPlayer.currentRoom, localPlayer.stratum);
     updateContextualSuggestions(state.suggestions);
 
+    // Pin Button Visibility (Architects Only)
+    const pinBtn = document.getElementById('pin-view-btn');
+    if (pinBtn) {
+        if (tier === 'ARCHITECT' && !localPlayer.combat.active) {
+            pinBtn.classList.remove('hidden');
+            // Only update if not currently in a transient state (uploading)
+            if (!pinBtn.classList.contains('animate-pulse')) {
+                // Update label based on room state
+                if (room?.pinnedView) {
+                    pinBtn.innerText = "UNPIN VIEW";
+                    pinBtn.classList.add('bg-amber-600', 'border-amber-400');
+                    pinBtn.classList.remove('bg-blue-600', 'border-blue-400', 'bg-green-600', 'border-green-400');
+                } else {
+                    pinBtn.innerText = "PIN VIEW";
+                    pinBtn.classList.remove('bg-amber-600', 'border-amber-400', 'bg-green-600', 'border-green-400');
+                    pinBtn.classList.add('bg-blue-600', 'border-blue-400');
+                }
+            }
+        } else {
+            pinBtn.classList.add('hidden');
+        }
+    }
+
     // Combat UI Toggle
     if (localPlayer.combat.active) {
         // Find opponent in current room with fuzzy matching
@@ -947,4 +970,33 @@ export function printRoomDescription(room, isAstral, activeMap, activeAvatar) {
 
     const exits = Object.keys(room.exits || {}).join(", ").toUpperCase();
     if (exits) addLog(`Visible Exits: ${exits}`, "#888");
+}
+
+/**
+ * Toggle the Pin Button state during async operations.
+ */
+export function togglePinButton(show, label, style = 'normal') {
+    const btn = document.getElementById('pin-view-btn');
+    if (!btn) return;
+
+    if (show) {
+        btn.classList.remove('hidden');
+        btn.innerText = label;
+
+        // Reset styles
+        btn.classList.remove('bg-blue-600', 'border-blue-400', 'bg-amber-600', 'border-amber-400', 'bg-green-600', 'border-green-400', 'animate-pulse');
+
+        if (style === 'uploading') {
+            btn.classList.add('bg-amber-600', 'border-amber-400', 'animate-pulse');
+        } else if (style === 'pinned') {
+            btn.classList.add('bg-green-600', 'border-green-400');
+        } else {
+            // normal style depends on current pinned state which we don't have here easily
+            // but we can just use the default blue for now or rely on the state subscription
+            // to reset it to the correct state after a timeout in visualSystem.js
+            btn.classList.add('bg-blue-600', 'border-blue-400');
+        }
+    } else {
+        btn.classList.add('hidden');
+    }
 }

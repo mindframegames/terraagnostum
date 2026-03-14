@@ -1,0 +1,91 @@
+TERRA AGNOSTUM: DYNAMIC QUEST ARCHITECTURE (v1.0)
+
+Code Name: Architectural Directives
+
+I. THE CORE CONCEPT: AI-ARBITRATED BOUNTIES
+
+Traditional MUDs and RPGs require hardcoded quest scripts (e.g., if (player.inventory.contains("iron_sword") && npc.id == "blacksmith") { completeQuest(); }).
+
+In Terra Agnostum, quests are Semantic Directives. An Architect player writes a natural language prompt describing what they want a player to do, attaches it to an in-game object, and the AI Game Master (Tandy) handles the offering, tracking, and evaluation of the quest entirely through context windows.
+
+II. THE ARCHITECT FLOW (Creating the Quest)
+
+An Architect (a player with high Lucidity) wants to create a distress beacon quest.
+
+Manifesting the Object: The Architect uses standard building tools to create an object in the room.
+> BUILD OBJECT "Flickering Terminal"
+
+Imbuing the Quest (The Interface):
+The Architect types > IMBUE QUEST "Flickering Terminal". This opens a specialized, mobile-friendly UI form (or wizard) that asks for three things:
+
+The Hook (What the player sees): "A distress beacon from a stranded Corovon transport."
+
+The Condition (The secret instructions for Tandy): "The player must go to the 'Neon Alley' room, find a 'Damaged Power Cell', and return it to this terminal."
+
+The Reward (Mechanics): 50 Amn (Meaning) and an Ability Chip: [Basic Hacking].
+
+Database Layer:
+This data is appended to the room.objects array in Firestore under a questDirective object. No server restart or code deployment is required.
+
+III. THE PLAYER FLOW (Accepting the Quest)
+
+A standard player walks into the room.
+
+Discovery:
+The player types > EXAMINE Flickering Terminal.
+
+The AIGM Hook:
+The backend intercepts this action. It sees the object has a questDirective. It injects the "Hook" into Tandy's system prompt.
+
+Tandy's Output: "You wipe the grime from the terminal screen. Text stutters across the glass: 'URGENT: Corovon transport stranded. Power Cell required. Last known location: Neon Alley. Will you accept this directive?'"
+
+Acceptance:
+The player types > I accept the directive.
+The backend flags the questId in the player.activeQuests array in Firestore.
+
+IV. RESOLUTION & THE "TRUE/FALSE" TRICK (Completing the Quest)
+
+This is where the AIGM's power truly shines, bypassing the need for hardcoded if/else logic.
+
+When the player returns to the room and types: "I shove the Damaged Power Cell into the terminal's receiving slot."
+
+The Vercel backend constructs a Structured Output Prompt for Gemini:
+
+{
+  "system": "You are Tandy, the AI GM. Evaluate if the player has completed their active quest.",
+  "quest_condition": "The player must go to the 'Neon Alley' room, find a 'Damaged Power Cell', and return it to this terminal.",
+  "player_action": "I shove the Damaged Power Cell into the terminal's receiving slot.",
+  "player_inventory": ["Damaged Power Cell", "Rations"],
+  "instructions": "Determine if the player's action and inventory satisfy the quest_condition. Respond with a JSON object containing 'success': boolean, and 'narrative': string."
+}
+
+
+The AI's Determination:
+
+Because Gemini is generating a structured JSON response, the backend can easily read it:
+
+{
+  "success": true,
+  "narrative": "The terminal whirs to life as the damaged cell locks into place. A green light washes over you, and the terminal dispenses a small, glowing data-chip as the distress beacon ceases its blinking."
+}
+
+
+State Updates:
+
+If success is true, the Vercel backend automatically:
+
+Removes the "Damaged Power Cell" from the player's inventory.
+
+Awards the 50 Amn and the [Basic Hacking] chip to the player.
+
+Sends the AI's narrative description to the player's UI.
+
+Awards a Lucidity Dividend to the Architect who created the quest, rewarding them for driving engagement!
+
+V. PREVENTING ABUSE (The Lucidity Cost)
+
+To prevent an Architect from making a quest that says "Give the player 10,000 Amn for breathing," the system must use the Architect Layer economy.
+
+Escrow: When an Architect creates a quest with a reward (e.g., 50 Amn), they must spend equivalent "Lucidity" or their own resources to fund the bounty.
+
+The Bank of Tandy: Alternatively, the Architect defines the narrative, but Tandy dynamically scales the mechanical reward based on the difficulty of the "Condition." If the condition is too easy, Tandy automatically nerfs the Amn payout to preserve the game's economy.
