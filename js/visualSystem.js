@@ -128,7 +128,11 @@ export async function triggerVisualUpdate(overridePrompt, localPlayer, activeMap
 
         if (window.DISABLE_ROOM_GENERATION) {
             UI.addLog("[SYSTEM]: Room image generation skipped (DEV MODE).", "var(--term-amber)");
-            if (loader) loader.innerHTML = "DEV MODE: VISUALS OFFLINE";
+            if (validStoredUrl) {
+                renderToCanvas(validStoredUrl, roomId, myTicket);
+            } else if (loader) {
+                loader.innerHTML = "DEV MODE: VISUALS OFFLINE";
+            }
             isManifesting = false;
             return;
         }
@@ -141,7 +145,11 @@ export async function triggerVisualUpdate(overridePrompt, localPlayer, activeMap
         activeProjections.delete(roomId); // Clean up
         
         if (result === null) {
-            if (loader) loader.innerHTML = "DEV MODE: VISUALS OFFLINE";
+            if (validStoredUrl) {
+                renderToCanvas(validStoredUrl, roomId, myTicket);
+            } else if (loader) {
+                loader.innerHTML = "DEV MODE: VISUALS OFFLINE";
+            }
             return;
         }
         
