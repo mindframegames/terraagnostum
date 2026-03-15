@@ -144,30 +144,6 @@ LAYER 4: COMBAT & LORE:
 - Use 45-second turn logic (narrative pacing).
 - Players can use "WILL FORCE" or "ASTRAL WEAPON" in combat.
 - You can trigger "create_lore" to store persistent world changes.
-
-5. REQUIRED JSON STRUCTURE (Omit null fields unless required):
-{
-  "narrative": "Sensory-rich description of the scene or response.",
-  "speaker": "NARRATOR | SYSTEM | MARGINALIA | [TANDY] | [NPC Name]",
-  "color": "Optional hex or CSS color for this message",
-  "suggested_actions": ["Command 1", "Command 2"],
-  "combat_active": false,
-  "damage_to_player": 0,
-  "damage_to_npc": 0,
-  "astral_jump": false,
-  "trigger_stratum_shift": "mundane|astral|faen|technate|null",
-  "give_item": { "name": "...", "type": "...", "description": "..." } or null,
-  "trigger_respawn": false,
-  "trigger_teleport": { "new_room_id": "...", "name": "...", "description": "...", "visualPrompt": "..." } or null,
-  "create_lore": { "title": "...", "content": "...", "significance": "low|medium|high" } or null,
-  "world_edit": {
-     "type": "add_marginalia" | "unlock_exit" | "spawn_item" | "spawn_npc",
-     "text": "...",
-     "direction": "north|south|east|west",
-     "item": { "name": "...", "type": "...", "description": "..." },
-     "npc": { "name": "...", "archetype": "...", "personality": "...", "visual_prompt": "...", "stats": {"WILL":7, "AWR":7, "PHYS":6, "AMN":20} }
-  } or null
-}
 `;
 
     return `${ROOT_DIRECTIVE}\n${stratumLayer}\n${roomLayer}\n${entityLayer}\n${mechanicLayer}`;

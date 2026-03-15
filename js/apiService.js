@@ -2,6 +2,82 @@
 const API_GENERATE = "/api/generate";
 const API_IMAGE = "/api/image";
 
+const RESPONSE_SCHEMA = {
+    type: "object",
+    properties: {
+        narrative: { type: "string" },
+        speaker: { type: "string" },
+        color: { type: "string" },
+        suggested_actions: { type: "array", items: { type: "string" } },
+        combat_active: { type: "boolean" },
+        damage_to_player: { type: "number" },
+        damage_to_npc: { type: "number" },
+        astral_jump: { type: "boolean" },
+        trigger_stratum_shift: { type: "string" },
+        give_item: {
+            type: "object",
+            properties: {
+                name: { type: "string" },
+                type: { type: "string" },
+                description: { type: "string" }
+            }
+        },
+        trigger_respawn: { type: "boolean" },
+        trigger_teleport: {
+            type: "object",
+            properties: {
+                new_room_id: { type: "string" },
+                name: { type: "string" },
+                description: { type: "string" },
+                visualPrompt: { type: "string" }
+            }
+        },
+        create_lore: {
+            type: "object",
+            properties: {
+                title: { type: "string" },
+                content: { type: "string" },
+                significance: { type: "string" }
+            }
+        },
+        world_edit: {
+            type: "object",
+            properties: {
+                type: { type: "string" },
+                text: { type: "string" },
+                direction: { type: "string" },
+                item: {
+                    type: "object",
+                    properties: {
+                        name: { type: "string" },
+                        type: { type: "string" },
+                        description: { type: "string" }
+                    }
+                },
+                npc: {
+                    type: "object",
+                    properties: {
+                        name: { type: "string" },
+                        archetype: { type: "string" },
+                        personality: { type: "string" },
+                        visual_prompt: { type: "string" },
+                        stats: {
+                            type: "object",
+                            properties: {
+                                WILL: { type: "number" },
+                                AWR: { type: "number" },
+                                PHYS: { type: "number" },
+                                AMN: { type: "number" }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    required: ["narrative", "speaker", "suggested_actions", "combat_active"]
+};
+
 /**
  * GLOBAL COST CONTROL
  * Set this to true to suppress room generation costs during development.
@@ -62,36 +138,20 @@ export async function callGemini(userInput, systemPrompt) {
                 systemInstruction: { parts: [{ text: systemPrompt }] },
                 generationConfig: { 
                     responseMimeType: "application/json",
+                    responseSchema: RESPONSE_SCHEMA,
                     temperature: 0.7 
                 }
             })
         });
 
         const data = await res.json();
-        let text = data.candidates[0].content.parts[0].text;
-
-        // CRITICAL: Scrub markdown backticks and trailing garbage.
-        const firstBrace = text.indexOf('{');
-        const lastBrace = text.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace !== -1) {
-            text = text.substring(firstBrace, lastBrace + 1);
-        }
+        const text = data.candidates[0].content.parts[0].text;
 
         try {
             return JSON.parse(text);
-        } catch (initialError) {
-            // Aggressive recursive parsing for partial JSON returns
-            for (let i = lastBrace; i > firstBrace; i--) {
-                if (text[i - firstBrace] === '}') {
-                    try {
-                        const candidate = text.substring(0, i - firstBrace + 1);
-                        return JSON.parse(candidate);
-                    } catch (e) {
-                        // Keep trying smaller segments
-                    }
-                }
-            }
-            throw initialError;
+        } catch (e) {
+            console.error("Gemini Structured Output Parse Error:", e, text);
+            return null;
         }
     } catch (e) {
         console.error("Gemini API Parse Error:", e);

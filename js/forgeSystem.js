@@ -6,7 +6,7 @@ import * as UI from './ui.js';
 import { STRATA_ARCHIVE, WORLD_STATE } from './contextEngine.js';
 
 const settingString = `
-  Setting: ${WORLD_STATE.MUNDANE.name} is caught in the crossfire between ${WORLD_STATE.TECHNATE.name} and ${WORLD_STATE.FAEN.name}.
+  Setting: ${WORLD_STATE.MUNDANE.name} is caught in the middle between ${WORLD_STATE.TECHNATE.name} and ${WORLD_STATE.FAEN.name}.
   ${WORLD_STATE.TECHNATE.summary}
 `;
 
