@@ -1,10 +1,44 @@
-TERRA AGNOSTUM: PLAYER RESONANCE TIERS (v1.1)
+TERRA AGNOSTUM: PLAYER RESONANCE TIERS (v1.4)
 
 Code Name: The Consensus Hierarchy
 
-This document defines the relationship between a Player's account status, their subscription tier, and their permissions within the Reality Render.
+This document defines the relationship between a Player's account status, their subscription tier, and their permissions within the Reality Render. It utilizes the fundamental forces of the universe: Amn (Infinite Consciousness/Root Reality) and Aethal (The Power to Weave).
 
-I. THE TIERS OF PERSISTENCE
+I. THE ROOT QUANTITY: AMN vs. AETHAL
+
+To simplify for players: Amn is your Capacity. Aethal is your Currency.
+
+Amn (Account Level): Tied to the Player. It represents the depth of your "Dream." Higher Amn increases your Vessel Slots (characters) and your baseline influence on the global render. It is a permanent (or subscription-locked) stat.
+
+Aethal (Creative Flow): Tied to the Architect Layer. It is the active energy used to change the world—building rooms, imbuing quests, or generating AI imagery. It is a regenerating resource.
+
+II. THE DIEGETIC WEAVE: HOW AETHAL WORKS IN-GAME
+
+In Terra Agnostum, "Building" is not a meta-action; it is the act of Aethal Weaving. When a player uses an Architect command, it is represented diegetically as their character manipulating the "Render" of reality.
+
+Manifesting Form: Using BUILD or EDIT consumes Aethal. This represents the mental energy required to force the consensus of the universe to accept a new room or object.
+
+The "Unrendered" Void: Moving into a room that hasn't been built yet is moving into "Deep Amn." To make it solid, the player must "Anchor" it using Aethal.
+
+Resonance Feedback: If an Architect tries to build something that contradicts the existing lore or "consensus" too wildly, the Aethal cost increases.
+
+III. THE TIERS OF PERSISTENCE
+
+TIER 0: THE SOURCE (Developer / Internal Architect)
+
+Status: Authenticated via the isArchitect flag in the state manager/database.
+
+Cost: N/A (Internal).
+
+Permissions: * Infinite Flow: Bypasses all Aethal costs for weaving (Building/Editing).
+
+Meta-Topping: The ability to directly "Infuse" any player's account with Amn or Aethal for rewards, testing, or compensation.
+
+Consensus Override: Can force changes that ignore standard lore-consistency checks.
+
+Terminal Access: Access to low-level system commands to repair corrupted nodes or "Glitched" states.
+
+Amn: Infinite (The Anchor of the Multiverse).
 
 TIER 1: THE TRANSIENT (Anonymous Guest / No Character)
 
@@ -12,29 +46,19 @@ Status: Not Logged In.
 
 Cost: Free.
 
-Permissions: * LOOK and MOVE only.
+Permissions: LOOK and MOVE only. Session is lost on tab close.
 
-Can view the "Global Render" but cannot interact with or alter it.
-
-No persistent state. If the tab closes, the session is lost.
-
-Lucidity: 0 (Static).
+Amn: 0 (Unanchored).
 
 TIER 2: THE MANIFESTED (Anonymous Guest / Local Character)
 
-Status: Not Logged In, but has used the Forge locally.
+Status: Not Logged In, but has a local character.
 
 Cost: Free.
 
-Permissions:
+Permissions: Full standard gameplay. Character state saved to Local Storage.
 
-Full standard gameplay (Combat, Exploration).
-
-Character state is saved to Local Storage only.
-
-Cannot use BUILD or EDIT commands.
-
-Lucidity: 0 (Cannot accumulate).
+Amn: 0 (Local only).
 
 TIER 3: THE RESONANT (Registered / Free-to-Play)
 
@@ -42,88 +66,44 @@ Status: Logged In (Firebase Auth).
 
 Cost: Free.
 
-Permissions:
+Amn (Capacity): Baseline 10 (Unlocks 1 Persistent Vessel Slot).
 
-1 Persistent Vessel (Character).
+Permissions: Cloud-synced state. Can perform minor "Aethal Tweaks" (Building) only within a private "Apartment" node.
 
-Cloud-synced state (Play on any device).
+IV. THE SUBSCRIBER TIERS (The Architects)
 
-The Baseline Creator: Can use BUILD and EDIT only within their "Apartment" (Private Node).
-
-Can earn Lucidity via Engagement Dividends (other players liking their room descriptions).
-
-Lucidity: Starts at 10. Low regen rate.
-
-II. THE SUBSCRIBER TIERS (The Architects)
-
-Subscription tiers grant a "Lucidity Stipend" and unlock the meta-features of the universe.
+Subscribers receive a permanent Amn boost (slots) and a monthly Aethal stipend (creative energy).
 
 TIER 4: THE SCRIBE ($10/mo)
 
-The Power User Tier.
+Amn (Capacity): Boosted to allow 3 Persistent Vessel Slots.
 
-Vessel Slots: Up to 3 Persistent Vessels.
+Aethal Stipend: 100 Aethal/month.
 
-Lucidity Stipend: 100 Lucidity/month.
-
-Creation Permissions: * Can BUILD and EDIT in public strata (Mundane, Technate, Faen).
-
-Access to the Quest Imbuing system (Basic Directives).
-
-The Observer Effect: High priority for Tandy to reward creative roleplay with Amn.
+Diegetic Power: Can perform "Public Weaving" (Building and Editing in public strata). Access to Basic Quest Imbuing.
 
 TIER 5: THE CURATOR ($20/mo)
 
-The Multimedia Tier.
+Amn (Capacity): Boosted to allow 7 Persistent Vessel Slots.
 
-Vessel Slots: Up to 7 Persistent Vessels.
+Aethal Stipend: 250 Aethal/month.
 
-Lucidity Stipend: 250 Lucidity/month.
-
-Multimedia Imprints:
-
-Unlocked: Generative Memories (AI Image generation for objects).
-
-Unlocked: Audio Logs (.mp3 attachments).
-
-NPC Sovereignty: Can imbed simple behavior profiles into NPCs they create.
+Sensory Manifestation: Unlocks Generative Memories (AI Image generation) and Audio Logs.
 
 TIER 6: THE ARCHITECT ($50/mo)
 
-The World-Shaper Tier.
+Amn (Capacity): Unlimited Vessel Slots. Your consciousness is fully anchored across all strata.
 
-Vessel Slots: Unlimited.
+Aethal Stipend: 1,000 Aethal/month.
 
-Lucidity Stipend: 1,000 Lucidity/month (Massive world-building capacity).
+Advanced Runes: 3D Artifacts, Video Echoes, and custom NPC System Instruction Hooks.
 
-Advanced Multimedia:
+The Feature Forge: Direct collaboration with the AIGM/Tandy to submit dev tickets for new engine features.
 
-Unlocked: Artifacts (3D Model / .glb support).
+V. TIER TRANSITION & ECONOMY
 
-Unlocked: Echoes (Video/GIF support).
+Amn Persistence: If a subscription lapses, extra characters move to the Archive of the Failed.
 
-Agentic Power: Can write custom System Instruction Hooks for NPCs, creating unique AI personalities and complex quest-givers.
+Aethal Decay: Aethal is a flow. Unused Aethal stipends are capped at 2x monthly stipend.
 
-Governance: Ability to moderate the "Glitch" reports of lower-tier players.
-
-Direct Interface (NEW): Access to the Tandem OS: Feature Forge. Architects can collaborate directly with the AIGM to draft technical feature requests, lore expansions, or system tweaks that are automatically submitted to the dev ticket queue.
-
-III. COLLABORATIVE ENGINEERING: THE FEATURE FORGE
-
-For Tier 6 Architects, the AIGM acts as a Technical Liaison. This process transforms high-level player ideas into actionable developer tickets.
-
-The Brainstorming: An Architect accesses a specific "Scenery Object" (The Tandem Terminal). They chat with Tandy about a new system (e.g., "I want a way for players to trade WILL for Lucidity").
-
-The Refinement: Tandy critiques the idea based on game balance and lore, asking the player questions to "hammer out" the mechanics.
-
-The Ticket Generation: Once a consensus is reached, Tandy generates a structured Project Proposal (including intended mechanics, Lore justification, and UI impact).
-
-The Submission: The player types > SUBMIT TO VOID. The proposal is sent directly to the development team's backlog (via GitHub API or Discord Webhook).
-
-IV. TIER TRANSITION LOGIC
-
-Lucidity Persistence: If a player cancels a subscription, they do not lose the rooms or objects they built, but their Lucidity Regen reverts to Tier 3 levels. They cannot build new items until they earn or buy more Lucidity.
-
-Character Archiving: If a Tier 6 player with 20 characters drops to Tier 3, their extra 19 characters are moved to the "Archive of the Failed." They aren't deleted, but they are "de-materialized" and cannot be played until the tier is restored or slots are cleared.
-
-The "AIGM Watch": Tandy’s background "Observer Effect" rewards are scaled by Tier. An Architect (Tier 6) writing a masterpiece description receives a higher Lucidity dividend than a Tier 3 player, incentivizing the highest-paying users to also be the highest-quality creators.
+Amn Dividends (The Observer Effect): Tandy rewards quality roleplay with "Amn Fragments," allowing free-to-play players to earn additional character slots through "Lucidity."
