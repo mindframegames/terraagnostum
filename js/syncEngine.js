@@ -211,6 +211,17 @@ export async function updateStrataListener() {
             }
 
             // 2. Update State & Local Cache
+            const needsRefresh = Object.values(strata).some(s => s.visualStyle && s.visualStyle.includes('typos on legal documents'));
+            if (needsRefresh) {
+                console.log("[SYNC]: Outdated strata detected. Re-seeding...");
+                const batch = writeBatch(db);
+                for (const [id, data] of Object.entries(DEFAULT_STRATA)) {
+                    batch.set(doc(strataRef, id), data);
+                }
+                await batch.commit();
+                return;
+            }
+
             stateManager.setStrata(strata);
             localStorage.setItem(`strata_cache_${appId}`, JSON.stringify(strata));
             

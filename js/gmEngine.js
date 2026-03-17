@@ -27,7 +27,9 @@ export async function handleGMIntent(
         const npcText = (currentRoomData.npcs || []).map(n => {
             let statsStr = "";
             if (n.stats) statsStr = ` (AMN: ${n.stats.AMN ?? 20}, WILL: ${n.stats.WILL}, AWR: ${n.stats.AWR}, PHYS: ${n.stats.PHYS})`;
-            return `[NPC] ${n.name}${statsStr} - Personality: ${n.personality}`;
+            const bio = n.description || "A mysterious entity.";
+            const personal = n.personality || n.behavior || "Standing idle.";
+            return `[NPC] ${n.name}${statsStr}\n- LORE: ${bio}\n- PERSONALITY: ${personal}`;
         }).join('\n') || "None";
         
         // 1. BUILD MODULAR CONTEXT

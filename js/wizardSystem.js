@@ -369,11 +369,12 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
             id: `npc_${Date.now()}`,
             name: activeAvatar.name || "Unknown Vessel",
             archetype: activeAvatar.archetype || "Unknown",
+            description: activeAvatar.description || "A vacant shell.",
             visualPrompt: activeAvatar.visual_prompt || activeAvatar.visualPrompt || "A vacant shell.",
             image: activeAvatar.image || null,
             stats: activeAvatar.stats || { AMN: 20, WILL: 7, AWR: 7, PHYS: 6 },
             inventory: activeAvatar.inventory || [],
-            behavior: currentVal
+            personality: currentVal
         };
         const npcs = [...(room.npcs || []), newNpc];
         stateManager.updateMapNode(localPlayer.currentRoom, { npcs });
@@ -422,10 +423,11 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
             const newNpc = {
                 name: wizardState.pendingData.name,
                 archetype: wizardState.pendingData.archetype,
+                description: "A citizen of Terra Agnostum.",
                 visualPrompt: currentVal,
                 image: npcImg,
                 inventory: [],
-                behavior: "Standing idle."
+                personality: "Standing idle."
             };
             
             const room = activeMap[localPlayer.currentRoom];

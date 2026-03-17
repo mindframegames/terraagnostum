@@ -19,8 +19,8 @@ export const blueprintApartment = {
     "lore1": {
         name: "Lore Room",
         shortName: "LORE1",
-        description: "The western half of the main living area. A large, flickering computer console dominates the space against the west wall. The console hums with a strange energy, and the air is thick with forgotten secrets and intertwined histories.  A closet door to the north is scrawled on with black marker 'Schrödinger's Closet', glowing with potent energy.",
-        visualPrompt: "A gritty, glitchy cyberpunk apartment living room, a massive glowing green computer console, dim lighting, retro-futuristic furniture.  A closet door (closed) to the north is scrawled on with black marker 'Schrödinger's Closet', with a mysterious purple-blue light glowing and pulsing out of the edges of the closed door.  Piles of reference books, documents and exoteric history and occult works are everywhere, evidence of an obsessive project ot catalog a vast, interdimensional Lore.",
+        description: "The western half of the main living area. A large, flickering computer console dominates the space against the west wall. The console hums with a strange energy, and the air is thick with forgotten secrets and intertwined histories.  Everything not covered by the character room and map room is here: races, planes, factions, geographies, it is endless. A closet door to the north is scrawled on with black marker 'Schrödinger's Closet', glowing with potent energy.",
+        visualPrompt: "A gritty, glitchy cyberpunk apartment living room, a massive glowing green computer console, dim lighting, retro-futuristic furniture.  A closet door (closed) to the north is scrawled on with black marker 'Schrödinger's Closet', and a mysterious, astral purple-blue light is glowing out of the edges of the closed door.  Piles of reference books, documents and exoteric history and occult works are everywhere, evidence of an obsessive project ot catalog a vast, interdimensional Lore.  Everything not covered by the character room and map room is here: races, planes, factions, geographies, it is endless.",
         exits: { east: "maproom", north: "closet", south: "bedroom" },
         metadata: { stratum: "mundane", isEditable: false }
     },
@@ -44,7 +44,7 @@ export const blueprintApartment = {
         name: "Schrödinger's Closet",
         shortName: "CLOSET",
         description: "A typical apartment closet. The door is covered in cryptic occult and scientific diagrams. Inside is a Hacked Schumann Resonance Generator, arcing with potential energy.",
-        visualPrompt: "Inside a typical apartment closet, walls covered in marker-scrawled diagrams, a strange arcing device in the center.",
+        visualPrompt: "Glitchy cyberpunk vibe.  Inside a typical apartment closet, walls covered in marker-scrawled diagrams, a strange device in the center called the Hacked Schumann Resonance Generator is arcing with potential energy.",
         exits: { south: "lore1" },
         metadata: { stratum: "mundane", isEditable: false }
     },

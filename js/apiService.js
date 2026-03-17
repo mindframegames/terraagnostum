@@ -168,7 +168,7 @@ export async function callGemini(userInput, systemPrompt, customSchema = RESPONS
     }
 }
 
-export async function projectVisual(prompt, stratum, addLogCallback, pinnedViewUrl = null, strata = {}) {
+export async function projectVisual(prompt, stratum, addLogCallback, pinnedViewUrl = null, strata = {}, roomName = "") {
     if (pinnedViewUrl) return pinnedViewUrl;
 
     // --- COST CONTROL INTERCEPT ---
@@ -191,10 +191,13 @@ export async function projectVisual(prompt, stratum, addLogCallback, pinnedViewU
     }
     
     // Ensure vibrant, full-color rendering and lock the perspective.
-    const styledPrompt = `Cinematic interior shot of a room, highly detailed, vibrant full color. DO NOT INCLUDE PEOPLE. 
-        Main Subject: ${prompt}. 
+    const gameContext = "This is a multi-planar RPG adventure game.";
+    const subjectLine = roomName ? `Subject: [ ${roomName} ] - ${prompt}` : `Subject: ${prompt}`;
+    
+    const styledPrompt = `${gameContext} Cinematic interior shot of a room, highly detailed, vibrant full color. DO NOT INCLUDE PEOPLE. 
+        Main ${subjectLine}. 
         Atmosphere and rendering style: ${style}. 
-        Details: claustrophobic, indoors, enclosed, high fidelity.`;
+        Details: claustrophobic, indoors, enclosed, high fidelity, 8k resolution, cinematic lighting.`;
 
     try {
         const res = await fetch(API_IMAGE, {

@@ -78,6 +78,7 @@ export default async function handler(req, res) {
        */
       const model = "imagen-4.0-fast-generate-001";
       url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
+      console.log(`[IMAGEN 4] Dispatching Prompt: ${promptText}`);
       finalPayload = {
         instances: [{ prompt: promptText }],
         parameters: { sampleCount: 1 }
@@ -89,6 +90,7 @@ export default async function handler(req, res) {
        */
       const model = "gemini-3.1-flash-image-preview";
       url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      console.log(`[FLASH IMAGE] Dispatching Prompt: ${promptText}`);
       finalPayload = {
         contents: [
           { parts: [{ text: promptText }] }
