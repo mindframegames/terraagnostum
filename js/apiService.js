@@ -191,7 +191,10 @@ export async function projectVisual(prompt, stratum, addLogCallback, pinnedViewU
     }
     
     // Ensure vibrant, full-color rendering and lock the perspective.
-    const styledPrompt = `Cinematic interior shot, highly detailed, vibrant full color. DO NOT INCLUDE PEOPLE UNLESS EXPLICITLY REQUESTED. Subject: [ ${prompt} ]. Atmosphere and rendering style MUST BE: ${style}. Claustrophobic, indoors, enclosed.`;
+    const styledPrompt = `Cinematic interior shot of a room, highly detailed, vibrant full color. DO NOT INCLUDE PEOPLE. 
+        Main Subject: ${prompt}. 
+        Atmosphere and rendering style: ${style}. 
+        Details: claustrophobic, indoors, enclosed, high fidelity.`;
 
     try {
         const res = await fetch(API_IMAGE, {

@@ -42,6 +42,7 @@ function setupReadOnlyForge(data) {
     document.getElementById('forge-desc').value = data.description || '';
     document.getElementById('forge-desc').readOnly = true;
     document.getElementById('forge-desc').disabled = false; // Ensure it's not grayed out if we're just reading
+    document.getElementById('forge-stratum').innerText = (data.stratum || '---').toUpperCase();
     document.getElementById('forge-archetype').innerText = (data.archetype || '---').toUpperCase();
     document.getElementById('stat-amn').innerText = (data.stats?.AMN || 20).toString().padStart(2, '0');
     document.getElementById('stat-will').innerText = (data.stats?.WILL || 0).toString().padStart(2, '0');
@@ -65,6 +66,7 @@ function resetForge() {
     document.getElementById('forge-name').readOnly = false;
     document.getElementById('forge-desc').value = '';
     document.getElementById('forge-desc').readOnly = false;
+    document.getElementById('forge-stratum').innerText = '---';
     document.getElementById('forge-stats-readout').classList.add('hidden');
     document.getElementById('forge-help-msg').classList.add('hidden');
     document.getElementById('forge-portrait-img').classList.add('hidden');
@@ -248,6 +250,7 @@ async function analyzeBiometrics() {
     document.getElementById('stat-will').innerText = "--";
     document.getElementById('stat-awr').innerText = "--";
     document.getElementById('stat-phys').innerText = "--";
+    document.getElementById('forge-stratum').innerText = "CALIBRATING...";
     document.getElementById('forge-stats-readout').classList.remove('hidden');
 
     // Determine stats for a character in the ${currentDraftStratum} stratum. 
@@ -263,7 +266,9 @@ async function analyzeBiometrics() {
       WILL, AWR, and PHYS are DERIVED stats. 
       CRITICAL RULE: The sum of (WILL + AWR + PHYS) MUST EQUAL the AMN value (20).
       Distribute the 20 points among WILL, AWR, and PHYS based on the biometric seed.
-      Return JSON: {"WILL": int, "AWR": int, "PHYS": int, "AMN": 20, "archetype": "string"}
+      Also determine the most appropriate STRATUM for this character based on their backstory.
+      Available Strata: ${Object.keys(strata).join(', ')}.
+      Return JSON: {"WILL": int, "AWR": int, "PHYS": int, "AMN": 20, "archetype": "string", "stratum": "string"}
       ${dynamicSetting}
       `;
     
@@ -274,14 +279,22 @@ async function analyzeBiometrics() {
             AWR: { type: "integer" },
             PHYS: { type: "integer" },
             AMN: { type: "integer" },
-            archetype: { type: "string" }
+            archetype: { type: "string" },
+            stratum: { type: "string" }
         },
-        required: ["WILL", "AWR", "PHYS", "AMN", "archetype"]
+        required: ["WILL", "AWR", "PHYS", "AMN", "archetype", "stratum"]
     });
     if (res) {
         currentDraftStats = res;
         if (currentDraftStats.AMN === undefined) currentDraftStats.AMN = 20;
+        
+        // Update currentDraftStratum if the AI suggests a better fit
+        if (res.stratum && strata[res.stratum.toLowerCase()]) {
+            currentDraftStratum = res.stratum.toLowerCase();
+        }
+
         archetypeEl.innerText = (res.archetype || "UNKNOWN").toUpperCase();
+        document.getElementById('forge-stratum').innerText = currentDraftStratum.toUpperCase();
         document.getElementById('stat-amn').innerText = (res.AMN || 20).toString().padStart(2, '0');
         document.getElementById('stat-will').innerText = (res.WILL || 10).toString().padStart(2, '0');
         document.getElementById('stat-awr').innerText = (res.AWR || 10).toString().padStart(2, '0');
