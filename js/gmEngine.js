@@ -167,12 +167,14 @@ export async function handleGMIntent(
             let opponentName = (currentState.localPlayer.combat.opponent || res.speaker || "Shadow").toLowerCase();
             if (opponentName === 'narrator' || opponentName === 'system') opponentName = "shadow";
             
-            // Fuzzy match for NPC name
-            const npc = room.npcs?.find(n => 
-                n.name.toLowerCase() === opponentName || 
-                n.name.toLowerCase().includes(opponentName) ||
-                opponentName.includes(n.name.toLowerCase())
-            );
+            // Fuzzy match for NPC name, or grab the only available target if unambiguous
+            let npc = room.npcs?.find(n => {
+                const lname = (n.name || "").toLowerCase();
+                const isFallbackMatch = opponentName.includes('narrator') || opponentName.includes('system') || opponentName.includes('shadow');
+                return lname === opponentName || lname.includes(opponentName) || opponentName.includes(lname) || isFallbackMatch;
+            });
+
+            if (!npc && room.npcs?.length === 1) npc = room.npcs[0];
             
             if (npc) {
                 if (!npc.stats) npc.stats = { AMN: 20, WILL: 7, AWR: 7, PHYS: 6 };

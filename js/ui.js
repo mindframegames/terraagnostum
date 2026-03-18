@@ -60,12 +60,18 @@ stateManager.subscribe((state) => {
     // Combat UI Toggle
     if (localPlayer.combat.active) {
         // Find opponent in current room with fuzzy matching
-        const opponent = room?.npcs?.find(n => {
+        let opponent = room?.npcs?.find(n => {
             const search = (localPlayer.combat.opponent || "").toLowerCase();
             const name = (n.name || "").toLowerCase();
             const isFallbackMatch = search.includes('narrator') || search.includes('system') || search.includes('tandy');
             return name === search || name.includes(search) || search.includes(name) || isFallbackMatch || (search.includes('narrator') && name.includes('shadow'));
         });
+
+        // If there's only one NPC in the room anyway, it's virtually guaranteed to be the combat target
+        if (!opponent && room?.npcs?.length === 1) {
+            opponent = room.npcs[0];
+        }
+
         let fallbackTarget = opponent;
         if (!fallbackTarget) {
             let n = localPlayer.combat.opponent || "Shadow Entity";
