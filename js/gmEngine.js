@@ -207,7 +207,7 @@ export async function handleGMIntent(
                     // Auto-grant Resonant Key and Shift Stratum if Shadow is defeated
                     const isNexusBoss = npc.name.toLowerCase().includes("shadow") || 
                                         npc.name.toLowerCase().includes("unknown entity") || 
-                                        currentState.localPlayer.currentRoom === 'astral_entry';
+                                        currentState.localPlayer.currentRoom.includes('astral_entry');
                                         
                     if (isNexusBoss) {
                         const key = { name: "Resonant Key", type: "Key Item", description: "A vibrating, semi-translucent key that resonates with the apartment's front door." };
@@ -217,6 +217,44 @@ export async function handleGMIntent(
                         }
                         
                         if (currentLocalPlayer.stratum !== 'mundane') {
+                            // 1. Break the generator in the physical realm
+                            const activeMap = stateManager.getActiveMap();
+                            const closet = activeMap['closet'];
+                            if (closet && closet.description) {
+                                const newDesc = closet.description.replace('arcing with potential energy', 'smoking, its quantum core shattered');
+                                stateManager.updateMapNode('closet', { description: newDesc });
+                                syncEngine.updateMapNode('closet', { description: newDesc });
+                            }
+                            
+                            // 2. Queue the async MacGuffin Quest Generator
+                            (async () => {
+                                try {
+                                    const macGuffinRes = await callGemini(
+                                        `A hyper-advanced, occult-scientific "Hacked Schumann Resonance Generator" just shattered. Create a highly creative, 1-3 word name for the single critical component that needs to be replaced. Example: "Flux Capacitor", "Quantum Lobe", "Resonant Focusing Crystal", "Aetheric Diode". Output ONLY JSON format.`, 
+                                        "You are a sci-fi game engineer.",
+                                        { type: "object", properties: { part_name: { type: "string" } }, required: ["part_name"] }
+                                    );
+                                    
+                                    const partName = macGuffinRes?.part_name || "Aethal Relay Tube";
+                                    const newQuest = {
+                                        id: `quest_${Date.now()}`,
+                                        title: "Fix Resonator",
+                                        description: `Your internal clash destabilized the Schumann Generator in your closet. To restore targeted planar traversal, you must locate a [${partName.toUpperCase()}] and install it.`,
+                                        status: "active",
+                                        objectives: [
+                                            { desc: `Find a ${partName}`, completed: false },
+                                            { desc: `Install ${partName} in the Schumann Generator`, completed: false }
+                                        ]
+                                    };
+                                    
+                                    const pState = stateManager.getState().localPlayer;
+                                    stateManager.updatePlayer({ quests: [...(pState.quests || []), newQuest] });
+                                    UI.addLog(`[SYSTEM]: NEW QUEST ADDED: 'Fix Resonator'. Consult your active tickets.`, "var(--term-amber)");
+                                } catch(e) {
+                                    console.error("Quest Generation Error", e);
+                                }
+                            })();
+
                             stateManager.updatePlayer({ 
                                 currentRoom: 'closet', 
                                 stratum: 'mundane' 
@@ -238,10 +276,10 @@ export async function handleGMIntent(
         if (res.astral_jump && currentLocalPlayer.stratum !== 'astral') {
             if (currentLocalPlayer.currentRoom === 'closet' || val.toLowerCase().includes('aethal')) {
                 shiftStratum('astral');
-                const entryId = 'astral_entry';
+                const entryId = currentLocalPlayer.activeAvatarId ? `astral_entry_${currentLocalPlayer.activeAvatarId}` : 'astral_entry';
                 const entryNode = {
                     name: "Astral Nexus", shortName: "NEXUS",
-                    description: "The entry point to the astral plane. Space is fluid and glowing.",
+                    description: "The entry point to your isolated astral shard. Space is fluid and glowing.",
                     visualPrompt: "Glowing astral nexus portal.",
                     exits: {}, pinnedView: null, items: [], marginalia: [], npcs: []
                 };

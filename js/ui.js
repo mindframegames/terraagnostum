@@ -20,6 +20,7 @@ stateManager.subscribe((state) => {
     updateVitalsUI(activeAvatar);
     updateAvatarUI(activeAvatar);
     updateInventoryUI(localPlayer.inventory);
+    updateQuestsUI(localPlayer.quests);
     
     // Header Vitals Sync
     syncHeaderVitals(activeAvatar);
@@ -383,6 +384,21 @@ export function updateAvatarUI(activeAvatar) {
     if (portraitImg) {
         portraitImg.onclick = () => toggleDossierBuffer(true);
     }
+}
+
+export function updateQuestsUI(quests) {
+    const container = document.getElementById('quests-container');
+    if (!container) return;
+    if (!quests || quests.length === 0) {
+        container.innerHTML = "[EMPTY]";
+        return;
+    }
+    container.innerHTML = quests.filter(q => q.status === 'active').map(quest => `
+        <div class="border border-[#1a3a1a] p-1 bg-black/40 border-l-2 border-l-purple-900">
+            <span class="text-purple-400 font-bold block truncate">${quest.title.toUpperCase()}</span>
+            <span class="text-[8px] text-gray-400 block break-words mt-1">${quest.description}</span>
+        </div>
+    `).join('');
 }
 
 export function updateInventoryUI(inventory) {

@@ -4,7 +4,7 @@
 let state = {
     localPlayer: { 
         hp: 20, currentRoom: "void", stratum: "mundane",
-        inventory: [], closetDoorClosed: false, isArchitect: false,
+        inventory: [], quests: [], closetDoorClosed: false, isArchitect: false,
         explorerMode: false,
         combat: { active: false, opponent: null }, activeAvatarId: null
     },
