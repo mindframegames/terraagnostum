@@ -1000,7 +1000,12 @@ export function printRoomDescription(room, isAstral, activeMap, activeAvatar) {
     
     const roomTitle = room.name ? room.name.toUpperCase() : (room.shortName ? room.shortName.toUpperCase() : "UNKNOWN LOCATION");
     addLog(`\n--- ${roomTitle} ---`, color);
-    addLog(room.description, "#ccc");
+    
+    if (room.description) {
+        addLog(room.description, "#ccc");
+    } else {
+        addLog("Sensory data unavailable.", "#ccc");
+    }
 
     if (room.items && room.items.length > 0) {
         const itemNames = room.items.map(i => `[${i.name}]`).join(", ");
