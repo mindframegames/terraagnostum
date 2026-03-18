@@ -239,6 +239,7 @@ export async function handleGMIntent(
                                     const newQuest = {
                                         id: `quest_${Date.now()}`,
                                         title: "Fix Resonator",
+                                        rank: 5,
                                         description: `Your internal clash destabilized the Schumann Generator in your closet. To restore targeted planar traversal, you must locate a [${partName.toUpperCase()}] and install it.`,
                                         status: "active",
                                         objectives: [

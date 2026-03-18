@@ -135,9 +135,20 @@ VISIBLE EXITS: ${Object.entries(currentRoomData.exits || {}).join(', ').toUpperC
 ITEMS PRESENT: ${(currentRoomData.items || []).map(i => i.name).join(', ') || "None"}
 `;
 
+    const activeQuests = (localPlayer.quests || [])
+        .filter(q => q.status === 'active')
+        .sort((a, b) => (b.rank || 0) - (a.rank || 0));
+        
+    let questText = "NONE";
+    if (activeQuests.length > 0) {
+        questText = activeQuests.map(q => `[RANK ${q.rank || 0}] ${q.title}: ${q.description}`).join('\n');
+    }
+
     const entityLayer = `
 PLAYER STATS: HP ${localPlayer.hp}/20, AMN ${localPlayer.stats?.AMN ?? 20}, WILL ${localPlayer.will || 10}, AWR ${localPlayer.awr || 10}
 PLAYER INVENTORY: ${inventoryNames || "Empty"}
+ACTIVE QUESTS:
+${questText}
 
 NPCS PRESENT:
 ${npcText}
@@ -149,6 +160,7 @@ EVALUATION DIRECTIVES:
 2. If the player attempts an invalid action, gently correct them narratively.
 3. If the player successfully changes the world (picks up an item, destroys something, changes the lighting), set 'trigger_visual' to true if the visual scene should be re-rendered.
 4. Maintain the persona and vibe of the current Stratum.
+5. QUEST GUIDANCE: The player is trying to solve ACTIVE QUESTS. If they explore, search, or talk to NPCs, subliminally weave clues, physical items, or pathways into your responses that allow them to complete their highest-ranked quests.
 
 LAYER 4: COMBAT & LORE:
 - AMN (OM|AMEN) is the ROOT stat (usually 20).
