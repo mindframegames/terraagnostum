@@ -205,7 +205,11 @@ export async function handleGMIntent(
                     stateChanged = true;
 
                     // Auto-grant Resonant Key and Shift Stratum if Shadow is defeated
-                    if (npc.name.toLowerCase().includes("shadow")) {
+                    const isNexusBoss = npc.name.toLowerCase().includes("shadow") || 
+                                        npc.name.toLowerCase().includes("unknown entity") || 
+                                        currentState.localPlayer.currentRoom === 'astral_entry';
+                                        
+                    if (isNexusBoss) {
                         const key = { name: "Resonant Key", type: "Key Item", description: "A vibrating, semi-translucent key that resonates with the apartment's front door." };
                         const currentLocalPlayer = stateManager.getState().localPlayer;
                         if (!currentLocalPlayer.inventory.some(i => i.name === key.name)) {
