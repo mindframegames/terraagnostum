@@ -218,12 +218,19 @@ export async function handleGMIntent(
                         
                         if (currentLocalPlayer.stratum !== 'mundane') {
                             // 1. Break the generator in the physical realm
+                            // Derive the instanced closet ID from the current player state.
+                            // The astral room is `astral_entry_{avatarId}`; the closet is `instance_{uid}_closet`.
+                            const { user: currentUser } = stateManager.getState();
+                            const closetRoomId = currentUser
+                                ? `instance_${currentUser.uid}_closet`
+                                : 'closet'; // Fallback for guests
                             const activeMap = stateManager.getActiveMap();
-                            const closet = activeMap['closet'];
+                            const closet = activeMap[closetRoomId] || activeMap['closet'];
+                            const resolvedClosetId = activeMap[closetRoomId] ? closetRoomId : 'closet';
                             if (closet && closet.description) {
                                 const newDesc = closet.description.replace('arcing with potential energy', 'smoking, its quantum core shattered');
-                                stateManager.updateMapNode('closet', { description: newDesc });
-                                syncEngine.updateMapNode('closet', { description: newDesc });
+                                stateManager.updateMapNode(resolvedClosetId, { description: newDesc });
+                                syncEngine.updateMapNode(resolvedClosetId, { description: newDesc });
                             }
                             
                             // 2. Queue the async MacGuffin Quest Generator

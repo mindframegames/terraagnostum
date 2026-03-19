@@ -370,9 +370,17 @@ export async function removeArrayElementFromNode(roomId, arrayPath, element) {
 export async function addArrayElementToNode(roomId, arrayPath, element) {
     const { user } = stateManager.getState();
     if (!db || !user || !isSyncEnabled) return;
+    // Sanitize: JSON round-trip removes undefined values that Firebase rejects
+    const safeElement = element !== null && typeof element === 'object'
+        ? JSON.parse(JSON.stringify(element))
+        : element;
+    if (safeElement === undefined || safeElement === null) {
+        console.warn(`[SYNC]: addArrayElementToNode skipped — element for '${arrayPath}' is null/undefined.`);
+        return;
+    }
     const roomRef = doc(db, 'artifacts', appId, 'rooms', roomId);
     try {
-        await updateDoc(roomRef, { [arrayPath]: arrayUnion(element) });
+        await updateDoc(roomRef, { [arrayPath]: arrayUnion(safeElement) });
     } catch (e) { console.error("SyncEngine: Failed to add element to node:", e); }
 }
 
