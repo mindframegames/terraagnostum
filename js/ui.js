@@ -9,13 +9,10 @@ stateManager.subscribe((state) => {
     const tier = stateManager.getUserTier();
     
     // Update Command Prompt
-    const roomShort = activeMap[localPlayer.currentRoom]?.shortName || localPlayer.currentRoom.toUpperCase();
-    const wizardPlaceholder = wizardState.active ? (wizardState.type === 'login' ? '[ AWAITING EMAIL... ]' : '[ AWAITING INPUT... ]') : null;
-    let combatSuffix = localPlayer.combat.active ? `[COMBAT vs ${localPlayer.combat.opponent}]` : null;
-    
-    updateCommandPrompt(tier, roomShort, activeTerminal, wizardPlaceholder, activeAvatar, combatSuffix);
+    updateCommandPrompt(tier);
 
     // Update Sidebars/HUD
+    const roomShort = activeMap[localPlayer.currentRoom]?.shortName || localPlayer.currentRoom.toUpperCase();
     updateStatusUI(roomShort, localPlayer.stratum);
     updateVitalsUI(activeAvatar);
     updateAvatarUI(activeAvatar);
@@ -254,31 +251,19 @@ export function updateContextualSuggestions(aigmSuggestions = []) {
     renderContextualCommands(uniqueSuggestions);
 }
 
-export function updateCommandPrompt(tier, roomShort, activeTerminal = false, wizardPlaceholder = null, activeAvatar = null, combatSuffix = null) {
+export function updateCommandPrompt(tier) {
     const prefixEl = document.getElementById('prompt-prefix');
     const inputEl = document.getElementById('cmd-input');
     if (!prefixEl || !inputEl) return;
 
-    if (wizardPlaceholder) {
-        inputEl.placeholder = wizardPlaceholder;
-    } else if (activeTerminal) {
-        inputEl.placeholder = "TANDEM_OS // Awaiting command ('exit' to disconnect)...";
-    } else if (combatSuffix) {
-        inputEl.placeholder = "BATTLE OF WILLS // Describe your resistance...";
-    } else {
-        inputEl.placeholder = "Enter command...";
-    }
+    inputEl.placeholder = "Enter command...";
 
-    // Truncate long names to save space on mobile (e.g. "ARCHITECT" -> "ARCHITECT", "LONG_AVATAR_NAME" -> "LONG_AVA...")
-    let displayName = activeAvatar ? activeAvatar.name.toUpperCase() : tier;
-    if (displayName.length > 10) displayName = displayName.substring(0, 8) + '..';
     let colorClass = "text-green-400";
     if (tier === 'VOID') colorClass = "text-purple-500";
     if (tier === 'GUEST') colorClass = "text-gray-500";
     if (tier === 'ARCHITECT') colorClass = "text-blue-400";
 
-    const combatDisplay = combatSuffix ? `<span class="text-red-500 ml-1">${combatSuffix}</span>` : "";
-    prefixEl.innerHTML = `<span class="${colorClass} font-bold">${displayName}@${roomShort}:~$</span>${combatDisplay}&nbsp;`;
+    prefixEl.innerHTML = `<span class="${colorClass} font-bold">$</span>&nbsp;`;
 }
 
 export function updateStatusUI(roomShort, stratum = 'MUNDANE') {
