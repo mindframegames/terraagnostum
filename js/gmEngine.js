@@ -356,6 +356,7 @@ export async function handleGMIntent(
         if (res.trigger_teleport && !res.trigger_respawn) {
             let t = res.trigger_teleport;
             const activeMap = stateManager.getActiveMap();
+            const currentLocalPlayer = stateManager.getState().localPlayer;
             
             // Fuzzy Match Protection: Check if the AI invented a new ID for an existing room name
             const existingEntry = Object.entries(activeMap).find(([id, r]) => 
@@ -367,13 +368,39 @@ export async function handleGMIntent(
                 t.new_room_id = existingEntry[0];
             }
 
+            // --- EXIT LOCK ENFORCEMENT (mirrors intentRouter.js) ---
+            // Find the exit definition in the current room that leads to this target,
+            // so we can enforce reqAuth and itemReq locks even for AI-directed movement.
+            const currentRoomData = activeMap[currentLocalPlayer.currentRoom] || {};
+            const matchingExit = Object.values(currentRoomData.exits || {}).find(exit =>
+                typeof exit === 'object' && exit.target === t.new_room_id
+            );
+            if (matchingExit) {
+                if (matchingExit.reqAuth && (!user || user.isAnonymous)) {
+                    if (!isSilent) {
+                        UI.addLog(matchingExit.lockMsg || "[SYSTEM]: Identity verification required to proceed.", "#b084e8");
+                        UI.toggleOverlay('login-modal');
+                    }
+                    return; // Abort the teleport
+                }
+                if (matchingExit.itemReq) {
+                    const hasItem = (currentLocalPlayer.inventory || []).some(i =>
+                        i.name.toLowerCase().includes(matchingExit.itemReq.toLowerCase())
+                    );
+                    if (!hasItem) {
+                        if (!isSilent) UI.addLog(matchingExit.lockMsg || `[SYSTEM]: Required item missing: [${matchingExit.itemReq}].`, "var(--term-amber)");
+                        return; // Abort the teleport
+                    }
+                }
+            }
+
             if (!activeMap[t.new_room_id]) {
                 // It's a truly new room, link it back to the current room so they aren't trapped
                 const returnDir = "back"; 
                 const newRoom = { 
                     ...t, 
                     shortName: t.name.substring(0, 7).toUpperCase(), 
-                    exits: { [returnDir]: stateManager.getState().localPlayer.currentRoom }, 
+                    exits: { [returnDir]: currentLocalPlayer.currentRoom }, 
                     pinnedView: null, 
                     items: [], 
                     marginalia: [], 
