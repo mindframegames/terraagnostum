@@ -13,7 +13,7 @@ export async function handleGMIntent(
     isSilent = false
 ) {
     const { localPlayer, user, activeAvatar } = state;
-    const { shiftStratum, savePlayerState, updateMapListener, triggerVisualUpdate: triggerVisual } = actions;
+    const { shiftStratum, savePlayerState, updateMapListener, triggerVisualUpdate: triggerVisual, processRoomEvents } = actions;
 
     if (!isSilent) {
         UI.addLog(`<span id="thinking-indicator" class="italic" style="color: var(--gm-purple)">EVALUATING INTENT...</span>`);
@@ -421,6 +421,7 @@ export async function handleGMIntent(
             if (triggerVisual) triggerVisual(t.visualPrompt);
             stateChanged = true;
             if (!isSilent) UI.addLog(`Reality warp successful.`, "var(--gm-purple)");
+            if (processRoomEvents) processRoomEvents(activeMap[t.new_room_id]);
         }
         
         if (stateChanged) { 

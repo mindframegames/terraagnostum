@@ -31,6 +31,22 @@ export function shiftStratum(targetStratum) {
     syncEngine.savePlayerState();
 }
 
+/**
+ * Process any automated events defined in a room's metadata.
+ * @param {Object} room - The room object from mapData
+ */
+export function processRoomEvents(room) {
+    if (!room || !room.specialEvents || !Array.isArray(room.specialEvents)) return;
+
+    room.specialEvents.forEach(event => {
+        if (event.when === 'always_upon_entry') {
+            if (event.type === 'console_msg' && event.content) {
+                UI.addLog(event.content, "var(--term-amber)");
+            }
+        }
+    });
+}
+
 // --- NARRATIVE MOVEMENT ENGINE ---
 export async function executeMovement(targetDir) {
     const state = stateManager.getState();
@@ -68,6 +84,7 @@ export async function executeMovement(targetDir) {
             const travelMsg = stratumData ? `You traverse the ${stratumData.name} currents to ${nextRoom.name}.` : `You traverse the astral currents to ${nextRoom.name}.`;
             UI.addLog(`[SYSTEM]: ${travelMsg}`, "var(--term-green)");
             UI.printRoomDescription(nextRoom, true, updatedActiveMap, activeAvatar);
+            processRoomEvents(nextRoom);
             return;
         }
 
@@ -119,6 +136,7 @@ export async function executeMovement(targetDir) {
         
         syncEngine.savePlayerState();
         triggerVisualUpdate(null, stateManager.getState().localPlayer, stateManager.getActiveMap(), user);
+        processRoomEvents(activeMap[targetRoomId]);
     } else if (localPlayer.explorerMode) {
         await handleExploration(targetDir);
     } else {
@@ -184,6 +202,7 @@ async function handleExploration(targetDir) {
             const updatedActiveMap = getActiveMap();
             UI.printRoomDescription(newRoom, localPlayer.stratum === 'astral', updatedActiveMap, activeAvatar);
             triggerVisualUpdate(res.visual_prompt, stateManager.getState().localPlayer, updatedActiveMap, user, true);
+            processRoomEvents(newRoom);
         } else {
             UI.addLog(`[SYSTEM]: ${res.reasoning || "The logic of this sector forbids movement in that direction."}`, "var(--term-amber)");
         }
@@ -218,7 +237,8 @@ export async function handleCommand(val) {
                     renderMapHUD: UI.renderMapHUD,
                     setActiveAvatar: stateManager.setActiveAvatar,
                     syncAvatarStats: () => syncEngine.syncAvatarStats(stateManager.getState().activeAvatar?.id, stateManager.getState().activeAvatar?.stats),
-                    updateMapListener: () => syncEngine.updateGlobalMapListener()
+                    updateMapListener: () => syncEngine.updateGlobalMapListener(),
+                    processRoomEvents
                 },
                 true // IS SILENT
             );
@@ -285,7 +305,9 @@ export async function handleCommand(val) {
         await syncEngine.updateGlobalMapListener();
         shiftStratum('mundane');
         UI.addLog(`[SYSTEM]: Recalibrating reality to primary anchor (${targetRoom})...`, "var(--term-green)");
-        triggerVisualUpdate(null, stateManager.getState().localPlayer, stateManager.getActiveMap(), user);
+        const finalMap = getActiveMap();
+        triggerVisualUpdate(null, stateManager.getState().localPlayer, finalMap, user);
+        processRoomEvents(finalMap[targetRoom]);
         return;
     }
 
@@ -796,7 +818,8 @@ export async function handleCommand(val) {
                     setActiveAvatar: stateManager.setActiveAvatar,
                     syncAvatarStats: () => syncEngine.syncAvatarStats(stateManager.getState().activeAvatar?.id, stateManager.getState().activeAvatar?.stats),
                     updateMapListener: () => syncEngine.updateGlobalMapListener(),
-                    triggerVisualUpdate: (prompt) => triggerVisualUpdate(prompt, stateManager.getState().localPlayer, stateManager.getActiveMap(), stateManager.getState().user)
+                    triggerVisualUpdate: (prompt) => triggerVisualUpdate(prompt, stateManager.getState().localPlayer, stateManager.getActiveMap(), stateManager.getState().user),
+                    processRoomEvents
                 }
             );
             stateManager.setSuggestions(suggestions);
