@@ -63,7 +63,7 @@ export const blueprintApartment = {
         visualPrompt: "A room overflowing with sketches, RPG character sheets, and anatomical drawings pinned to walls, cinematic lighting, cluttered desk piled with reference books and lore.  Walls covered in anatomical drawings, character portraits, extensive RPG data, figures and info.",
         exits: { west: "maproom" },
         metadata: { stratum: "mundane", isEditable: false },
-        specialEvents: { type: "console_msg", content: "[Tandy] You can create character's in this space.", when: "always_upon_entry" }
+        specialEvents: [{ type: "console_msg", content: "[Tandy] You can create character's in this space.", when: "always_upon_entry" }]
     },
     "hallway": {
         name: "Hallway",

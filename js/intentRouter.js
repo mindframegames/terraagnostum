@@ -36,9 +36,11 @@ export function shiftStratum(targetStratum) {
  * @param {Object} room - The room object from mapData
  */
 export function processRoomEvents(room) {
-    if (!room || !room.specialEvents || !Array.isArray(room.specialEvents)) return;
+    if (!room || !room.specialEvents) return;
 
-    room.specialEvents.forEach(event => {
+    const events = Array.isArray(room.specialEvents) ? room.specialEvents : [room.specialEvents];
+
+    events.forEach(event => {
         if (event.when === 'always_upon_entry') {
             if (event.type === 'console_msg' && event.content) {
                 UI.addLog(event.content, "var(--term-amber)");
