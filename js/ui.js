@@ -140,6 +140,7 @@ export function initMobileDrawer() {
 document.addEventListener('DOMContentLoaded', () => {
     initMobileDrawer();
     initMobileRadar();
+    setupMapResizeObservers();
 });
 
 export function initMobileRadar() {
@@ -575,6 +576,30 @@ export function renderMapHUD(activeMap, currentRoomKey, stratum) {
     drawTopologyToCanvas('map-canvas', activeMap, currentRoomKey, stratum, true);
     // Render to Mobile Radar
     drawTopologyToCanvas('mobile-radar-canvas', activeMap, currentRoomKey, stratum, false);
+    // Render to Large Map (Modal)
+    drawTopologyToCanvas('large-map-canvas', activeMap, currentRoomKey, stratum, true);
+}
+
+/**
+ * Ensures maps are redrawn whenever their containers change size.
+ */
+export function setupMapResizeObservers() {
+    // Select all canvas containers
+    const containers = [
+        document.getElementById('map-canvas-container'),
+        document.getElementById('mobile-radar-widget'),
+        document.getElementById('large-map-canvas')?.parentElement
+    ].filter(Boolean);
+
+    const observer = new ResizeObserver(() => {
+        const state = stateManager.getState();
+        const activeMap = stateManager.getActiveMap();
+        if (activeMap && state.localPlayer.currentRoom) {
+            renderMapHUD(activeMap, state.localPlayer.currentRoom, state.localPlayer.stratum);
+        }
+    });
+
+    containers.forEach(target => observer.observe(target));
 }
 
 function drawTopologyToCanvas(canvasId, activeMap, currentRoomKey, stratum, drawLabels) {
@@ -584,11 +609,11 @@ function drawTopologyToCanvas(canvasId, activeMap, currentRoomKey, stratum, draw
     
     // Auto-resize
     const rect = canvas.parentElement.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return; // Skip if parent is hidden/not laid out
+
     if (canvas.width !== rect.width || canvas.height !== rect.height) {
-        if (rect.width > 0 && rect.height > 0) {
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-        }
+        canvas.width = rect.width;
+        canvas.height = rect.height;
     }
 
     if (!activeMap || Object.keys(activeMap).length === 0 || canvas.width === 0) return;
