@@ -343,10 +343,17 @@ export function updateAvatarUI(activeAvatar) {
         : `<div class="absolute inset-0 w-full h-full bg-gray-900 flex items-center justify-center text-[10px] text-gray-700">[ NO VISUAL DATA ]</div>`;
 
     container.innerHTML = `
-        <div class="relative w-full aspect-square group overflow-hidden border border-[#1a3a1a] rounded-sm bg-black">
+        <div class="relative w-full aspect-square group overflow-hidden border border-[#1a3a1a] rounded-sm bg-black cursor-pointer">
             <!-- Full Un-obscured Portrait -->
             ${portrait}
             
+            <!-- VIEW DOSSIER Overlay (UX Discovery) -->
+            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20 pointer-events-none">
+                <div class="border border-green-500 px-2 py-1 text-[8px] bg-black text-green-400 font-bold tracking-widest uppercase shadow-[0_0_10px_rgba(74,222,128,0.4)]">
+                    [ VIEW DOSSIER ]
+                </div>
+            </div>
+
             <!-- Always-visible Name Bar (Top Overlay) -->
             <div class="absolute top-0 left-0 w-full bg-gradient-to-b from-black/80 via-black/40 to-transparent p-3 z-10 pointer-events-none">
                 <div class="font-bold text-green-400 text-sm tracking-widest drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">${activeAvatar.name.toUpperCase()}</div>
@@ -368,9 +375,9 @@ export function updateAvatarUI(activeAvatar) {
     `;
 
     // Add click listener to the portrait to trigger Dossier
-    const portraitImg = document.getElementById('avatar-portrait-main');
-    if (portraitImg) {
-        portraitImg.onclick = () => toggleDossierBuffer(true);
+    const avatarBox = container.querySelector('.group');
+    if (avatarBox) {
+        avatarBox.onclick = () => toggleDossierBuffer(true);
     }
 }
 
