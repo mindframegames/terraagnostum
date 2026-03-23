@@ -181,7 +181,12 @@ export async function handleWizardInput(val, context = {}, callbacks = {}) {
                 stratum: localPlayer.stratum || "mundane",
                 visual_prompt: currentVal,
                 image: finalImage,
-                stats: { AMN: 20, WILL: 7, AWR: 7, PHYS: 6 },
+                stats: { 
+                    AMN: 20, 
+                    WILL: { total: 7, stability: 4, projection: 3 }, 
+                    AWR: { total: 7, focus: 4, perception: 3 }, 
+                    PHYS: { total: 6, strength: 3, agility: 3 } 
+                },
                 inventory: [],
                 deceased: false, deployed: false, timestamp: Date.now()
             };

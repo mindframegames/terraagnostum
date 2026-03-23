@@ -6,7 +6,13 @@ let state = {
         hp: 20, currentRoom: "void", stratum: "mundane",
         inventory: [], quests: [], closetDoorClosed: false, isArchitect: false,
         explorerMode: false,
-        combat: { active: false, opponent: null }, activeAvatarId: null
+        combat: { active: false, opponent: null }, activeAvatarId: null,
+        stats: {
+            AMN: 20,
+            WILL: { total: 7, stability: 4, projection: 3 },
+            PHYS: { total: 6, strength: 3, agility: 3 },
+            AWR: { total: 7, focus: 4, perception: 3 }
+        }
     },
     localAreaCache: {}, // THE ONLY CACHE
     strata: {}, // Dynamic strata from Firestore

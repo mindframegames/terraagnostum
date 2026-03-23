@@ -284,9 +284,16 @@ export function updateVitalsUI(activeAvatar) {
     }
 
     // Assuming stats are 1-20 or similar, mapping to % for now
-    const will = activeAvatar.stats.WILL || 10;
-    const awr = activeAvatar.stats.AWR || 10;
-    const phys = activeAvatar.stats.PHYS || 10;
+    const stats = activeAvatar.stats || {};
+    const getStatValue = (pool) => {
+        const p = stats[pool];
+        if (!p) return 0;
+        return typeof p === 'object' ? (p.total || 0) : p;
+    };
+
+    const will = getStatValue('WILL');
+    const awr = getStatValue('AWR');
+    const phys = getStatValue('PHYS');
     
     // For now use phys as HP base
     const currentHP = activeAvatar.hp || phys;
@@ -304,11 +311,13 @@ function syncHeaderVitals(activeAvatar) {
     updateVitalsUI(activeAvatar);
 }
 
-function generateVisualBar(current, max, colorClass = 'bg-green-500') {
+function generateVisualBar(current, max, colorClass = 'bg-green-500', isSubStat = false) {
     const percentage = Math.round(Math.min(100, Math.max(0, (current / (max || 1)) * 100)));
+    const barHeight = isSubStat ? 'h-1' : 'h-1.5';
+    const containerClasses = isSubStat ? 'min-w-[100px] opacity-70 ml-4' : 'min-w-[120px]';
     return `
-        <div class="flex items-center gap-2 flex-grow min-w-[120px]">
-            <div class="h-1.5 w-full bg-black/60 border border-green-900/30 relative overflow-hidden">
+        <div class="flex items-center gap-2 flex-grow ${containerClasses}">
+            <div class="${barHeight} w-full bg-black/60 border border-green-900/30 relative overflow-hidden">
                 <div class="h-full ${colorClass} transition-all duration-700" style="width: ${percentage}%"></div>
             </div>
             <span class="min-w-[35px] text-right font-mono text-[10px] opacity-80">${current}/${max}</span>
@@ -730,6 +739,12 @@ export function toggleDossierBuffer(show, data = null) {
         const displayData = data || stateManager.getState().activeAvatar;
         if (!displayData) return;
 
+        // MOBILE BEST PRACTICE: If on mobile, close the sidebar first to prevent overlap
+        const sidebar = document.getElementById('right-sidebar');
+        if (sidebar && window.innerWidth < 1024) { // 1024 is the 'lg' breakpoint
+            sidebar.classList.remove('open');
+        }
+
         modal.classList.remove('hidden');
 
         // Populate Dossier
@@ -762,10 +777,33 @@ export function toggleDossierBuffer(show, data = null) {
         const statsArea = document.getElementById('dossier-stats');
 
         if (statsArea) {
-            const amnBar = generateVisualBar(displayData.stats?.AMN ?? 20, 20, 'bg-amber-600');
-            const willBar = generateVisualBar(displayData.will || displayData.stats?.WILL || 0, displayData.stats?.WILL || 10, 'bg-emerald-600');
-            const physBar = generateVisualBar(displayData.hp || displayData.stats?.PHYS || 0, displayData.stats?.PHYS || 10, 'bg-emerald-600');
-            const awrBar = generateVisualBar(displayData.stats?.AWR || 0, 20, 'bg-emerald-600');
+            const stats = displayData.stats || { AMN: 20, WILL: { total: 0 }, PHYS: { total: 0 }, AWR: { total: 0 } };
+            
+            // Format stats regardless of structure
+            const getStatValue = (pool, sub) => {
+                const p = stats[pool];
+                if (!p) return 0;
+                if (typeof p === 'object') {
+                    if (sub) return p[sub] || 0;
+                    return p.total || 0;
+                }
+                return sub ? 0 : p;
+            };
+
+            const amnBar = generateVisualBar(getStatValue('AMN'), 20, 'bg-amber-600');
+            const willBar = generateVisualBar(displayData.will || getStatValue('WILL'), getStatValue('WILL'), 'bg-emerald-600');
+            const physBar = generateVisualBar(displayData.hp || getStatValue('PHYS'), getStatValue('PHYS'), 'bg-emerald-600');
+            const awrBar = generateVisualBar(getStatValue('AWR'), 20, 'bg-emerald-600');
+
+            // Sub-stat Bars
+            const stabilityBar = generateVisualBar(getStatValue('WILL', 'stability'), getStatValue('WILL', 'stability'), 'bg-blue-500', true);
+            const projectionBar = generateVisualBar(getStatValue('WILL', 'projection'), getStatValue('WILL', 'projection'), 'bg-purple-500', true);
+            
+            const strengthBar = generateVisualBar(getStatValue('PHYS', 'strength'), getStatValue('PHYS', 'strength'), 'bg-red-500', true);
+            const agilityBar = generateVisualBar(getStatValue('PHYS', 'agility'), getStatValue('PHYS', 'agility'), 'bg-yellow-500', true);
+            
+            const focusBar = generateVisualBar(getStatValue('AWR', 'focus'), getStatValue('AWR', 'focus'), 'bg-cyan-500', true);
+            const perceptionBar = generateVisualBar(getStatValue('AWR', 'perception'), getStatValue('AWR', 'perception'), 'bg-white', true);
             
             const inventoryHtml = displayData.inventory && displayData.inventory.length > 0 
                 ? displayData.inventory.map(item => `
@@ -780,11 +818,20 @@ export function toggleDossierBuffer(show, data = null) {
                     <div class="text-gray-500 text-xs italic mb-2">${displayData.archetype || 'VESSEL'}</div>
                     <div class="text-gray-400 leading-relaxed text-sm">${displayData.description || 'No biometric history on file.'}</div>
                 </div>
-                <div class="space-y-2 border-t border-green-900 pt-4 mb-4 font-mono text-xs">
-                    <div class="flex justify-between items-center text-amber-500 font-bold"><span>AMN</span>  ${amnBar}</div>
-                    <div class="flex justify-between items-center pl-2 border-l border-amber-900/50"><span>WILLPOWER</span> ${willBar}</div>
-                    <div class="flex justify-between items-center pl-2 border-l border-amber-900/50"><span>PHYSIQUE</span>  ${physBar}</div>
-                    <div class="flex justify-between items-center pl-2 border-l border-amber-900/50"><span>AWARENESS</span> ${awrBar}</div>
+                <div class="space-y-1 border-t border-green-900 pt-4 mb-4 font-mono text-xs">
+                    <div class="flex justify-between items-center text-amber-500 font-bold mb-2"><span>AMN</span>  ${amnBar}</div>
+                    
+                    <div class="flex justify-between items-center pl-2 border-l border-emerald-900/50"><span>WILLPOWER</span> ${willBar}</div>
+                    <div class="flex justify-between items-center pl-4 border-l border-blue-900/30 text-[10px] text-blue-400 opacity-80"><span>├ STABILITY</span> ${stabilityBar}</div>
+                    <div class="flex justify-between items-center pl-4 border-l border-purple-900/30 text-[10px] text-purple-400 opacity-80 mb-1"><span>└ PROJECTION</span> ${projectionBar}</div>
+                    
+                    <div class="flex justify-between items-center pl-2 border-l border-emerald-900/50"><span>PHYSIQUE</span>  ${physBar}</div>
+                    <div class="flex justify-between items-center pl-4 border-l border-red-900/30 text-[10px] text-red-400 opacity-80"><span>├ STRENGTH</span> ${strengthBar}</div>
+                    <div class="flex justify-between items-center pl-4 border-l border-yellow-900/30 text-[10px] text-yellow-400 opacity-80 mb-1"><span>└ AGILITY</span> ${agilityBar}</div>
+                    
+                    <div class="flex justify-between items-center pl-2 border-l border-emerald-900/50"><span>AWARENESS</span> ${awrBar}</div>
+                    <div class="flex justify-between items-center pl-4 border-l border-cyan-900/30 text-[10px] text-cyan-400 opacity-80"><span>├ FOCUS</span> ${focusBar}</div>
+                    <div class="flex justify-between items-center pl-4 border-l border-white/30 text-[10px] text-white opacity-80"><span>└ PERCEPTION</span> ${perceptionBar}</div>
                 </div>
                 <div class="border-t border-green-900 pt-4">
                     <div class="text-[10px] text-green-500 font-bold mb-2 tracking-widest uppercase">Possessions</div>
@@ -905,10 +952,21 @@ export function toggleCombatUI(active, opponentData = null) {
             if (playerName) playerName.innerText = activeAvatar.name.toUpperCase();
 
             if (playerStats) {
-                const curWill = activeAvatar.will !== undefined ? activeAvatar.will : activeAvatar.stats?.WILL || 10;
-                const maxWill = activeAvatar.stats?.WILL || 10;
-                const curPhys = activeAvatar.hp !== undefined ? activeAvatar.hp : activeAvatar.stats?.PHYS || 10;
-                const maxPhys = activeAvatar.stats?.PHYS || 10;
+                const stats = activeAvatar.stats || {};
+                const getStatValue = (pool, sub) => {
+                    const p = stats[pool];
+                    if (!p) return 0;
+                    if (typeof p === 'object') {
+                        if (sub) return p[sub] || 0;
+                        return p.total || 0;
+                    }
+                    return sub ? 0 : p;
+                };
+
+                const curWill = activeAvatar.will !== undefined ? activeAvatar.will : getStatValue('WILL');
+                const maxWill = getStatValue('WILL');
+                const curPhys = activeAvatar.hp !== undefined ? activeAvatar.hp : getStatValue('PHYS');
+                const maxPhys = getStatValue('PHYS');
 
                 const isAstral = stateManager.getState().localPlayer.stratum === 'astral';
 
