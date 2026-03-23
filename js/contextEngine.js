@@ -1,4 +1,4 @@
-﻿// js/contextEngine.js
+// js/contextEngine.js
 // ALERT: AI CODE ASSISTANT - THIS FILE CONTAINS HAND WRITTEN PROMPT ENGINE CODE.
 // DO NOT EDIT OR SUGGEST CHANGES TO THIS FILE UNLESS INSTRUCTED (OR YOU ARE REALLY SURE).
 
@@ -182,8 +182,13 @@ EVALUATION DIRECTIVES:
 
 LAYER 4: COMBAT & LORE:
 - AMN (OM|AMEN) is the ROOT stat (usually 20).
-- WILL, AWR, and PHYS are DERIVED stats. Their sum (WILL + AWR + PHYS) MUST EQUAL the AMN value.
-- If combat_active is true, evaluate actions against WILL/AWR/PHYS.
+- PRIMARY POOLS: WILL, AWR, and PHYS. Their sum (WILL + AWR + PHYS) MUST EQUAL the AMN value.
+- SUB-STATS: Each pool is divided into two sub-stats.
+    - WILL (Projection): Conviction (Offense/Manifesting), Anchor (Defense/Stability).
+    - PHYS (The Vessel): Strength (Kinetics), Agility (Reflex).
+    - AWR (The Receptor): Focus (Acute Concentration/Skills), Perception (Passive Observation/Search).
+- If combat_active is true, evaluate actions against these sub-stats.
+- Damage can be dealt to specific sub-stats (e.g., identity erosion attacks Anchor; a flashbang attacks Focus).
 - Structure combat narratively: [Player Action] -> [Stat Check] -> [Resolution] -> [Telegraph Next Enemy Move].
 - Use 45-second turn logic (narrative pacing).
 - Players can use "WILL FORCE" or "ASTRAL WEAPON" in combat.

@@ -314,13 +314,14 @@ function syncHeaderVitals(activeAvatar) {
 function generateVisualBar(current, max, colorClass = 'bg-green-500', isSubStat = false) {
     const percentage = Math.round(Math.min(100, Math.max(0, (current / (max || 1)) * 100)));
     const barHeight = isSubStat ? 'h-1' : 'h-1.5';
-    const containerClasses = isSubStat ? 'min-w-[100px] opacity-70 ml-4' : 'min-w-[120px]';
+    // Remove fixed min-widths and large margins for mobile
+    const containerClasses = isSubStat ? 'opacity-70 ml-2 sm:ml-4' : 'w-full';
     return `
         <div class="flex items-center gap-2 flex-grow ${containerClasses}">
             <div class="${barHeight} w-full bg-black/60 border border-green-900/30 relative overflow-hidden">
                 <div class="h-full ${colorClass} transition-all duration-700" style="width: ${percentage}%"></div>
             </div>
-            <span class="min-w-[35px] text-right font-mono text-[10px] opacity-80">${current}/${max}</span>
+            <span class="min-w-[30px] text-right font-mono text-[9px] sm:text-[10px] opacity-80">${current}/${max}</span>
         </div>
     `;
 }
@@ -814,24 +815,37 @@ export function toggleDossierBuffer(show, data = null) {
 
             statsArea.innerHTML = `
                 <div class="mb-4">
-                    <div class="text-amber-500 font-bold text-lg mb-1">${displayData.name.toUpperCase()}</div>
-                    <div class="text-gray-500 text-xs italic mb-2">${displayData.archetype || 'VESSEL'}</div>
-                    <div class="text-gray-400 leading-relaxed text-sm">${displayData.description || 'No biometric history on file.'}</div>
+                    <div class="text-amber-500 font-bold text-lg mb-1 leading-tight">${displayData.name.toUpperCase()}</div>
+                    <div class="text-gray-500 text-[10px] italic mb-2">${displayData.archetype || 'VESSEL'}</div>
+                    <details class="group">
+                        <summary class="text-[9px] text-green-900 uppercase tracking-widest cursor-pointer hover:text-green-500 mb-1 list-none">
+                            [ + ] Biometric_History
+                        </summary>
+                        <div class="text-gray-400 leading-relaxed text-[11px] sm:text-sm border-l border-green-900/30 pl-2 mt-1 mb-4">
+                            ${displayData.description || 'No biometric history on file.'}
+                        </div>
+                    </details>
                 </div>
-                <div class="space-y-1 border-t border-green-900 pt-4 mb-4 font-mono text-xs">
+                <div class="space-y-1 border-t border-green-900 pt-4 mb-4 font-mono text-[10px] sm:text-xs">
                     <div class="flex justify-between items-center text-amber-500 font-bold mb-2"><span>AMN</span>  ${amnBar}</div>
                     
-                    <div class="flex justify-between items-center pl-2 border-l border-emerald-900/50"><span>WILLPOWER</span> ${willBar}</div>
-                    <div class="flex justify-between items-center pl-4 border-l border-blue-900/30 text-[10px] text-blue-400 opacity-80"><span>├ STABILITY</span> ${stabilityBar}</div>
-                    <div class="flex justify-between items-center pl-4 border-l border-purple-900/30 text-[10px] text-purple-400 opacity-80 mb-1"><span>└ PROJECTION</span> ${projectionBar}</div>
+                    <div class="flex flex-col gap-0.5 mb-2">
+                        <div class="flex justify-between items-center pl-2 border-l border-emerald-900/50"><span>WILLPOWER</span> ${willBar}</div>
+                        <div class="flex justify-between items-center pl-4 border-l border-blue-900/30 text-[9px] text-blue-400 opacity-80"><span>├ STABILITY</span> ${stabilityBar}</div>
+                        <div class="flex justify-between items-center pl-4 border-l border-purple-900/30 text-[9px] text-purple-400 opacity-80"><span>└ PROJECTION</span> ${projectionBar}</div>
+                    </div>
                     
-                    <div class="flex justify-between items-center pl-2 border-l border-emerald-900/50"><span>PHYSIQUE</span>  ${physBar}</div>
-                    <div class="flex justify-between items-center pl-4 border-l border-red-900/30 text-[10px] text-red-400 opacity-80"><span>├ STRENGTH</span> ${strengthBar}</div>
-                    <div class="flex justify-between items-center pl-4 border-l border-yellow-900/30 text-[10px] text-yellow-400 opacity-80 mb-1"><span>└ AGILITY</span> ${agilityBar}</div>
+                    <div class="flex flex-col gap-0.5 mb-2">
+                        <div class="flex justify-between items-center pl-2 border-l border-emerald-900/50"><span>PHYSIQUE</span>  ${physBar}</div>
+                        <div class="flex justify-between items-center pl-4 border-l border-red-900/30 text-[9px] text-red-400 opacity-80"><span>├ STRENGTH</span> ${strengthBar}</div>
+                        <div class="flex justify-between items-center pl-4 border-l border-yellow-900/30 text-[9px] text-yellow-400 opacity-80"><span>└ AGILITY</span> ${agilityBar}</div>
+                    </div>
                     
-                    <div class="flex justify-between items-center pl-2 border-l border-emerald-900/50"><span>AWARENESS</span> ${awrBar}</div>
-                    <div class="flex justify-between items-center pl-4 border-l border-cyan-900/30 text-[10px] text-cyan-400 opacity-80"><span>├ FOCUS</span> ${focusBar}</div>
-                    <div class="flex justify-between items-center pl-4 border-l border-white/30 text-[10px] text-white opacity-80"><span>└ PERCEPTION</span> ${perceptionBar}</div>
+                    <div class="flex flex-col gap-0.5">
+                        <div class="flex justify-between items-center pl-2 border-l border-emerald-900/50"><span>AWARENESS</span> ${awrBar}</div>
+                        <div class="flex justify-between items-center pl-4 border-l border-cyan-900/30 text-[9px] text-cyan-400 opacity-80"><span>├ FOCUS</span> ${focusBar}</div>
+                        <div class="flex justify-between items-center pl-4 border-l border-white/30 text-[9px] text-white opacity-80"><span>└ PERCEPTION</span> ${perceptionBar}</div>
+                    </div>
                 </div>
                 <div class="border-t border-green-900 pt-4">
                     <div class="text-[10px] text-green-500 font-bold mb-2 tracking-widest uppercase">Possessions</div>
