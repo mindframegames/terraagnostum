@@ -65,7 +65,7 @@ export async function executeMovement(targetDir) {
     
     if (!currentRoom) {
         UI.addLog('[SYSTEM]: Dimensional synchronization in progress. Please wait for the sector to stabilize.', 'var(--term-amber)');
-        UI.addLog('[SYSTEM]: If synchronization fails, type "RECALIBRATE" to return to your primary anchor.', 'var(--term-amber)');
+        UI.addLog('[SYSTEM]: If synchronization fails, type "/RECALIBRATE" to return to your primary anchor.', 'var(--term-amber)');
         return;
     }
     
@@ -136,7 +136,7 @@ export async function executeMovement(targetDir) {
         // --- CACHE VALIDATION ---
         if (!activeMap[targetRoomId]) {
             UI.addLog("[SYSTEM]: Dimensional synchronization in progress. Please wait for the sector to stabilize.", "var(--term-amber)");
-            UI.addLog('[SYSTEM]: Type "RECALIBRATE" if you are stuck.', 'var(--term-amber)');
+            UI.addLog('[SYSTEM]: Type "/RECALIBRATE" if you are stuck.', 'var(--term-amber)');
             return;
         }
 
@@ -310,7 +310,7 @@ export async function handleCommand(val) {
         return;
     }
 
-    if (cmd === 'recalibrate' || cmd === 'home' || cmd === 'unstuck') {
+    if (cmd === '/recalibrate' || cmd === 'recalibrate' || cmd === 'home' || cmd === 'unstuck') {
         const targetRoom = user ? `instance_${user.uid}_bedroom` : 'bedroom';
         stateManager.updatePlayer({ 
             currentRoom: targetRoom, 
@@ -826,7 +826,7 @@ export async function handleCommand(val) {
         else localPlayer.inventory.forEach(item => UI.addLog(`- ${item.name} [${item.type}]`, "var(--term-green)"));
         return;
     } else if (cmd === 'help') {
-        UI.addLog("HELP // Commands: LOOK, N/S/E/W, WHOAMI, /LOGIN [EMAIL], /REGISTER [EMAIL], CREATE AVATAR, LEAVE VESSEL, ASSUME [NPC], CREATE NPC, LOCK [DIR], CREATE ITEM, EDIT ROOM, BUILD [DIR] [--AUTO], GENERATE ROOM, PIN, UNPIN, INV, MAP, STAT, INVESTIGATE, RECALIBRATE, /ROOM, /STRATA.", "var(--term-amber)");
+        UI.addLog("HELP // Commands: LOOK, N/S/E/W, WHOAMI, /LOGIN [EMAIL], /REGISTER [EMAIL], CREATE AVATAR, LEAVE VESSEL, ASSUME [NPC], CREATE NPC, LOCK [DIR], CREATE ITEM, EDIT ROOM, BUILD [DIR] [--AUTO], GENERATE ROOM, PIN, UNPIN, INV, MAP, STAT, INVESTIGATE, /RECALIBRATE, /ROOM, /STRATA.", "var(--term-amber)");
         return;
     }
 

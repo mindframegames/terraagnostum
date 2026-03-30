@@ -307,13 +307,92 @@ export async function handleGMIntent(
                 if (!isSilent) UI.addLog(`>>> [ ASTRAL FEEDBACK ]: ${npc.name.toUpperCase()} TOOK ${res.damage_to_npc} WILL DMG <<<`, "#00ffff");
                 
                 if (newWill <= 0) {
+                    // --- VICTORY SEQUENCE ---
                     room.npcs = room.npcs.filter(n => n.id !== npc.id);
                     stateManager.updateMapNode(targetRoomId, { npcs: room.npcs });
                     await syncEngine.updateMapNode(targetRoomId, { npcs: room.npcs });
                     stateManager.updatePlayer({ combat: { active: false, opponent: null } });
                     CombatTimer.stop();
                     stateChanged = true;
-                    if (!isSilent) UI.addLog(`[SYSTEM]: ${npc.name} dissipate. Victory!`, "var(--term-green)");
+                    if (!isSilent) UI.addLog(`[SYSTEM]: ${npc.name} dissipates. The Nexus collapses into static.`, "var(--term-green)");
+
+                    // Is this the Astral entry boss (Shadow Entity in the nexus)?
+                    const isNexusBoss = npc.name.toLowerCase().includes("shadow") ||
+                        npc.name.toLowerCase().includes("unknown entity") ||
+                        targetRoomId.includes('astral_entry');
+
+                    if (isNexusBoss) {
+                        // 1. Grant the Resonant Key
+                        const key = { name: "Resonant Key", type: "Key Item", description: "A vibrating, semi-translucent key that resonates with the apartment's front door." };
+                        const currentPlayer = stateManager.getState().localPlayer;
+                        if (!currentPlayer.inventory.some(i => i.name === key.name)) {
+                            stateManager.updatePlayer({ inventory: [...currentPlayer.inventory, key] });
+                            if (!isSilent) UI.addLog(`[REWARD]: You have obtained [Resonant Key].`, "var(--term-green)");
+                        }
+
+                        // 2. Break the generator in the closet
+                        const closetRoomId = user ? `instance_${user.uid}_closet` : 'closet';
+                        const activeMapNow = stateManager.getActiveMap();
+                        const closet = activeMapNow[closetRoomId] || activeMapNow['closet'];
+                        const resolvedClosetId = activeMapNow[closetRoomId] ? closetRoomId : 'closet';
+                        if (closet?.description) {
+                            const newDesc = closet.description
+                                .replace('arcing with potential energy', 'smoking, its quantum core shattered')
+                                .replace('humming', 'smoking');
+                            stateManager.updateMapNode(resolvedClosetId, { description: newDesc });
+                            syncEngine.updateMapNode(resolvedClosetId, { description: newDesc });
+                        }
+
+                        // 3. Return player to the closet
+                        stateManager.updatePlayer({ currentRoom: resolvedClosetId, stratum: 'mundane' });
+                        if (updateMapListener) await updateMapListener();
+                        if (triggerVisual) triggerVisual();
+                        if (shiftStratum) shiftStratum('mundane');
+                        if (!isSilent) UI.addLog(`[NARRATOR]: You are thrown back into your physical shell. You clench the Resonant Key in your hand. The generator behind you is smoking, the quantum core shattered.`, "#888");
+
+                        // 4. Generate a repair quest (async, non-blocking)
+                        (async () => {
+                            try {
+                                const questRes = await callGemini(
+                                    `A hyper-advanced, occult-scientific "Hacked Schumann Resonance Generator" just shattered. Create a highly creative, 1-3 word name for the single critical component that needs to be replaced. Examples: "Flux Capacitor", "Quantum Lobe", "Resonant Focusing Crystal". Output ONLY valid JSON.`,
+                                    "You are a creative sci-fi game designer.",
+                                    { type: "object", properties: { part_name: { type: "string" } }, required: ["part_name"] }
+                                );
+                                const partName = questRes?.part_name || "Aethal Relay Tube";
+                                const newQuest = {
+                                    id: `quest_${Date.now()}`,
+                                    title: "Fix the Resonator",
+                                    rank: 5,
+                                    description: `Your internal clash destabilized the Schumann Generator in your closet. To restore targeted planar traversal, locate a [${partName.toUpperCase()}] and install it.`,
+                                    status: "active",
+                                    objectives: [
+                                        { desc: `Find a ${partName}`, completed: false },
+                                        { desc: `Install ${partName} in the Schumann Generator`, completed: false }
+                                    ]
+                                };
+                                const pState = stateManager.getState().localPlayer;
+                                stateManager.updatePlayer({ quests: [...(pState.quests || []), newQuest] });
+                                if (!isSilent) UI.addLog(`[SYSTEM]: NEW QUEST: 'Fix the Resonator'. Check your active tickets.`, "var(--term-amber)");
+                            } catch (e) {
+                                console.error("Quest Generation Error", e);
+                                // Fallback quest with hardcoded part name
+                                const fallbackQuest = {
+                                    id: `quest_${Date.now()}`,
+                                    title: "Fix the Resonator",
+                                    rank: 5,
+                                    description: `Your internal clash destabilized the Schumann Generator. Locate an [AETHAL RELAY TUBE] and install it to restore planar traversal.`,
+                                    status: "active",
+                                    objectives: [
+                                        { desc: `Find an Aethal Relay Tube`, completed: false },
+                                        { desc: `Install it in the Schumann Generator`, completed: false }
+                                    ]
+                                };
+                                const pState = stateManager.getState().localPlayer;
+                                stateManager.updatePlayer({ quests: [...(pState.quests || []), fallbackQuest] });
+                                if (!isSilent) UI.addLog(`[SYSTEM]: NEW QUEST: 'Fix the Resonator'. Check your active tickets.`, "var(--term-amber)");
+                            }
+                        })();
+                    }
                 }
             }
         }
