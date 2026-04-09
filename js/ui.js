@@ -176,6 +176,13 @@ document.addEventListener('DOMContentLoaded', () => {
     initMobileRadar();
     setupMapResizeObservers();
     initCollapsibleSections();
+
+    // Global listener for clickable log elements
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('log-portrait')) {
+            toggleDossierBuffer(true);
+        }
+    });
 });
 
 export function initCollapsibleSections() {

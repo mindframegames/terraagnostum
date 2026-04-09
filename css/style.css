@@ -321,6 +321,25 @@ html, body { height: 100%; margin: 0; overflow: hidden; background: #000; }
     flex-direction: column;
 }
 
+/* --- LOG PORTRAIT --- */
+.log-portrait {
+    width: 80px;
+    height: 80px;
+    border: 2px solid var(--term-green);
+    margin: 8px 0;
+    cursor: pointer;
+    display: block;
+    object-fit: contain;
+    background: black;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.log-portrait:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px var(--term-green);
+    border-color: #fff;
+}
+
 #log {
     max-width: 100%;
     break-words: break-all;

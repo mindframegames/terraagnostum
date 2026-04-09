@@ -358,6 +358,7 @@ async function manifestVessel() {
         charData.id = id;
         stateManager.setActiveAvatar(charData);
         UI.addLog(`[SYSTEM]: Vessel [${name}] anchored to Archive.`, "var(--term-green)");
+        UI.addLog(`[REWARD]: BIOMETRIC_RECOGNITION_COMPLETE. Welcome, ${name}.<br><img src="${dataUri}" class="log-portrait" title="Click to view dossier">`, "var(--term-green)");
         document.getElementById('forge-modal').classList.add('hidden');
     } else {
         portraitBox.innerHTML = `<div class="flex h-full items-center justify-center text-red-500 text-[10px]">GENERATION FAILED<br>Review logs or try another seed.</div>`;
